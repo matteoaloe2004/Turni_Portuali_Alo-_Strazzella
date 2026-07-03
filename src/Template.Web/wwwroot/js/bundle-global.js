@@ -6814,9 +6814,12 @@ var utilities;
      * Naviga un url mantenendo la funzionalità di +ctrl per aprire in una nuova tab
      */
     function navigateUrlExcludeOnitNotNavigate(url) {
-        if (event.target instanceof HTMLButtonElement == false &&
-            event.target instanceof HTMLAnchorElement == false &&
-            (event.target instanceof HTMLTableCellElement && event.target.hasAttribute('data-onit-not-navigate') == false)) {
+        const target = event.target;
+        if (!target)
+            return;
+        const buttonOrLink = target.closest('button, a');
+        const cell = target.closest('td, th');
+        if (!buttonOrLink && cell && !cell.hasAttribute('data-onit-not-navigate')) {
             if (window.event && window.event.ctrlKey) {
                 window.open(url);
             }

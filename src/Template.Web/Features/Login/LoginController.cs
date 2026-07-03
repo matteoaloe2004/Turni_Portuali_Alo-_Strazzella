@@ -32,7 +32,9 @@ namespace Template.Web.Features.Login
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, utente.Id.ToString()),
-                new Claim(ClaimTypes.Email, utente.Email)
+                new Claim(ClaimTypes.Email, utente.Email),
+                new Claim("IsAdmin", utente.IsAdmin.ToString()),
+                new Claim(ClaimTypes.Role, utente.IsAdmin ? "Admin" : "Operatore")
             };
 
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -46,7 +48,7 @@ namespace Template.Web.Features.Login
             if (string.IsNullOrWhiteSpace(returnUrl) == false)
                 return Redirect(returnUrl);
 
-            return RedirectToAction(MVC.Example.Users.Index());
+            return RedirectToAction("Index", "Turni");
         }
 
         [HttpGet]
@@ -57,7 +59,7 @@ namespace Template.Web.Features.Login
                 if (string.IsNullOrWhiteSpace(returnUrl) == false)
                     return Redirect(returnUrl);
 
-                return RedirectToAction(MVC.Example.Users.Index());
+                return RedirectToAction("Index", "Turni");
             }
 
             var model = new LoginViewModel

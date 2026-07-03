@@ -1,0 +1,161 @@
+@model Template.Web.Areas.Admin.Users.EditViewModel
+@{
+    if (Model.Id != null)
+    {
+        ViewData["Title"] = "Modifica Profilo Utente";
+    }
+    else
+    {
+        ViewData["Title"] = "Inserimento Nuovo Utente";
+    }
+}
+
+@section pageTitle {
+    <nav class="navbar navbar-expand navbar-light bg-white px-4 py-3 border-bottom shadow-sm">
+        <div class="container-fluid d-flex align-items-center justify-content-between">
+            <span class="navbar-brand fw-bold text-dark d-flex align-items-center gap-2 mb-0 h1 fs-5">
+                <i class="fa-solid fa-circle-user text-primary"></i>
+                @ViewData["Title"]
+            </span>
+            <div class="ms-auto d-flex align-items-center gap-2">
+                @if (Model.Id != null)
+                {
+                    <div class="dropdown">
+                        <button class="btn btn-outline-danger btn-sm" type="button" id="dropdownMenuAltreAzioni" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Altre azioni">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow-sm border-danger-subtle" aria-labelledby="dropdownMenuAltreAzioni">
+                            <h6 class="dropdown-header text-danger">Azioni Irreversibili</h6>
+                            <button class="dropdown-item text-danger fw-semibold" type="button" onclick="document.getElementById('delete-form').submit();">
+                                <i class="fa-solid fa-trash-can me-2"></i>Elimina Utente
+                            </button>
+                            <form hidden autocomplete="off" id="delete-form" method="post" action="@Url.Action(MVC.Admin.Users.Delete())">
+                                <input type="hidden" asp-for="Id" />
+                            </form>
+                        </div>
+                    </div>
+                }
+                <button type="button" class="btn btn-success px-4 fw-semibold" onclick="document.getElementById('edit-form-submitter').click()">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> Salva
+                </button>
+            </div>
+        </div>
+    </nav>
+}
+
+<div class="container-lg py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+                <div class="card-header bg-white border-bottom py-3 px-4">
+                    <h5 class="mb-0 fw-bold text-dark d-flex align-items-center">
+                        <i class="fa-solid fa-sliders text-primary me-2"></i>
+                        Informazioni Generali Profilo
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <form autocomplete="off" method="post" class="onit-form-sm" action="@Url.Action(MVC.Admin.Users.Edit())" id="edit-form">
+                        <!-- Enables form submit on Enter -->
+                        <input id="edit-form-submitter" class="d-none" type="submit" />
+                        
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label asp-for="Email" class="form-label fw-semibold text-secondary small mb-1">Indirizzo Email</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-envelope"></i></span>
+                                    <input class="form-control" asp-for="Email" placeholder="esempio@email.com">
+                                </div>
+                                <span asp-validation-for="Email" class="text-danger small mt-1 d-block"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="FirstName" class="form-label fw-semibold text-secondary small mb-1">Nome</label>
+                                <input class="form-control" asp-for="FirstName" placeholder="Nome">
+                                <span asp-validation-for="FirstName" class="text-danger small mt-1 d-block"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="LastName" class="form-label fw-semibold text-secondary small mb-1">Cognome</label>
+                                <input class="form-control" asp-for="LastName" placeholder="Cognome">
+                                <span asp-validation-for="LastName" class="text-danger small mt-1 d-block"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="NickName" class="form-label fw-semibold text-secondary small mb-1">Nickname (Nome visualizzato)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-user-tag"></i></span>
+                                    <input class="form-control" asp-for="NickName" placeholder="Inserisci un nickname...">
+                                </div>
+                                <span asp-validation-for="NickName" class="text-danger small mt-1 d-block"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="Password" class="form-label fw-semibold text-secondary small mb-1">
+                                    Password @(Model.Id == null ? "(Richiesta)" : "(Lascia vuoto per non modificare)")
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-lock"></i></span>
+                                    <input type="password" class="form-control" asp-for="Password" placeholder="@(Model.Id == null ? "Inserisci una password iniziale..." : "Lascia vuoto per mantenere quella attuale...")" autocomplete="new-password">
+                                </div>
+                                <span asp-validation-for="Password" class="text-danger small mt-1 d-block"></span>
+                            </div>
+
+                            <div class="col-12 mt-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" asp-for="IsAdmin" v-model="model.isAdmin" id="isAdminCheckbox">
+                                    <label class="form-check-label fw-semibold text-secondary small" for="isAdminCheckbox">
+                                        Fornisci privilegi di Amministratore (Admin)
+                                    </label>
+                                </div>
+                                <span asp-validation-for="IsAdmin" class="text-danger small mt-1 d-block"></span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer bg-light border-top px-4 py-3 d-flex justify-content-between align-items-center">
+                    <a href="/Admin/Users/Index" class="btn btn-outline-secondary btn-sm">
+                        <i class="fa-solid fa-chevron-left me-1"></i> Annulla e torna alla lista
+                    </a>
+                    <span class="text-muted small d-none d-sm-inline"><i class="fa-solid fa-bolt text-warning me-1"></i> Sincronizzazione Realtime via SignalR</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        <div id="lostConnection" class="d-none alert alert-warning d-inline-block shadow-sm">
+            <i class="fa-solid fa-circle-notch fa-spin me-2"></i> Connessione persa. Tentativo di riconnessione automatica...
+        </div>
+        <div id="lostConnectionManualRetry" class="d-none alert alert-danger d-inline-block shadow-sm">
+            <h5 class="alert-heading fw-bold mb-1"><i class="fa-solid fa-triangle-exclamation me-2"></i>Connessione persa definitivamente</h5>
+            <p class="mb-2 text-muted">Aggiorna la pagina manualmente per ripristinare la sessione.</p>
+            <button class="btn btn-danger btn-sm" onclick="location.reload(true)"><i class="fa-solid fa-rotate-right me-1"></i> Ricarica la pagina</button>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="/js/bundle-vue.js" asp-append-version="true"></script>
+    <script src="~/Areas/Admin/Users/Edit.js" asp-append-version="true"></script>
+
+    <script src="~/node_modules/@@microsoft/signalr/dist/browser/signalr.js" asp-append-version="true"></script>
+    <script src="~/js/signalRConnectionManager.js" asp-append-version="true"></script>
+
+    <script type="application/json" id="Seed_JSON">
+        @Html.Raw(Model.ToJson())
+    </script>
+    <script type="text/javascript">
+        var signalRManager = new SignalRConnectionManager("/templateHub", "@Model.Id", "JoinGroup", "LeaveGroup");
+        signalRManager.registerEvents();
+        signalRManager.startConnection();
+
+        var editModel = new Admin.Users.editVueModel(signalRManager.connection, JSON.parse(document.getElementById("Seed_JSON").innerText));
+
+        var vueModel = new Vue({
+            el: '#pageId',
+            data: editModel,
+            computed: {
+            }
+        });
+    </script>
+}

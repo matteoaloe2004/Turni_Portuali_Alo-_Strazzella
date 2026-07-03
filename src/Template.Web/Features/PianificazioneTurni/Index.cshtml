@@ -1,0 +1,670 @@
+@model Template.Web.Features.PianificazioneTurni.IndexViewModel
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Env
+@{
+    ViewData["Title"] = "Pianificazione Turni";
+}
+
+<style>
+    .text-decoration-hover-underline:hover {
+        text-decoration: underline !important;
+        cursor: pointer;
+    }
+    .clickable-operator-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px;
+        transition: all 0.2s ease-in-out;
+        cursor: pointer;
+    }
+    .clickable-operator-card:hover {
+        background: #ffffff;
+        border-color: #3b82f6;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+        transform: translateY(-2px);
+    }
+    .clickable-ship-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+        transition: all 0.2s ease-in-out;
+        cursor: pointer;
+    }
+    .clickable-ship-card:hover {
+        background: #f8fafc;
+        border-color: #3b82f6;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.04);
+        transform: translateX(3px);
+    }
+</style>
+
+@section pageTitle {
+    <nav class="navbar navbar-light bg-white px-4 py-2 border-bottom">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold text-dark">
+                <i class="fa-solid fa-anchor text-primary me-2"></i>@ViewData["Title"]
+            </h6>
+            <div class="d-flex align-items-center gap-2">
+                <!-- Pulsanti demo rimossi per pulizia visiva (Nielsen H8 - Aesthetic & Minimalist Design) -->
+            </div>
+        </div>
+    </nav>
+}
+
+<div id="app-turni" class="container-fluid py-3 px-4" v-cloak>
+
+    <!-- ALERT EMERGENZA rimosso per ridurre Visual Competition (Nielsen H8) -->
+
+    <!-- DEMO TOAST CONTAINER (non-intrusive notification) -->
+    <div id="demo-toast-container" style="position:fixed;top:16px;right:16px;z-index:9999;"></div>
+
+    <div class="row g-0">
+
+        <!-- COLONNA SINISTRA: ARRIVI OGGI -->
+        <div class="col-md-2 border-end pe-3">
+            <p class="text-secondary text-uppercase mb-2 small fw-bold" style="letter-spacing:.05rem;font-size:.72rem;">
+                <i class="fa-solid fa-ship me-1"></i> Arrivi del Giorno
+            </p>
+            <div class="card border-0 shadow-sm rounded-3 d-flex flex-column" style="background: #f8fafc; border: 1px solid #e2e8f0 !important; height: 720px;">
+                <div class="card-header bg-white border-bottom py-2 px-3 d-flex align-items-center justify-content-between flex-shrink-0">
+                    <h6 class="mb-0 fw-bold text-dark" style="font-size: .75rem;">
+                        <i class="fa-solid fa-ship text-primary me-1.5"></i>Arrivi (Oggi)
+                    </h6>
+                    <span v-if="getTurniDelGiorno().length > 0" class="badge bg-primary" style="font-size: 0.65rem;">
+                        {{ getTurniDelGiorno().length }}
+                    </span>
+                </div>
+                <div class="card-body p-2" style="flex: 1; overflow-y: auto;">
+                    <div v-for="t in getTurniDelGiorno()" :key="t.id" class="clickable-ship-card"
+                         v-on:click="apriDettagliNave(t.nome)"
+                         title="Clicca per visualizzare la scheda dettagliata della nave">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <span class="fw-bold text-dark" style="font-size:.8rem;">
+                                <i class="fa-solid fa-ship text-muted me-1 small"></i>{{ t.nome }}
+                            </span>
+                            <span v-if="t.isDelayed" class="badge bg-danger" style="font-size:.6rem;">Ritardo</span>
+                            <span v-else class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.6rem;">In Orario</span>
+                        </div>
+                        <div class="text-muted" style="font-size:.68rem;">
+                            {{ t.banchina }} &middot; {{ fmtOra(t.startOra) }} &middot; {{ fmtDurata(t.durataOre) }}
+                        </div>
+                        <span class="badge bg-secondary-subtle text-secondary mt-1" style="font-size:.58rem;">{{ t.ruoloRichiesto }}</span>
+                    </div>
+                    <div v-if="getTurniDelGiorno().length === 0" class="text-muted text-center py-4" style="font-size: 0.8rem;">
+                        <i class="fa-solid fa-circle-info d-block mb-1 text-secondary fs-5"></i> Nessun arrivo per questo giorno
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AREA PRINCIPALE -->
+        <div class="col-md-8 px-3 border-end">
+            <!-- FILTRI DI RICERCA E VISUALIZZAZIONE -->
+            <div class="card border-0 shadow-sm rounded-3 mb-3" style="background: rgba(15, 23, 42, 0.02); border: 1px solid rgba(0, 0, 0, 0.05);">
+                <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 280px;">
+                        <span class="text-secondary small fw-bold text-uppercase"><i class="fa-solid fa-filter text-primary me-1"></i> Filtra:</span>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                            <input type="text" class="form-control border-start-0 ps-0 bg-light-subtle" placeholder="Cerca per nave, operatore, molo o qualifica..." v-model="filtroRicerca" v-on:input="saveState">
+                            <button v-if="filtroRicerca" class="btn btn-outline-secondary border-start-0 bg-light-subtle" type="button" v-on:click="filtroRicerca = ''; saveState();">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle py-1.5 px-2.5" style="font-size: 0.68rem; font-weight: 500;">
+                            Filtro Attivo: <strong class="text-dark ms-1">{{ filtroRicerca || 'Nessuno (mostra tutto)' }}</strong>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CALENDARIO SETTIMANALE -->
+            <div class="mb-3 p-3 rounded-3" style="background: rgba(15, 23, 42, 0.03); border: 1px solid rgba(0, 0, 0, 0.05);">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <p class="text-secondary text-uppercase mb-0 small fw-bold" style="letter-spacing:.05rem;font-size:.72rem;">
+                        <i class="fa-solid fa-calendar-days text-primary me-1"></i> Calendario Programmazione Settimanale
+                    </p>
+                    <span class="badge bg-primary-subtle text-primary fw-semibold px-2 py-1" style="font-size: 0.65rem;">
+                        Seleziona un giorno per pianificare
+                    </span>
+                </div>
+                <div class="d-flex gap-2 overflow-x-auto pt-2 px-2 pb-1" style="scrollbar-width: thin;">
+                    <button v-for="g in giorniSettimana" :key="g.index"
+                            class="btn flex-fill text-start py-3 px-3 border rounded-3 position-relative transition-all d-flex flex-column"
+                            v-bind:class="giornoSelezionato === g.index ? 'btn-primary border-primary shadow-sm' : 'btn-white bg-white border-light-subtle text-dark'"
+                            v-on:click="selezionaGiorno(g.index)"
+                            style="min-width: 110px; transition: all 0.2s ease;">
+                        <span class="small fw-semibold mb-1" v-bind:class="giornoSelezionato === g.index ? 'text-white-50' : 'text-muted'" style="font-size: 0.65rem;">
+                            {{ g.giornoSettimana }}
+                        </span>
+                        <span class="fw-bold" v-bind:class="giornoSelezionato === g.index ? 'text-white' : 'text-dark'" style="font-size: 0.85rem; line-height: 1.1;">
+                            {{ g.nome }}
+                        </span>
+                        <span class="small mt-1" v-bind:class="giornoSelezionato === g.index ? 'text-white-50' : 'text-muted'" style="font-size: 0.65rem;">
+                            {{ g.dataStr }}
+                        </span>
+                        <!-- Alert badge se c'è un'emergenza attiva su quel giorno -->
+                        <span v-if="emergenzaAttiva && turnoInRitardo && turnoInRitardo.giorno === g.index" 
+                              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white"
+                              style="font-size: 0.5rem; padding: 0.35em 0.5em;"
+                              title="Emergenza attiva">
+                              !
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <p class="text-secondary text-uppercase mb-2 small fw-bold" style="letter-spacing:.05rem;font-size:.72rem;">
+                <i class="fa-solid fa-calendar-check me-1"></i> Timeline Turni
+            </p>
+
+            <div class="gantt-container">
+
+                <!-- Header ore -->
+                <div class="gantt-hour-row">
+                    <div class="gantt-hour-row-label"></div>
+                    <div class="gantt-hour-row-track">
+                        <span v-for="h in oreTimeline" :key="h" class="gantt-hour-tick" v-bind:style="{ left: tickLeft(h) }">
+                            {{ fmtTick(h) }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Righe banchine -->
+                <div v-for="banchina in banchine" :key="banchina" class="gantt-row">
+                    <div class="gantt-row-label">{{ banchina }}</div>
+                    <div class="gantt-row-track">
+                        <!-- Grid lines verticali -->
+                        <div v-for="h in oreTimeline" :key="'vl'+h" class="gantt-vline" v-bind:style="{ left: tickLeft(h) }"></div>
+
+                        <!-- Blocchi turno -->
+                        <div v-for="t in getTurniPerBanchina(banchina)" :key="t.id"
+                             class="gantt-block"
+                             v-bind:class="getBlockClass(t)"
+                             v-bind:style="{ 
+                                 left: blockLeft(t), 
+                                 width: blockWidth(t),
+                                 opacity: isElementoFiltrato(t) ? 1 : 0.15,
+                                 filter: isElementoFiltrato(t) ? 'none' : 'grayscale(60%)'
+                             }"
+                             v-on:click="handleBlockClick(t)"
+                             v-bind:title="t.isDelayed ? '⚠️ Nave in ritardo – clicca per risolvere' : (isBloccoInCollisione(t) && !t.isDelayed ? '🔒 Nave bloccata – risolvi prima la nave in ritardo' : 'Dettagli nave ' + t.nome)">
+                            <div class="gantt-block-title">
+                                 <i class="fa-solid fa-ship me-1 small"></i>{{ t.nome }}
+                            </div>
+                            <div class="gantt-block-sub">
+                                <i class="fa-solid fa-user-gear me-1"></i>{{ t.operatore }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- FASCIA RISORSE -->
+            <div class="border-top pt-3 mt-3">
+                <p class="text-secondary text-uppercase mb-2 small fw-bold" style="letter-spacing:.05rem;font-size:.72rem;">
+                    <i class="fa-solid fa-users-gear me-1"></i> Risorse — Ore Settimanali Operai
+                </p>
+                <div class="row g-3">
+                    <div v-for="op in operatori" :key="op.nome" class="col-xl-2 col-lg-3 col-md-4"
+                          v-bind:style="{ opacity: isOperatoreFiltrato(op) ? 1 : 0.25 }">
+                        <div class="clickable-operator-card"
+                             v-bind:class="op.reperibile ? 'border-info bg-info-subtle bg-opacity-10' : ''"
+                             v-on:click="apriDettagliOperatore(op)"
+                             title="Clicca per visualizzare la scheda dettagliata dell'operatore">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="d-flex align-items-center gap-1">
+                                    <i v-if="op.reperibile" class="fa-solid fa-phone text-info me-0.5" style="font-size: 0.68rem;" title="Lavoratore A Chiamata / Reperibile"></i>
+                                    <span class="fw-bold text-dark" style="font-size:.75rem;">{{ op.nome }}</span>
+                                    <span class="badge" v-bind:class="op.reperibile ? 'bg-info text-white' : 'bg-secondary-subtle text-secondary border border-secondary-subtle'" style="font-size:.58rem;padding:.12em .35em;">
+                                        {{ op.reperibile ? 'A Chiamata' : op.ruolo }}
+                                    </span>
+                                </div>
+                                <span class="font-monospace fw-semibold"
+                                      v-bind:class="getOpStatus(op)==='danger'?'text-danger':getOpStatus(op)==='warning'?'text-warning':'text-muted'"
+                                      style="font-size:.68rem;">
+                                    {{ op.oreSettimanali }}/{{ op.oreMassime }}h
+                                </span>
+                            </div>
+                            <div class="resource-bar progress">
+                                <div class="progress-bar" role="progressbar"
+                                     v-bind:style="{ width: getOpPercent(op) + '%' }"
+                                     v-bind:class="getOpStatus(op)==='danger'?'bg-danger':getOpStatus(op)==='warning'?'bg-warning':(op.reperibile ? 'bg-info' : 'bg-secondary')">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- COLONNA DESTRA: REGISTRO NOTIFICHE -->
+        <div class="col-md-2 ps-3">
+            <p class="text-secondary text-uppercase mb-2 small fw-bold" style="letter-spacing:.05rem;font-size:.72rem;">
+                <i class="fa-solid fa-paper-plane me-1"></i> Notifiche Inviate
+            </p>
+            <div class="card border-0 shadow-sm rounded-3 d-flex flex-column" style="background: #f8fafc; border: 1px solid #e2e8f0 !important; height: 720px;">
+                <div class="card-header bg-white border-bottom py-2 px-3 d-flex align-items-center justify-content-between flex-shrink-0">
+                    <h6 class="mb-0 fw-bold text-dark" style="font-size: .75rem;">
+                        <i class="fa-solid fa-paper-plane text-primary me-1.5"></i>Notifiche (Sim.)
+                    </h6>
+                    <span v-if="notificheSimulate.length > 0" class="badge bg-primary" style="font-size: 0.65rem;">
+                        {{ notificheSimulate.length }}
+                    </span>
+                </div>
+                <div class="card-body p-2" style="flex: 1; overflow-y: auto; font-size: 0.7rem;">
+                    
+                    <div v-for="notifica in notificheSimulate" :key="notifica.id" class="p-2 mb-2 rounded border" 
+                          v-bind:class="notifica.tipo === 'SMS' ? 'border-primary-subtle bg-primary-subtle bg-opacity-10' : 'border-info-subtle bg-info-subtle bg-opacity-10'">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold" v-bind:class="notifica.tipo === 'SMS' ? 'text-primary' : 'text-info'">
+                                <i v-if="notifica.tipo === 'SMS'" class="fa-solid fa-comment-sms me-1"></i>
+                                <i v-else class="fa-solid fa-envelope me-1"></i>
+                                {{ notifica.tipo }}
+                            </span>
+                            <span class="text-muted" style="font-size: 0.6rem;">{{ notifica.timestamp }}</span>
+                        </div>
+                        <div class="mb-1 text-dark" style="font-size: 0.65rem;">
+                            <strong>A:</strong> {{ notifica.destinatario }} <span class="text-muted" style="font-size: 0.58rem;">({{ notifica.dettaglioDestinatario }})</span>
+                        </div>
+                        <div class="text-secondary bg-white p-1.5 rounded border small font-monospace" style="white-space: pre-line; line-height: 1.2; font-size: 0.62rem;">
+                            {{ notifica.messaggio }}
+                        </div>
+                    </div>
+
+                    <div v-if="notificheSimulate.length === 0" class="text-muted text-center py-4">
+                        <i class="fa-solid fa-paper-plane d-block mb-1 text-muted fs-6"></i> Nessun invio simulato
+                    </div>
+                </div>
+                <div class="card-footer bg-light py-1 px-3 text-end flex-shrink-0" v-if="notificheSimulate.length > 0">
+                    <button class="btn btn-link btn-xs text-danger p-0 fw-semibold text-decoration-none" style="font-size: 0.6rem;" v-on:click="svuotaNotifiche">
+                        <i class="fa-solid fa-trash me-1"></i>Svuota registro
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DSS / PIANIFICAZIONE -->
+    <div class="modal fade" id="conflittoModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" v-if="turnoInRitardo">
+                <div class="modal-header border-0 bg-light py-3">
+                    <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="fa-solid" v-bind:class="turnoInRitardo.isDelayed ? 'fa-triangle-exclamation text-warning' : 'fa-circle-exclamation text-danger'" style="font-size: 1.25rem;"></i>
+                        <span v-if="turnoInRitardo.isDelayed">Gestione Ritardo e Pianificazione</span>
+                        <span v-else>Risoluzione Conflitto e Pianificazione</span>
+                        <span>— {{ turnoInRitardo.nome }}</span>
+                    </h5>
+                    <button type="button" class="btn-close" v-on:click="annullaModale"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <!-- DETTAGLI TURNI ORIGINARI (Sola Lettura) -->
+                    <div class="row g-2 mb-3 bg-light p-3 rounded border border-light-subtle text-center">
+                        <div class="col-md-3 border-end">
+                            <span class="d-block text-muted small text-uppercase fw-semibold" style="font-size: .62rem;">Nave</span>
+                            <span class="fw-bold text-dark" style="font-size: .85rem;">{{ turnoInRitardo.nome }}</span>
+                        </div>
+                        <div class="col-md-3 border-end">
+                            <span class="d-block text-muted small text-uppercase fw-semibold" style="font-size: .62rem;">Molo Originario</span>
+                            <span class="fw-bold text-dark" style="font-size: .85rem;">{{ turnoInRitardo.banchina }}</span>
+                        </div>
+                        <div class="col-md-3 border-end">
+                            <span class="d-block text-muted small text-uppercase fw-semibold" style="font-size: .62rem;">Operatore Originario</span>
+                            <span class="fw-bold text-dark" style="font-size: .85rem;">{{ turnoInRitardo.operatore }}</span>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="d-block text-muted small text-uppercase fw-semibold" style="font-size: .62rem;">Qualifica Richiesta</span>
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-0.5 mt-0.5" style="font-size: .65rem;">
+                                {{ turnoInRitardo.ruoloRichiesto }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- ALERT DI SOLUZIONE PROATTIVA DSS (Calcolato dal Backend) -->
+                    <div v-if="soluzioneOttimale" class="alert alert-success border-0 p-3 mb-4 rounded d-flex gap-3 align-items-start shadow-sm" style="background-color: #f0fdf4; border-left: 4px solid #16a34a !important;">
+                        <i class="fa-solid fa-circle-check fs-4 mt-0.5 text-success"></i>
+                        <div>
+                            <h6 class="fw-bold text-success mb-1" style="font-size: .85rem;">Soluzione Ottimale Trovata</h6>
+                            <p class="mb-0 text-secondary" style="line-height: 1.5; font-size: .8rem;">
+                                Sposta il turno al <strong>{{ soluzioneOttimale.moloSuggerito }}</strong> alle ore <strong>{{ fmtOra(soluzioneOttimale.orarioSuggerito) }}</strong>.
+                                Assegnato a <strong>{{ soluzioneOttimale.operatoreSuggerito }}</strong> (Carico: {{ soluzioneOttimale.oreSettimanaliOperatore }}h/40h).
+                            </p>
+                        </div>
+                    </div>
+                    <div v-else class="alert alert-warning border-0 p-3 mb-4 rounded d-flex gap-3 align-items-start shadow-sm" style="background-color: #fffbeb; border-left: 4px solid #f59e0b !important;">
+                        <i class="fa-solid fa-triangle-exclamation fs-4 mt-0.5" style="color: #d97706;"></i>
+                        <div>
+                            <h6 class="fw-bold text-warning mb-1" style="font-size: .85rem; color: #b45309 !important;">Nessuna Soluzione Automatica</h6>
+                            <p class="mb-0 text-secondary" style="line-height: 1.5; font-size: .8rem; color: #78350f !important;">
+                                ⚠️ Impossibile automatizzare: Nessuna banchina libera trovata per questo orario o nessun operatore disponibile entro il limite di 40h.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- ERROR MESSAGE -->
+                    <div v-if="formError" class="alert alert-warning border-0 py-2 px-3 mt-3 small" style="background-color: #fffbeb; color: #b45309; font-size: 0.72rem;">
+                        <i class="fa-solid fa-triangle-exclamation me-1 text-warning"></i>{{ formError }}
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 bg-light py-3">
+                    <button type="button" class="btn btn-outline-secondary px-4 py-2 small fw-semibold" v-on:click="annullaModale">Annulla</button>
+                    
+                    <button v-if="soluzioneOttimale"
+                            type="button" 
+                            class="btn btn-primary px-4 py-2 fw-bold shadow-sm"
+                            v-on:click="applicaESalvaSoluzioneSuggerita">
+                        Applica Soluzione Suggerita
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DETTAGLI OPERATORE -->
+    <div class="modal fade" id="dettagliOperatoreModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" v-if="operatoreSelezionatoDettaglio">
+                <div class="modal-header border-0 bg-light py-3">
+                    <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                        <i v-if="operatoreSelezionatoDettaglio.reperibile" class="fa-solid fa-phone text-info fs-4"></i>
+                        <i v-else class="fa-solid fa-circle-user text-primary fs-4"></i>
+                        Scheda Operatore: {{ operatoreSelezionatoDettaglio.nome }}
+                        <span v-if="operatoreSelezionatoDettaglio.reperibile" 
+                              class="badge bg-info text-white px-2 py-1" style="font-size: 0.65rem;">
+                            <i class="fa-solid fa-phone me-1"></i>A Chiamata
+                        </span>
+                    </h5>
+                    <button type="button" class="btn-close" v-on:click="chiudiDettagliOperatore"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-6 border-end">
+                            <h6 class="text-secondary text-uppercase small fw-bold mb-3"><i class="fa-solid fa-id-card me-1"></i> Informazioni Personali</h6>
+                            <table class="table table-sm table-borderless">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted ps-0 py-1" style="width: 130px;">Ruolo / Qualifica:</td>
+                                        <td class="fw-bold py-1">
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">{{ operatoreSelezionatoDettaglio.ruolo }}</span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted ps-0 py-1">Tipo Contratto:</td>
+                                        <td class="fw-bold py-1">
+                                            <span v-if="operatoreSelezionatoDettaglio.reperibile" class="badge bg-info text-white px-2 py-1" style="font-size:0.68rem;">
+                                                <i class="fa-solid fa-phone me-1"></i>A Chiamata (Reperibile)
+                                            </span>
+                                            <span v-else class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size:0.68rem;">
+                                                <i class="fa-solid fa-id-card me-1"></i>Organico Fisso
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted ps-0 py-1">Ore Contrattuali:</td>
+                                        <td class="fw-bold py-1">
+                                            <span v-bind:class="getOpStatus(operatoreSelezionatoDettaglio)==='danger'?'text-danger':getOpStatus(operatoreSelezionatoDettaglio)==='warning'?'text-warning':'text-muted'">
+                                                {{ operatoreSelezionatoDettaglio.oreSettimanali }} / {{ operatoreSelezionatoDettaglio.oreMassime }} ore massime
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted ps-0 py-1">Abilitazioni Molo:</td>
+                                        <td class="fw-bold py-1">
+                                            <span v-if="operatoreSelezionatoDettaglio.abilitazioni && operatoreSelezionatoDettaglio.abilitazioni.length > 0" class="d-flex flex-wrap gap-1">
+                                                <span v-for="ab in operatoreSelezionatoDettaglio.abilitazioni" :key="ab" class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size: 0.65rem;">
+                                                    {{ ab }}
+                                                </span>
+                                            </span>
+                                            <span v-else class="text-success small fw-semibold">
+                                                <i class="fa-solid fa-circle-check me-1"></i>Abilitato per tutte le banchine (Jolly)
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-secondary text-uppercase small fw-bold mb-3"><i class="fa-solid fa-chart-simple me-1"></i> Statistiche di Lavoro</h6>
+                            <div class="p-3 bg-light rounded-3 d-flex flex-column gap-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small">Turni programmati nella settimana:</span>
+                                    <span class="badge bg-dark fw-bold">{{ getTurniOperatoreSettimana(operatoreSelezionatoDettaglio.nome).length }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small">Ore pianificate effettive (mock):</span>
+                                    <span class="fw-bold text-dark">{{ getOreTotaliPianificateOperatore(operatoreSelezionatoDettaglio.nome) }} ore</span>
+                                </div>
+                                <div class="progress mt-2" style="height: 8px;">
+                                    <div class="progress-bar" role="progressbar"
+                                         v-bind:style="{ width: getOpPercent(operatoreSelezionatoDettaglio) + '%' }"
+                                         v-bind:class="getOpStatus(operatoreSelezionatoDettaglio)==='danger'?'bg-danger':getOpStatus(operatoreSelezionatoDettaglio)==='warning'?'bg-warning':'bg-primary'">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="text-secondary text-uppercase small fw-bold mb-3"><i class="fa-solid fa-calendar-check me-1"></i> Programmazione Turni per la Settimana</h6>
+                    <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                        <table class="table table-striped table-hover align-middle mb-0" style="font-size: 0.8rem;">
+                            <thead class="table-light sticky-top" style="z-index: 1;">
+                                <tr>
+                                    <th scope="col">Giorno</th>
+                                    <th scope="col">Banchina / Molo</th>
+                                    <th scope="col">Nave</th>
+                                    <th scope="col">Orario</th>
+                                    <th scope="col">Durata</th>
+                                    <th scope="col" class="text-end">Stato</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="t in getTurniOperatoreSettimana(operatoreSelezionatoDettaglio.nome)" :key="t.id"
+                                    v-bind:class="t.giorno === giornoSelezionato ? 'table-primary' : ''">
+                                    <td class="fw-semibold">
+                                        {{ getNomeGiorno(t.giorno) }}
+                                    </td>
+                                    <td>{{ t.banchina }}</td>
+                                    <td class="fw-bold">{{ t.nome }}</td>
+                                    <td>{{ fmtOra(t.startOra) }} - {{ fmtOra(t.startOra + t.durataOre) }}</td>
+                                    <td>{{ fmtDurata(t.durataOre) }}</td>
+                                    <td class="text-end">
+                                        <span v-if="t.isDelayed" class="badge bg-danger">Ritardato (+{{ t.ritardoOre }}h)</span>
+                                        <span v-else class="badge bg-success">Pianificato</span>
+                                    </td>
+                                </tr>
+                                <tr v-if="getTurniOperatoreSettimana(operatoreSelezionatoDettaglio.nome).length === 0">
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        Nessun turno programmato per questo operatore nella settimana corrente.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 bg-light py-3">
+                    <button type="button" class="btn btn-secondary px-4" v-on:click="chiudiDettagliOperatore">Chiudi scheda</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DETTAGLI NAVE / COMPAGNIA -->
+    <div class="modal fade" id="dettagliNaveModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" v-if="naveSelezionataDettaglio">
+                <div class="modal-header border-0 bg-light py-3">
+                    <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-ship text-primary fs-4"></i>
+                        Scheda Nave / Compagnia: {{ naveSelezionataDettaglio }}
+                    </h5>
+                    <button type="button" class="btn-close" v-on:click="chiudiDettagliNave"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-6 border-end">
+                            <h6 class="text-secondary text-uppercase small fw-bold mb-3"><i class="fa-solid fa-circle-info me-1"></i> Informazioni Generali</h6>
+                            <table class="table table-sm table-borderless mb-0">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted ps-0 py-1" style="width: 140px;">Nome Imbarcazione:</td>
+                                        <td class="fw-bold py-1">{{ naveSelezionataDettaglio }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted ps-0 py-1">Compagnia Marittima:</td>
+                                        <td class="fw-bold py-1 text-secondary">Mediterranean Cargo Lines</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted ps-0 py-1">Tipologia Scalo:</td>
+                                        <td class="fw-bold py-1">Portacontainer / Commerciale</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-secondary text-uppercase small fw-bold mb-3"><i class="fa-solid fa-chart-line me-1"></i> Riepilogo Scali</h6>
+                            <div class="p-3 bg-light rounded-3 d-flex flex-column gap-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small">Arrivi totali in settimana:</span>
+                                    <span class="badge bg-primary fw-bold px-2 py-1">{{ getTurniNaveSettimana(naveSelezionataDettaglio).length }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small">Moli/Banchine utilizzate:</span>
+                                    <span class="fw-bold text-dark" style="font-size:0.75rem;">
+                                        {{ getMoliUtilizzatiNave(naveSelezionataDettaglio) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="text-secondary text-uppercase small fw-bold mb-3"><i class="fa-solid fa-calendar-check me-1"></i> Storico Arrivi e Programmazione Settimanale</h6>
+                    <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                        <table class="table table-striped table-hover align-middle mb-0" style="font-size: 0.8rem;">
+                            <thead class="table-light sticky-top" style="z-index: 1;">
+                                <tr>
+                                    <th scope="col">Giorno</th>
+                                    <th scope="col">Banchina / Molo</th>
+                                    <th scope="col">Operatore Assegnato</th>
+                                    <th scope="col">Orario Previsto</th>
+                                    <th scope="col">Durata Operazioni</th>
+                                    <th scope="col" class="text-end">Stato</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="t in getTurniNaveSettimana(naveSelezionataDettaglio)" :key="t.id"
+                                    v-bind:class="t.giorno === giornoSelezionato ? 'table-primary' : ''">
+                                    <td class="fw-semibold">
+                                        {{ getNomeGiorno(t.giorno) }}
+                                    </td>
+                                    <td>{{ t.banchina }}</td>
+                                    <td class="fw-semibold">
+                                        <span class="badge bg-secondary-subtle text-dark border px-2 py-1 text-decoration-hover-underline" style="cursor: pointer;" v-on:click="apriDettagliOperatoreDaNome(t.operatore)" title="Clicca per la scheda dell'operatore">
+                                            <i class="fa-solid fa-user me-1"></i>{{ t.operatore }}
+                                        </span>
+                                    </td>
+                                    <td>{{ fmtOra(t.startOra) }} - {{ fmtOra(t.startOra + t.durataOre) }}</td>
+                                    <td>{{ fmtDurata(t.durataOre) }}</td>
+                                    <td class="text-end">
+                                        <span v-if="t.isDelayed" class="badge bg-danger">Ritardata (+{{ t.ritardoOre }}h)</span>
+                                        <span v-else class="badge bg-success">In Orario</span>
+                                    </td>
+                                </tr>
+                                <tr v-if="getTurniNaveSettimana(naveSelezionataDettaglio).length === 0">
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        Nessun arrivo programmato per questa nave nella settimana corrente.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 bg-light py-3">
+                    <button type="button" class="btn btn-secondary px-4" v-on:click="chiudiDettagliNave">Chiudi scheda</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section scripts {
+    <script src="/js/bundle-vue.js" asp-append-version="true"></script>
+    <script src="~/js/Features/PianificazioneTurni/Index.js" asp-append-version="true"></script>
+    <script type="application/json" id="Seed_JSON">@Html.Raw(Model.ToJson())</script>
+
+    <script type="text/javascript">
+        var appVueModel = new PianificazioneTurni.IndexVueModel();
+
+        var app = new Vue({
+            el: '#app-turni',
+            data: appVueModel,
+            mounted: function () {
+                appVueModel.initEmergenza();
+                appVueModel.startDemoTimer();
+            },
+            computed: {
+                alternative: function () { return appVueModel.alternative; }
+            },
+            methods: {
+                fmtOra:     function (h)  { return appVueModel.fmtOra(h); },
+                fmtTick:    function (h)  { return appVueModel.fmtTick(h); },
+                fmtDurata:  function (d)  { return appVueModel.fmtDurata(d); },
+                getNuovoOrario: function () { return appVueModel.getNuovoOrario(); },
+                blockLeft:  function (t)  { return appVueModel.blockLeft(t); },
+                blockWidth: function (t)  { return appVueModel.blockWidth(t); },
+                tickLeft:   function (h)  { return appVueModel.tickLeft(h); },
+                getTurniPerBanchina: function (b) { return appVueModel.getTurniPerBanchina(b); },
+                getOpPercent:  function (op) { return appVueModel.getOpPercent(op); },
+                getOpStatus:   function (op) { return appVueModel.getOpStatus(op); },
+                getBanchineFiltrate:    function () { return appVueModel.getBanchineFiltrate(); },
+                getOperatoriFiltrati:   function () { return appVueModel.getOperatoriFiltrati(); },
+                apriModale:             function (t) { appVueModel.apriModale(t); },
+                aggiornaSoluzioniDSS: function () { appVueModel.aggiornaSoluzioniDSS(); },
+                confermaRiassegnazione: function ()  { appVueModel.confermaRiassegnazione(); },
+                applicaESalvaSoluzioneSuggerita: function () { appVueModel.applicaESalvaSoluzioneSuggerita(); },
+                annullaModale:          function ()  { appVueModel.annullaModale(); },
+                modificaParametriManualmente: function () { appVueModel.modificaParametriManualmente(); },
+                ripristinaStato:        function ()  { appVueModel.ripristinaStato(); },
+                selezionaGiorno:        function (idx) { appVueModel.selezionaGiorno(idx); },
+                getTurniDelGiorno:      function ()    { return appVueModel.getTurniDelGiorno(); },
+                getEmergenzaGiornoNome: function ()    { return appVueModel.getEmergenzaGiornoNome(); },
+                risolviEmergenza:       function ()    { appVueModel.risolviEmergenza(); },
+                apriDettagliOperatore:       function (op)  { appVueModel.apriDettagliOperatore(op); },
+                apriDettagliOperatoreDaNome: function (n)   { appVueModel.apriDettagliOperatoreDaNome(n); },
+                chiudiDettagliOperatore:     function ()    { appVueModel.chiudiDettagliOperatore(); },
+                getTurniOperatoreSettimana:  function (n)   { return appVueModel.getTurniOperatoreSettimana(n); },
+                getOreTotaliPianificateOperatore: function (n) { return appVueModel.getOreTotaliPianificateOperatore(n); },
+                getNomeGiorno:               function (idx) { return appVueModel.getNomeGiorno(idx); },
+                isElementoFiltrato:          function (t)   { return appVueModel.isElementoFiltrato(t); },
+                isOperatoreFiltrato:         function (op)  { return appVueModel.isOperatoreFiltrato(op); },
+                isBloccoInCollisione:        function (t)   { return appVueModel.isBloccoInCollisione(t); },
+                getBlockClass:               function (t)   { return appVueModel.getBlockClass(t); },
+                handleBlockClick:            function (t)   { appVueModel.handleBlockClick(t); },
+                saveState:                   function ()    { appVueModel.saveState(); },
+                apriDettagliNave:            function (n)   { appVueModel.apriDettagliNave(n); },
+                chiudiDettagliNave:          function ()    { appVueModel.chiudiDettagliNave(); },
+                getTurniNaveSettimana:       function (n)   { return appVueModel.getTurniNaveSettimana(n); },
+                getMoliUtilizzatiNave:       function (n)   { return appVueModel.getMoliUtilizzatiNave(n); },
+                getDettaglioConflittoOperatore: function (op) { return appVueModel.getDettaglioConflittoOperatore(op); },
+                svuotaNotifiche:             function ()    { appVueModel.svuotaNotifiche(); },
+                applicaSoluzioneProposta:    function (idx) { appVueModel.applicaSoluzioneProposta(idx); },
+                getDettaglioConflittoAttuale: function () { return appVueModel.getDettaglioConflittoAttuale(); },
+                getSenzaOperatoriStandardDisponibili: function () { return appVueModel.getSenzaOperatoriStandardDisponibili(); },
+                causaRitardoCasuale:         function ()    { appVueModel.causaRitardoCasuale(); }
+            }
+        });
+    </script>
+}

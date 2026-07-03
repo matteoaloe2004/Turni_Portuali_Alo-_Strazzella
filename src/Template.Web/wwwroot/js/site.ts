@@ -1,4 +1,4 @@
-﻿declare var Toastify: any;
+declare var Toastify: any;
 
 namespace utilities {
     export async function postJson(url: string, body: any): Promise<Response> {
@@ -55,10 +55,12 @@ namespace utilities {
      * Naviga un url mantenendo la funzionalità di +ctrl per aprire in una nuova tab
      */
     export function navigateUrlExcludeOnitNotNavigate(url: string) {
-        if (event.target instanceof HTMLButtonElement == false &&
-            event.target instanceof HTMLAnchorElement == false &&
-            (event.target instanceof HTMLTableCellElement && event.target.hasAttribute('data-onit-not-navigate') == false)
-        ) {
+        const target = event.target as HTMLElement;
+        if (!target) return;
+        const buttonOrLink = target.closest('button, a');
+        const cell = target.closest('td, th');
+
+        if (!buttonOrLink && cell && !cell.hasAttribute('data-onit-not-navigate')) {
             if (window.event && (<KeyboardEvent>window.event).ctrlKey) {
                 window.open(url)
             } else {

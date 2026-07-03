@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,6 +12,8 @@ namespace Template.Services.Shared
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string NickName { get; set; }
+        public bool IsAdmin { get; set; }
+        public string Password { get; set; }
     }
 
     public partial class SharedService
@@ -28,12 +30,32 @@ namespace Template.Services.Shared
                 {
                     Email = cmd.Email,
                 };
+
+                // Hash password during creation (default to Password123! if empty)
+                string plainPassword = string.IsNullOrWhiteSpace(cmd.Password) ? "Password123!" : cmd.Password;
+                using (var sha256 = System.Security.Cryptography.SHA256.Create())
+                {
+                    user.Password = System.Convert.ToBase64String(sha256.ComputeHash(System.Text.Encoding.ASCII.GetBytes(plainPassword)));
+                }
+
                 _dbContext.Users.Add(user);
+            }
+            else
+            {
+                // Hash and update password during edit only if a new password is provided
+                if (!string.IsNullOrWhiteSpace(cmd.Password))
+                {
+                    using (var sha256 = System.Security.Cryptography.SHA256.Create())
+                    {
+                        user.Password = System.Convert.ToBase64String(sha256.ComputeHash(System.Text.Encoding.ASCII.GetBytes(cmd.Password)));
+                    }
+                }
             }
 
             user.FirstName = cmd.FirstName;
             user.LastName = cmd.LastName;
             user.NickName = cmd.NickName;
+            user.IsAdmin = cmd.IsAdmin;
 
             await _dbContext.SaveChangesAsync();
 

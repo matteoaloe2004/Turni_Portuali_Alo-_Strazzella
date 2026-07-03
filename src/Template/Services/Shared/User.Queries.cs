@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -59,6 +59,7 @@ namespace Template.Services.Shared
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string NickName { get; set; }
+        public bool IsAdmin { get; set; }
     }
 
     public class CheckLoginCredentialsQuery
@@ -143,7 +144,8 @@ namespace Template.Services.Shared
                     Email = x.Email,
                     FirstName = x.FirstName,
                     LastName = x.LastName,
-                    NickName = x.NickName
+                    NickName = x.NickName,
+                    IsAdmin = x.IsAdmin
                 })
                 .FirstOrDefaultAsync();
         }
@@ -161,7 +163,7 @@ namespace Template.Services.Shared
                 .FirstOrDefaultAsync();
 
             if (user == null || user.IsMatchWithPassword(qry.Password) == false)
-                throw new LoginException("Email o password errate");
+                throw new LoginException("Non siamo riusciti a trovare un account con le credenziali inserite. Per favore, verifica l'indirizzo email e la password e riprova.");
 
             return new UserDetailDTO
             {
@@ -169,7 +171,8 @@ namespace Template.Services.Shared
                 Email = user.Email,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                NickName = user.NickName
+                NickName = user.NickName,
+                IsAdmin = user.IsAdmin
             };
         }
     }

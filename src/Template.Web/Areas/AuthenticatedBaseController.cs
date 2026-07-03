@@ -32,9 +32,11 @@ namespace Template.Web.Areas
             {
                 if (context.HttpContext != null && context.HttpContext.User != null && context.HttpContext.User.Identity.IsAuthenticated)
                 {
+                    var isAdminClaim = context.HttpContext.User.Claims.FirstOrDefault(x => x.Type == "IsAdmin")?.Value;
                     ViewData[IdentitaViewModel.VIEWDATA_IDENTITACORRENTE_KEY] = new IdentitaViewModel
                     {
-                        EmailUtenteCorrente = context.HttpContext.User.Claims.Where(x => x.Type == ClaimTypes.Email).First().Value
+                        EmailUtenteCorrente = context.HttpContext.User.Claims.Where(x => x.Type == ClaimTypes.Email).First().Value,
+                        IsAdmin = isAdminClaim == "True"
                     };
                 }
                 else

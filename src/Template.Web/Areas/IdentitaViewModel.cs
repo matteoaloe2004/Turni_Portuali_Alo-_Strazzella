@@ -1,4 +1,4 @@
-﻿using Template.Web.Infrastructure;
+using Template.Web.Infrastructure;
 
 namespace Template.Web.Areas
 {
@@ -7,6 +7,7 @@ namespace Template.Web.Areas
         public static string VIEWDATA_IDENTITACORRENTE_KEY = "IdentitaUtenteCorrente";
 
         public string EmailUtenteCorrente { get; set; }
+        public bool IsAdmin { get; set; }
 
         public string GravatarUrl
         {

@@ -1,0 +1,125 @@
+@inject IHtmlLocalizer<Template.Web.Areas.Admin.Users.IndexViewModel> ModelLocalizer
+@model Template.Web.Areas.Admin.Users.IndexViewModel
+@{
+    ViewData["Title"] = "Gestione Utenti Portal";
+}
+
+@section pageTitle {
+    <nav class="navbar navbar-expand navbar-light bg-white px-4 py-3 border-bottom shadow-sm">
+        <div class="container-fluid d-flex align-items-center justify-content-between">
+            <span class="navbar-brand fw-bold text-dark d-flex align-items-center gap-2 mb-0 h1 fs-5">
+                <i class="fa-solid fa-users text-primary"></i>
+                @ViewData["Title"]
+                <span class="badge bg-light text-primary border border-primary-subtle ms-2 fs-6 fw-normal" title="Numero totale di utenti registrati">
+                    @Model.TotalItems.ToString("N0") @(Model.TotalItems == 1 ? "utente" : "utenti")
+                </span>
+            </span>
+            <ul class="navbar-nav">
+                <li>
+                    <a class="btn btn-primary d-flex align-items-center gap-2 px-3 py-2 rounded-2 shadow-sm fw-semibold" href="@Url.Action(MVC.Admin.Users.New())" title="Inserisci un nuovo utente">
+                        <i class="fa-solid fa-user-plus"></i><span>Nuovo Utente</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+}
+
+@section pageSubtitle {
+    <div class="bg-light px-4 py-3 border-bottom shadow-sm">
+        <form class="onit-form-search row g-3 align-items-end" method="get" autocomplete="off">
+            <div class="col-md-5">
+                <label asp-for="Filter" class="form-label fw-semibold text-secondary small mb-1">Cerca per Email, Nome o Cognome</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input asp-for="Filter" class="form-control border-start-0 ps-0" placeholder="Inserisci il testo di ricerca..." />
+                </div>
+            </div>
+            <div class="col-md-auto d-flex gap-2">
+                <button class="btn btn-secondary px-4 fw-semibold" type="submit">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> Cerca
+                </button>
+                <button class="btn btn-outline-secondary px-3" type="button" title="Annulla tutti i parametri della ricerca" onclick="document.getElementById('annullaRicerca').submit();">
+                    Azzera
+                </button>
+            </div>
+            <div class="col-md d-flex justify-content-end align-items-center">
+                <partial name="@MVC.Shared.Views._PagingPartialFilter" model="Model" />
+            </div>
+        </form>
+        <form method="get" id="annullaRicerca" class="d-none"></form>
+    </div>
+}
+
+<div class="container-fluid py-4">
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped align-middle mb-0" style="font-size: 14px;">
+                    <thead class="table-light border-bottom border-light">
+                        <tr>
+                            <th class="ps-4 py-3" style="width: 40%;">
+                                <a class="text-secondary fw-bold text-decoration-none d-flex align-items-center gap-1" href="javascript:utilities.navigateUrlWithoutHystory('@(Model.OrderbyUrl(Url, r => r.Email))')">
+                                    @ModelLocalizer["Email"] <i class="@Model.OrderbyCss(Context, r => r.Email)"></i>
+                                </a>
+                            </th>
+                            <th class="py-3" style="width: 30%;">
+                                <a class="text-secondary fw-bold text-decoration-none d-flex align-items-center gap-1" href="javascript:utilities.navigateUrlWithoutHystory('@(Model.OrderbyUrl(Url, r => r.FirstName))')">
+                                    @ModelLocalizer["Nome"] <i class="@Model.OrderbyCss(Context, r => r.FirstName)"></i>
+                                </a>
+                            </th>
+                            <th class="pe-4 py-3" style="width: 30%;">
+                                <a class="text-secondary fw-bold text-decoration-none d-flex align-items-center gap-1" href="javascript:utilities.navigateUrlWithoutHystory('@(Model.OrderbyUrl(Url, r => r.LastName))')">
+                                    @ModelLocalizer["Cognome"] <i class="@Model.OrderbyCss(Context, r => r.LastName)"></i>
+                                </a>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Users.Any() == false)
+                        {
+                            <tr>
+                                <td colspan="3" class="text-center py-5 text-muted">
+                                    <i class="fa-solid fa-users-slash fs-2 mb-3 d-block text-secondary opacity-50"></i>
+                                    Nessun utente trovato con i parametri di ricerca correnti.
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var user in Model.Users)
+                            {
+                                <tr class="onit-table-row-link cursor-pointer" onclick="javascript:utilities.navigateUrlExcludeOnitNotNavigate('@Url.Action(MVC.Admin.Users.Edit(user.Id))')" title="@ModelLocalizer["Modifica utente"] @user.Email" style="cursor: pointer;">
+                                    <td scope="row" class="ps-4 py-3 fw-medium text-dark">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="rounded-circle bg-primary-subtle d-flex align-items-center justify-content-center text-primary" style="width: 32px; height: 32px;">
+                                                <i class="fa-solid fa-circle-user fs-5"></i>
+                                            </div>
+                                            <span>@user.Email</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 text-secondary">
+                                        @user.FirstName
+                                    </td>
+                                    <td class="pe-4 py-3 text-secondary">
+                                        @user.LastName
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @if (Model.Users.Any())
+        {
+            <div class="card-footer bg-white border-top py-3">
+                <nav class="d-flex justify-content-center">
+                    <ul class="pagination pagination-sm mb-0">
+                        <partial name="@MVC.Shared.Views._PagingPartial" model="Model" />
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>

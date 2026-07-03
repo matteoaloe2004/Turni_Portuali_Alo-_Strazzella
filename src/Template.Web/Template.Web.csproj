@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
@@ -23,17 +23,17 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Compile Update="Areas\Example\Users\EditViewModel.cs">
+		<Compile Update="Areas\Admin\Users\EditViewModel.cs">
 			<Generator>DtsGenerator</Generator>
 			<LastGenOutput>EditViewModel.cs.d.ts</LastGenOutput>
 		</Compile>
-		<Compile Update="Areas\Example\Users\IndexViewModel.cs">
+		<Compile Update="Areas\Admin\Users\IndexViewModel.cs">
 			<Generator></Generator>
 		</Compile>
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Update="Areas\Example\Users\EditViewModel.cs.d.ts">
+		<None Update="Areas\Admin\Users\EditViewModel.cs.d.ts">
 			<DesignTime>True</DesignTime>
 			<AutoGen>True</AutoGen>
 			<DependentUpon>EditViewModel.cs</DependentUpon>

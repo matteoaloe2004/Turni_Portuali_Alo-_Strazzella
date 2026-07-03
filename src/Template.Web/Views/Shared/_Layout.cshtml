@@ -1,4 +1,4 @@
-﻿@inject IHtmlLocalizer<Template.Web.SharedResource> SharedLocalizer
+@inject IHtmlLocalizer<Template.Web.SharedResource> SharedLocalizer
 @inject Microsoft.Extensions.Options.IOptions<AppSettings> appSettings
 @{
     Layout = "_LayoutHtml";
@@ -13,22 +13,37 @@
     @RenderSection("styles", false)
 }
 <div id="pageId" class="onit-page">
-    <div class="onit-page-sticky-top" id="onit-page-sticky-top">
+    <header class="onit-page-sticky-top" id="onit-page-sticky-top">
         <nav class="navbar navbar-expand-lg navbar-dark onit-page-menu">
             <div class="container-fluid">
-                <a class="navbar-brand" href="/">
-                    <img class="onit-suites-logo" src="~/images/app-logo.png" />
+                <a class="navbar-brand fw-bold text-white fs-4 d-flex align-items-center" href="/">
+                    <i class="fa-solid fa-anchor me-2 text-primary"></i>Turni Portuali
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <i class="fa-solid fa-bars"></i>
                 </button>
                 <div class="collapse navbar-collapse flex-wrap" id="navbarSupportedContent">
+                    @if (identitaCorrente != null)
+                    {
+                        <ul class="nav navbar-nav me-auto">
+                            <li class="nav-item">
+                                <a class="nav-link text-white fw-bold" href="/Turni/Index">
+                                    <i class="fa-solid fa-calendar-days me-1"></i>Pianificazione Turni
+                                </a>
+                            </li>
+                            <li class="nav-item" asp-roles="Admin">
+                                <a class="nav-link text-white fw-bold" href="/Admin/Users/Index">
+                                    <i class="fa-solid fa-users me-1"></i>Amministrazione
+                                </a>
+                            </li>
+                        </ul>
+                    }
                     <ul class="nav navbar-nav ms-auto onit-page-menu-user">
                         @if (identitaCorrente != null)
                         {
                             <li class="nav-item dropdown">
-                                <a href="#" class="nav-link dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <img class="user-profile-picture" src="@identitaCorrente.GravatarUrl" />&nbsp;@identitaCorrente.EmailUtenteCorrente
+                                <a href="#" class="nav-link dropdown-toggle text-white fw-bold d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fa-solid fa-circle-user fs-4 me-2 text-primary"></i>@identitaCorrente.EmailUtenteCorrente
                                 </a>
                                 <div class="dropdown-menu dropdown-menu-dark dropdown-menu-end" role="menu">
                                     <a class="dropdown-item" href="javascript:void(0)" onclick="javascript: document.getElementById('POST_LogOut').submit()" title="@SharedLocalizer["Chiudi sessione di lavoro"]">
@@ -43,7 +58,7 @@
             </div>
         </nav>
         @RenderSection("pageTitle", false)
-    </div>
+    </header>
     @RenderSection("pageSubtitle", false)
     @RenderBody()
 </div>

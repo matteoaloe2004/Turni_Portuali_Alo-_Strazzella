@@ -1,4 +1,4 @@
-﻿//using Template.Web.Hubs;
+//using Template.Web.Hubs;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -112,7 +112,7 @@ namespace Template.Web
                 // ROUTING PER HUB
                 endpoints.MapHub<TemplateHub>("/templateHub");
 
-                endpoints.MapAreaControllerRoute("Example", "Example", "Example/{controller=Users}/{action=Index}/{id?}");
+                endpoints.MapAreaControllerRoute("Admin", "Admin", "Admin/{controller=Users}/{action=Index}/{id?}");
                 endpoints.MapControllerRoute("default", "{controller=Login}/{action=Login}");
             });
         }
