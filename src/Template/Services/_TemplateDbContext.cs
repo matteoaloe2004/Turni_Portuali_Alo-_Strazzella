@@ -19,5 +19,6 @@ namespace Template.Services
         public DbSet<User> Users { get; set; }
         public DbSet<Turno> Turni { get; set; }
         public DbSet<Operatore> Operatori { get; set; }
+        public DbSet<TaskDaAssegnare> TasksDaAssegnare { get; set; }
     }
 }

@@ -21,25 +21,27 @@ namespace Template.Web.Features.PianificazioneTurni
         }
 
         [HttpGet]
-        public virtual IActionResult Index()
+        public virtual async Task<IActionResult> Index()
         {
             var model = new IndexViewModel
             {
                 Banchine = new List<string> { "Molo Est", "Molo Nord", "Banchina Ovest", "Banchina Sud" },
-                Operatori = new List<string> { "Filippo", "Giorgio", "Luigi B.", "Anna K.", "Marco T." }
+                Operatori = await _dbContext.Operatori.ToListAsync(),
+                Turni = await _dbContext.Turni.ToListAsync(),
+                TasksDaAssegnare = await _dbContext.TasksDaAssegnare.ToListAsync()
             };
 
             return View("~/Features/PianificazioneTurni/Index.cshtml", model);
         }
 
-        [HttpGet]
-        public virtual async Task<IActionResult> CalcolaMigliorAlternativa([FromQuery] int turnoId, [FromQuery] double ritardoOre)
+        [HttpPost]
+        public virtual async Task<IActionResult> CalcolaMigliorAlternativa([FromBody] CalcolaMigliorAlternativaQuery query)
         {
-            var query = new CalcolaMigliorAlternativaQuery
+            if (query == null)
             {
-                TurnoId = turnoId,
-                RitardoOre = ritardoOre
-            };
+                return BadRequest("I dati della query non sono validi.");
+            }
+            System.Console.WriteLine($"[DIAGNOSTIC] CalcolaMigliorAlternativa - turnoId: {query.TurnoId}, ritardoOre: {query.RitardoOre}, startOra: {query.StartOra}, giorno: {query.Giorno}, currentTurni: {query.CurrentTurni?.Count ?? 0}");
 
             var result = await _sharedService.Query(query);
             if (result == null)
@@ -78,6 +80,10 @@ namespace Template.Web.Features.PianificazioneTurni
                 turno.StartOra = command.NuovaFasciaOraria;
                 turno.Banchina = command.NuovaBanchina;
                 turno.Operatore = command.NuovoOperatore;
+                if (command.Giorno.HasValue)
+                {
+                    turno.Giorno = command.Giorno.Value;
+                }
                 turno.IsDelayed = false;
                 turno.RequiresResolution = false;
                 turno.RitardoOre = 0;

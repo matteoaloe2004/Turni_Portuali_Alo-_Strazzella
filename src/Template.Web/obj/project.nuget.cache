@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "ojitYztjoCg=",
+  "dgSpecHash": "8Xs6v0GRdW4=",
   "success": true,
   "projectFilePath": "C:\\Users\\matte\\Desktop\\Progetti Unibo\\3 Anno\\Laboratorio Uomo-Macchina\\Progetto Turni_Portuali\\src\\Template.Web\\Template.Web.csproj",
   "expectedPackageFiles": [
@@ -30,7 +30,7 @@
     "C:\\Users\\matte\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512",
     "C:\\Users\\matte\\.nuget\\packages\\sg4mvc\\0.9.4-beta\\sg4mvc.0.9.4-beta.nupkg.sha512",
     "C:\\Users\\matte\\.nuget\\packages\\system.collections.immutable\\5.0.0\\system.collections.immutable.5.0.0.nupkg.sha512",
-    "C:\\Users\\matte\\.nuget\\packages\\system.linq.dynamic.core\\1.5.0\\system.linq.dynamic.core.1.5.0.nupkg.sha512",
+    "C:\\Users\\matte\\.nuget\\packages\\system.linq.dynamic.core\\1.6.0\\system.linq.dynamic.core.1.6.0.nupkg.sha512",
     "C:\\Users\\matte\\.nuget\\packages\\system.memory\\4.5.4\\system.memory.4.5.4.nupkg.sha512",
     "C:\\Users\\matte\\.nuget\\packages\\system.reflection.metadata\\5.0.0\\system.reflection.metadata.5.0.0.nupkg.sha512",
     "C:\\Users\\matte\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.0.0\\system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",

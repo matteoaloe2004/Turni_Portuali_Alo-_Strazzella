@@ -31,10 +31,15 @@ var PianificazioneTurni;
                 { nome: 'Andrea', ruolo: 'Gruista', oreSettimanali: 26, oreMassime: 35, abilitazioni: ['Banchina Ovest'] },
                 { nome: 'Paola', ruolo: 'Mulettista', oreSettimanali: 30, oreMassime: 40, abilitazioni: ['Banchina Sud'] },
                 { nome: 'Stefano', ruolo: 'Stivatore', oreSettimanali: 30, oreMassime: 40, abilitazioni: ['Molo Nord'] },
-                // Operatori reperibili (Chiamata Straordinaria)
                 { nome: 'Vincenzo', ruolo: 'Gruista', oreSettimanali: 10, oreMassime: 35, abilitazioni: ['Molo Est'], reperibile: true },
                 { nome: 'Clara', ruolo: 'Mulettista', oreSettimanali: 8, oreMassime: 40, abilitazioni: [], reperibile: true },
-                { nome: 'Fabio', ruolo: 'Stivatore', oreSettimanali: 12, oreMassime: 40, abilitazioni: [], reperibile: true }
+                { nome: 'Fabio', ruolo: 'Stivatore', oreSettimanali: 12, oreMassime: 40, abilitazioni: [], reperibile: true },
+                { nome: 'Luca', ruolo: 'Gruista', oreSettimanali: 20, oreMassime: 35, abilitazioni: ['Molo Est', 'Molo Nord'] },
+                { nome: 'Antonio', ruolo: 'Gruista', oreSettimanali: 6, oreMassime: 35, abilitazioni: ['Banchina Sud', 'Molo Est'], reperibile: true },
+                { nome: 'Giulia', ruolo: 'Mulettista', oreSettimanali: 24, oreMassime: 40, abilitazioni: ['Banchina Sud', 'Molo Est'] },
+                { nome: 'Francesca', ruolo: 'Mulettista', oreSettimanali: 10, oreMassime: 40, abilitazioni: ['Banchina Ovest', 'Molo Nord'], reperibile: true },
+                { nome: 'Alice', ruolo: 'Stivatore', oreSettimanali: 18, oreMassime: 40, abilitazioni: ['Molo Est', 'Banchina Ovest'] },
+                { nome: 'Simona', ruolo: 'Stivatore', oreSettimanali: 8, oreMassime: 40, abilitazioni: ['Banchina Sud', 'Banchina Ovest'], reperibile: true }
             ];
             this.veicolo = '';
             this.identificativo = '';
@@ -148,6 +153,79 @@ var PianificazioneTurni;
             this.soluzioniProposte = [];
             this.soluzioneSelezionataIndex = null;
             this.attivaPersonaleAChiamata = false;
+            this.tasksDaAssegnare = [];
+            this.selectedTask = null;
+            this.loadFromSeed();
+        }
+        ricalcolaOreSettimanaliOperatori() {
+            if (!this.operatori)
+                return;
+            this.operatori.forEach((op) => {
+                op.oreSettimanali = 0;
+            });
+            if (this.turni) {
+                this.turni.forEach((t) => {
+                    const op = this.operatori.find(o => o.nome === t.operatore);
+                    if (op) {
+                        op.oreSettimanali += t.durataOre;
+                    }
+                });
+            }
+        }
+        loadFromSeed() {
+            const seedEl = document.getElementById('Seed_JSON');
+            if (seedEl && seedEl.textContent) {
+                try {
+                    const seed = JSON.parse(seedEl.textContent);
+                    if (seed.operatori && seed.operatori.length > 0) {
+                        this.operatori = seed.operatori;
+                        this.operatori.forEach((op) => {
+                            if (typeof op.abilitazioni === 'string') {
+                                op.abilitazioni = op.abilitazioni ? op.abilitazioni.split(',').map((s) => s.trim()).filter(Boolean) : [];
+                            }
+                            else if (!op.abilitazioni) {
+                                op.abilitazioni = [];
+                            }
+                        });
+                    }
+                    if (seed.turni && seed.turni.length > 0) {
+                        this.turni = seed.turni;
+                    }
+                    if (seed.tasksDaAssegnare) {
+                        this.tasksDaAssegnare = seed.tasksDaAssegnare;
+                    }
+                    this.ricalcolaOreSettimanaliOperatori();
+                }
+                catch (e) {
+                    console.error("Errore nel parsing di Seed_JSON", e);
+                }
+            }
+        }
+        getPatenteStatus(op) {
+            if (!op.patenteValidaFinoAl)
+                return 'valid';
+            const date = new Date(op.patenteValidaFinoAl);
+            const now = new Date();
+            date.setHours(0, 0, 0, 0);
+            now.setHours(0, 0, 0, 0);
+            const diffTime = date.getTime() - now.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays < 0) {
+                return 'expired';
+            }
+            else if (diffDays <= 15) {
+                return 'warning';
+            }
+            return 'valid';
+        }
+        getPatenteFormatted(op) {
+            if (!op.patenteValidaFinoAl)
+                return '';
+            const date = new Date(op.patenteValidaFinoAl);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
         }
         // ---- Lifecycle: chiamato da mounted() di Vue ----
         initEmergenza() {
@@ -167,7 +245,7 @@ var PianificazioneTurni;
         // ---- Local Storage Persistence ----
         saveState() {
             try {
-                localStorage.setItem('port_scheduler_data_version', '7');
+                localStorage.setItem('port_scheduler_data_version', '11');
                 localStorage.setItem('port_scheduler_turni', JSON.stringify(this.turni));
                 localStorage.setItem('port_scheduler_operatori', JSON.stringify(this.operatori));
                 localStorage.setItem('port_scheduler_giorno_selezionato', JSON.stringify(this.giornoSelezionato));
@@ -185,7 +263,7 @@ var PianificazioneTurni;
         loadState() {
             try {
                 const version = localStorage.getItem('port_scheduler_data_version');
-                if (version !== '7') {
+                if (version !== '11') {
                     // Invalida cache e forza il caricamento dei nuovi dati
                     localStorage.removeItem('port_scheduler_turni');
                     localStorage.removeItem('port_scheduler_operatori');
@@ -193,7 +271,8 @@ var PianificazioneTurni;
                     localStorage.removeItem('port_scheduler_emergenza');
                     localStorage.removeItem('port_scheduler_filtro_ricerca');
                     localStorage.removeItem('port_scheduler_notifiche');
-                    localStorage.setItem('port_scheduler_data_version', '7');
+                    localStorage.setItem('port_scheduler_data_version', '11');
+                    this.loadFromSeed();
                     return false;
                 }
                 const savedTurni = localStorage.getItem('port_scheduler_turni');
@@ -203,8 +282,15 @@ var PianificazioneTurni;
                 const savedFiltro = localStorage.getItem('port_scheduler_filtro_ricerca');
                 const savedNotifiche = localStorage.getItem('port_scheduler_notifiche');
                 if (savedTurni && savedOperatori) {
+                    this.loadFromSeed();
                     const parsedTurni = JSON.parse(savedTurni);
-                    // Forza il reset se la struttura dei turni caricati è obsoleta (manca la proprietà giorno)
+                    // Sanitize any invalid/large IDs from previous sessions to prevent C# deserialization overflow
+                    parsedTurni.forEach((t, index) => {
+                        if (t.id > 1000000) {
+                            t.id = 1000 + index;
+                        }
+                    });
+                    // Forza il reset se la struttura dei turni caricati è obsoleta
                     if (parsedTurni.length > 0 && typeof parsedTurni[0].giorno === 'undefined') {
                         localStorage.removeItem('port_scheduler_turni');
                         localStorage.removeItem('port_scheduler_operatori');
@@ -216,6 +302,15 @@ var PianificazioneTurni;
                     }
                     this.turni = parsedTurni;
                     this.operatori = JSON.parse(savedOperatori);
+                    this.operatori.forEach((op) => {
+                        if (typeof op.abilitazioni === 'string') {
+                            op.abilitazioni = op.abilitazioni ? op.abilitazioni.split(',').map((s) => s.trim()).filter(Boolean) : [];
+                        }
+                        else if (!op.abilitazioni) {
+                            op.abilitazioni = [];
+                        }
+                    });
+                    this.ricalcolaOreSettimanaliOperatori();
                     if (savedGiorno) {
                         this.giornoSelezionato = JSON.parse(savedGiorno);
                     }
@@ -282,7 +377,7 @@ var PianificazioneTurni;
             if (this.emergenzaAttiva) {
                 if (typeof Toastify !== 'undefined') {
                     Toastify({
-                        text: "⚠️ C'è già un'emergenza attiva. Risolvila prima di causarne un'altra.",
+                        text: "[!] C'è già un'emergenza attiva. Risolvila prima di causarne un'altra.",
                         duration: 3000, gravity: 'top', position: 'right',
                         style: { background: 'linear-gradient(to right, #ff5f6d, #ffc371)' }
                     }).showToast();
@@ -291,14 +386,9 @@ var PianificazioneTurni;
             }
             const currentDay = Number((_a = this.giornoSelezionato) !== null && _a !== void 0 ? _a : 0);
             console.log("Giorno selezionato (numerico):", currentDay);
-            // Cerca prima tra i turni del giorno selezionato
-            let turniCandidati = this.turni.filter(t => Number(t.giorno) === currentDay && !t.isDelayed);
-            console.log("Candidati del giorno:", turniCandidati.length);
-            // Se non ce ne sono, cerca tra tutti i turni della settimana
-            if (turniCandidati.length === 0) {
-                turniCandidati = this.turni.filter(t => !t.isDelayed);
-                console.log("Candidati totali della settimana:", turniCandidati.length);
-            }
+            // Seleziona una nave a caso da qualsiasi giorno della settimana
+            let turniCandidati = this.turni.filter(t => !t.isDelayed);
+            console.log("Candidati totali della settimana per ritardo:", turniCandidati.length);
             if (turniCandidati.length === 0) {
                 console.warn("Nessun turno disponibile per ritardi.");
                 if (typeof Toastify !== 'undefined') {
@@ -334,7 +424,7 @@ var PianificazioneTurni;
             }
             if (typeof Toastify !== 'undefined') {
                 Toastify({
-                    text: `⚠️ EMERGENZA: La nave ${turno.nome} è in ritardo di ${this.fmtDurata(randRitardo)}!`,
+                    text: `[!] EMERGENZA: La nave ${turno.nome} è in ritardo di ${this.fmtDurata(randRitardo)}!`,
                     duration: 5000, gravity: 'top', position: 'right',
                     style: { background: 'linear-gradient(to right, #e63946, #d62828)' }
                 }).showToast();
@@ -373,16 +463,153 @@ var PianificazioneTurni;
         totalH() { return this.orarioFine - this.orarioInizio; }
         blockLeft(turno) {
             const s = turno.isDelayed ? turno.startOra + turno.ritardoOre : turno.startOra;
+            const d = turno.durataOre;
+            // Se comincia molto tardi (dalle 23:00 in poi) o va oltre mezzanotte (24:00),
+            // lo teniamo visibile e allineato a fine giornata per facilitarne la visualizzazione e il click.
+            if (s >= 23.0 || (s + d) > 24.0) {
+                const visualStart = Math.min(s, 21.0);
+                return (((visualStart - this.orarioInizio) / this.totalH()) * 100).toFixed(2) + '%';
+            }
             return (((s - this.orarioInizio) / this.totalH()) * 100).toFixed(2) + '%';
         }
+        selectTask(task) {
+            this.selectedTask = this.selectedTask === task ? null : task;
+        }
+        assegnaTask(op) {
+            if (!this.selectedTask || this.isOperatoreIncompatibile(op))
+                return;
+            // Calcola il primo slot disponibile per l'operatore
+            let startOra = 8.0;
+            const existingTurni = this.getTurniPerOperatore(op.nome);
+            existingTurni.sort((a, b) => {
+                const startA = a.isDelayed ? a.startOra + a.ritardoOre : a.startOra;
+                const startB = b.isDelayed ? b.startOra + b.ritardoOre : b.startOra;
+                return startA - startB;
+            });
+            for (const t of existingTurni) {
+                const s = t.isDelayed ? t.startOra + t.ritardoOre : t.startOra;
+                const e = s + t.durataOre;
+                if (startOra + this.selectedTask.durataOre <= s) {
+                    break;
+                }
+                if (startOra < e) {
+                    startOra = e;
+                }
+            }
+            const banchina = op.abilitazioni && op.abilitazioni.length > 0 ? op.abilitazioni[0] : 'Molo Est';
+            const maxId = this.turni.length > 0 ? Math.max(...this.turni.map((t) => t.id).filter((id) => id < 1000000)) : 0;
+            const nextId = (maxId < 0 ? 0 : maxId) + 1;
+            const nuovoTurno = {
+                id: nextId,
+                nome: this.selectedTask.nome,
+                banchina: banchina,
+                startOra: startOra,
+                durataOre: this.selectedTask.durataOre,
+                operatore: op.nome,
+                ruoloRichiesto: this.selectedTask.competenzaRichiesta,
+                isDelayed: false,
+                requiresResolution: false,
+                ritardoOre: 0,
+                giorno: this.giornoSelezionato
+            };
+            this.turni.push(nuovoTurno);
+            // Ricalcola dinamicamente le ore settimanali degli operatori
+            this.ricalcolaOreSettimanaliOperatori();
+            // Rimuovi il task dal backlog
+            this.tasksDaAssegnare = this.tasksDaAssegnare.filter(t => t.id !== this.selectedTask.id);
+            // Notifica simulata (SMS/Email)
+            const tipoNotifica = op.reperibile ? 'SMS' : 'Email';
+            const dettaglioDest = op.reperibile ? 'Cellulare' : 'Email aziendale';
+            const msgNotifica = `Pianificazione turno per nave ${nuovoTurno.nome} assegnato a te al ${nuovoTurno.banchina} il giorno ${this.getNomeGiorno(this.giornoSelezionato)} dalle ore ${this.fmtOra(nuovoTurno.startOra)} alle ${this.fmtOra(nuovoTurno.startOra + nuovoTurno.durataOre)}.`;
+            this.notificheSimulate.unshift({
+                id: Date.now() + 1,
+                destinatario: op.nome,
+                dettaglioDestinatario: dettaglioDest,
+                tipo: tipoNotifica,
+                messaggio: msgNotifica,
+                timestamp: new Date().toLocaleTimeString()
+            });
+            this.selectedTask = null;
+            this.saveState();
+            if (typeof Toastify !== 'undefined') {
+                Toastify({
+                    text: `Task assegnato con successo a ${op.nome}!`,
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "#2e7d32"
+                }).showToast();
+            }
+        }
+        isOperatoreIncompatibile(op) {
+            if (!this.selectedTask)
+                return false;
+            // 1. Skill check
+            let haCompetenza = false;
+            if (op.competenze && Array.isArray(op.competenze)) {
+                haCompetenza = op.competenze.indexOf(this.selectedTask.competenzaRichiesta) !== -1;
+            }
+            else if (op.ruolo) {
+                haCompetenza = op.ruolo === this.selectedTask.competenzaRichiesta;
+            }
+            if (!haCompetenza)
+                return true;
+            // 2. Patente check
+            if (op.patenteValidaFinoAl) {
+                const scadenza = new Date(op.patenteValidaFinoAl);
+                const oggi = new Date();
+                if (scadenza < oggi)
+                    return true;
+            }
+            // 3. Riposo check
+            if (op.inRiposoObbligatorio)
+                return true;
+            return false;
+        }
+        getIncompatibilitaMotivo(op) {
+            if (!this.selectedTask)
+                return '';
+            // 1. Skill check
+            let haCompetenza = false;
+            if (op.competenze && Array.isArray(op.competenze)) {
+                haCompetenza = op.competenze.indexOf(this.selectedTask.competenzaRichiesta) !== -1;
+            }
+            else if (op.ruolo) {
+                haCompetenza = op.ruolo === this.selectedTask.competenzaRichiesta;
+            }
+            if (!haCompetenza)
+                return 'Nessuna qualifica';
+            // 2. Patente check
+            if (op.patenteValidaFinoAl) {
+                const scadenza = new Date(op.patenteValidaFinoAl);
+                const oggi = new Date();
+                if (scadenza < oggi)
+                    return 'Patente scaduta';
+            }
+            // 3. Riposo check
+            if (op.inRiposoObbligatorio)
+                return 'In riposo';
+            return '';
+        }
         blockWidth(turno) {
-            return ((turno.durataOre / this.totalH()) * 100).toFixed(2) + '%';
+            const s = turno.isDelayed ? turno.startOra + turno.ritardoOre : turno.startOra;
+            const d = turno.durataOre;
+            if (s >= 23.0 || (s + d) > 24.0) {
+                // Se va a fine giornata o oltre, lo mostriamo con una larghezza fissa o proporzionale che arrivi a fine timeline (24:00)
+                const visualStart = Math.min(s, 21.0);
+                const visualDur = 24.0 - visualStart;
+                return ((visualDur / this.totalH()) * 100).toFixed(2) + '%';
+            }
+            return ((d / this.totalH()) * 100).toFixed(2) + '%';
         }
         tickLeft(h) {
             return (((h - this.orarioInizio) / this.totalH()) * 100).toFixed(2) + '%';
         }
         getTurniPerBanchina(banchina) {
             return this.turni.filter(t => t.banchina === banchina && t.giorno === this.giornoSelezionato);
+        }
+        getTurniPerOperatore(nome) {
+            return this.turni.filter(t => t.operatore === nome && t.giorno === this.giornoSelezionato);
         }
         isBloccoInCollisione(t) {
             const startT = t.isDelayed ? t.startOra + t.ritardoOre : t.startOra;
@@ -413,24 +640,23 @@ var PianificazioneTurni;
         getBlockClass(t) {
             const collision = this.isBloccoInCollisione(t);
             const isLocked = collision && !t.isDelayed; // Nave originale in collisione = bloccata
+            const startOra = t.isDelayed ? t.startOra + t.ritardoOre : t.startOra;
+            const crossesMidnight = (startOra + t.durataOre) > 24.0 || startOra >= 23.0;
             return {
-                'gantt-block-delayed': t.isDelayed,
-                'gantt-block-normal': !t.isDelayed && !isLocked,
-                'gantt-block-collision': collision && t.isDelayed,
-                'gantt-block-locked': isLocked // Nave bloccata (Poka-Yoke)
+                'gantt-block-delayed': t.isDelayed && !crossesMidnight,
+                'gantt-block-normal': !t.isDelayed && !isLocked && !crossesMidnight,
+                'gantt-block-collision': collision && t.isDelayed && !crossesMidnight,
+                'gantt-block-locked': isLocked && !crossesMidnight,
+                'gantt-block-midnight': crossesMidnight
             };
         }
-        // ---- Poka-Yoke: Click handler – solo la nave in ritardo è cliccabile ----
+        // ---- Poka-Yoke: Click handler – solo la nave in ritardo è cliccabile per la risoluzione, le altre aprono la scheda dettagli ----
         handleBlockClick(t) {
             if (t.isDelayed) {
                 this.apriModale(t);
             }
-            else if (this.isBloccoInCollisione(t)) {
-                // Nave bloccata: l'utente deve risolvere prima la nave in ritardo
-                console.info(`[POKA-YOKE] Nave ${t.nome} bloccata: non è in stato delayed.`);
-            }
             else {
-                // Nave normale senza conflitto: apri i dettagli
+                // Qualsiasi altra nave, anche se in collisione o bloccata temporaneamente, è cliccabile in lettura (scheda dettagli)
                 this.apriDettagliNave(t.nome);
             }
         }
@@ -443,9 +669,8 @@ var PianificazioneTurni;
                 const anyDelayed = this.turni.some((t) => t.isDelayed);
                 if (anyDelayed)
                     return;
-                // Seleziona una nave a caso dal giorno corrente
-                const currentDay = Number((_a = this.giornoSelezionato) !== null && _a !== void 0 ? _a : 0);
-                let candidates = this.turni.filter((t) => Number(t.giorno) === currentDay && !t.isDelayed);
+                // Seleziona una nave a caso da qualsiasi giorno della settimana
+                let candidates = this.turni.filter((t) => !t.isDelayed);
                 if (candidates.length === 0)
                     return;
                 const ship = candidates[Math.floor(Math.random() * candidates.length)];
@@ -460,9 +685,16 @@ var PianificazioneTurni;
                 this.emergenzaAttiva = true;
                 // Forza aggiornamento reattivo Vue
                 this.turni = [...this.turni];
-                this.saveState();
+                const currentDay = Number((_a = this.giornoSelezionato) !== null && _a !== void 0 ? _a : 0);
+                if (Number(ship.giorno) !== currentDay) {
+                    console.log("Navigo al giorno del ritardo (timer):", ship.giorno);
+                    this.selezionaGiorno(ship.giorno);
+                }
+                else {
+                    this.saveState();
+                }
                 // Mostra toast non intrusivo
-                this.showDemoToast(`⚠️ Aggiornamento: La nave ${ship.nome} ha subito un ritardo di +${this.fmtDurata(ritardo)}.`);
+                this.showDemoToast(`[!] Aggiornamento: La nave ${ship.nome} ha subito un ritardo di +${this.fmtDurata(ritardo)}.`);
             }, INTERVAL_MS);
         }
         // ---- Toast non intrusivo (DOM puro) ----
@@ -511,41 +743,12 @@ var PianificazioneTurni;
             });
         }
         getOperatoriFiltrati() {
-            if (!this.turnoInRitardo)
-                return [];
-            const t = this.turnoInRitardo;
-            const nStart = this.orarioSelezioneRiassegnazione;
-            const nEnd = nStart + t.durataOre;
-            return this.operatori.filter(op => {
-                // A) Ruolo corrispondente (vincolo HARD)
-                if (op.ruolo !== t.ruoloRichiesto)
-                    return false;
-                // Se la deroga non è attiva, applica i vincoli SOFT:
-                if (!this.derogaVincoli) {
-                    // 1. Gli operatori reperibili non appaiono di default
-                    if (op.reperibile)
-                        return false;
-                    // 2. Limite ore contrattuali
-                    if (op.oreSettimanali + t.durataOre > op.oreMassime)
-                        return false;
-                    // 3. Abilitazione molo
-                    if (this.banchinaSelezione && op.abilitazioni.length > 0) {
-                        if (!op.abilitazioni.includes(this.banchinaSelezione))
-                            return false;
-                    }
-                    // 4. Sovrapposizione oraria
-                    const haSovrapposizione = this.turni.some(other => {
-                        if (other.operatore !== op.nome || other.id === t.id || other.giorno !== t.giorno)
-                            return false;
-                        const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
-                        const oE = oS + other.durataOre;
-                        return nStart < oE && nEnd > oS;
-                    });
-                    if (haSovrapposizione)
-                        return false;
-                }
-                return true;
-            });
+            let list = this.operatori;
+            // Applica filtro ricerca testuale (Ricerca Rapida)
+            if (this.filtroRicerca) {
+                list = list.filter(op => this.isOperatoreFiltrato(op));
+            }
+            return list;
         }
         getDettaglioConflittoOperatore(op) {
             if (!this.turnoInRitardo)
@@ -555,13 +758,13 @@ var PianificazioneTurni;
             const nEnd = nStart + t.durataOre;
             let warnings = [];
             if (op.reperibile) {
-                warnings.push('📞 Reperibile');
+                warnings.push('Reperibile');
             }
             if (op.oreSettimanali + t.durataOre > op.oreMassime) {
-                warnings.push(`⚠️ Ore max superate (${op.oreSettimanali + t.durataOre}/${op.oreMassime}h)`);
+                warnings.push(`Ore max superate (${op.oreSettimanali + t.durataOre}/${op.oreMassime}h)`);
             }
             if (this.banchinaSelezione && op.abilitazioni.length > 0 && !op.abilitazioni.includes(this.banchinaSelezione)) {
-                warnings.push(`⚠️ Non abilitato a ${this.banchinaSelezione}`);
+                warnings.push(`Non abilitato a ${this.banchinaSelezione}`);
             }
             const haSovrapposizione = this.turni.some(other => {
                 if (other.operatore !== op.nome || other.id === t.id || other.giorno !== t.giorno)
@@ -571,7 +774,7 @@ var PianificazioneTurni;
                 return nStart < oE && nEnd > oS;
             });
             if (haSovrapposizione) {
-                warnings.push('⚠️ Sovrapposizione oraria');
+                warnings.push('Sovrapposizione oraria');
             }
             return warnings.length > 0 ? `[${warnings.join(' | ')}]` : '[Ok]';
         }
@@ -621,7 +824,7 @@ var PianificazioneTurni;
             if (moliLiberi.includes(t.banchina)) {
                 const opOrig = opDisponibili.find(op => op.nome === t.operatore);
                 if (opOrig && (conDeroga || opOrig.abilitazioni.length === 0 || opOrig.abilitazioni.includes(t.banchina))) {
-                    return { banchina: t.banchina, operatore: t.operatore, note: "✅ Nessun Conflitto", motivazione: '', usaChiamata: false };
+                    return { banchina: t.banchina, operatore: t.operatore, note: "Nessun Conflitto", motivazione: '', usaChiamata: false };
                 }
             }
             // 2. Molo originario + operatore alternativo
@@ -632,7 +835,7 @@ var PianificazioneTurni;
                     const motiv = isChiamata
                         ? `Nessun operatore standard disponibile → ${opAlt.nome} (a chiamata) al ${t.banchina}.`
                         : `${t.operatore} non disponibile → ${opAlt.nome} al ${t.banchina}.`;
-                    return { banchina: t.banchina, operatore: opAlt.nome, note: isChiamata ? "📞 A Chiamata" : "✅ Consigliata", motivazione: motiv, usaChiamata: isChiamata };
+                    return { banchina: t.banchina, operatore: opAlt.nome, note: isChiamata ? "A Chiamata" : "Consigliata", motivazione: motiv, usaChiamata: isChiamata };
                 }
             }
             // 3. Molo alternativo + operatore originario
@@ -640,7 +843,7 @@ var PianificazioneTurni;
             if (opOrig) {
                 const moloAlt = moliLiberi.find(b => b !== t.banchina && (conDeroga || opOrig.abilitazioni.length === 0 || opOrig.abilitazioni.includes(b)));
                 if (moloAlt) {
-                    return { banchina: moloAlt, operatore: t.operatore, note: "🔄 Molo Cambiato", motivazione: `${t.banchina} occupato → ${t.operatore} spostato a ${moloAlt}.`, usaChiamata: false };
+                    return { banchina: moloAlt, operatore: t.operatore, note: "Molo Cambiato", motivazione: `${t.banchina} occupato → ${t.operatore} spostato a ${moloAlt}.`, usaChiamata: false };
                 }
             }
             // 4. Molo alternativo + operatore alternativo
@@ -653,7 +856,7 @@ var PianificazioneTurni;
                     const motiv = isChiamata
                         ? `${t.banchina} occupato, standard esauriti → ${b} con ${opAlt.nome} (a chiamata).`
                         : `${t.banchina} occupato, ${t.operatore} non disponibile → ${b} con ${opAlt.nome}.`;
-                    return { banchina: b, operatore: opAlt.nome, note: isChiamata ? "📞 Alternativa" : "⚠️ Alternativa", motivazione: motiv, usaChiamata: isChiamata };
+                    return { banchina: b, operatore: opAlt.nome, note: isChiamata ? "Alternativa" : "Alternativa", motivazione: motiv, usaChiamata: isChiamata };
                 }
             }
             return null;
@@ -870,8 +1073,16 @@ var PianificazioneTurni;
                 return;
             try {
                 const ritardo = this.turnoInRitardo.isDelayed ? this.turnoInRitardo.ritardoOre : 0;
-                const url = `/Turni/CalcolaMigliorAlternativa?turnoId=${this.turnoInRitardo.id}&ritardoOre=${ritardo}`;
-                const response = await fetch(url);
+                const startOra = this.turnoInRitardo.startOra;
+                const giorno = this.turnoInRitardo.giorno;
+                const payload = {
+                    TurnoId: this.turnoInRitardo.id,
+                    RitardoOre: ritardo,
+                    StartOra: startOra,
+                    Giorno: giorno,
+                    CurrentTurni: this.turni
+                };
+                const response = await utilities.postJson('/Turni/CalcolaMigliorAlternativa', payload);
                 if (response.ok) {
                     this.soluzioneOttimale = await response.json();
                 }
@@ -901,7 +1112,12 @@ var PianificazioneTurni;
                 return;
             }
             const t = this.turnoInRitardo;
-            if (t.isDelayed && this.orarioSelezioneRiassegnazione < t.startOra + t.ritardoOre) {
+            const targetGiorno = this.soluzioneOttimale &&
+                this.banchinaSelezione === this.soluzioneOttimale.moloSuggerito &&
+                this.orarioSelezioneRiassegnazione === this.soluzioneOttimale.orarioSuggerito &&
+                this.operatoreSelezione === this.soluzioneOttimale.operatoreSuggerito
+                ? this.soluzioneOttimale.giornoSuggerito : t.giorno;
+            if (t.isDelayed && targetGiorno === t.giorno && this.orarioSelezioneRiassegnazione < t.startOra + t.ritardoOre) {
                 this.formError = `Impossibile confermare: l'orario selezionato (${this.fmtOra(this.orarioSelezioneRiassegnazione)}) è precedente all'arrivo stimato della nave (${this.fmtOra(t.startOra + t.ritardoOre)}).`;
                 return;
             }
@@ -910,7 +1126,8 @@ var PianificazioneTurni;
                 TurnoId: t.id,
                 NuovaFasciaOraria: this.orarioSelezioneRiassegnazione,
                 NuovaBanchina: this.banchinaSelezione,
-                NuovoOperatore: this.operatoreSelezione
+                NuovoOperatore: this.operatoreSelezione,
+                Giorno: targetGiorno
             };
             try {
                 const response = await utilities.postJson('/Turni/SpostaTurno', command);
@@ -920,26 +1137,21 @@ var PianificazioneTurni;
                 const resData = await response.json();
                 if (resData && resData.success) {
                     const vecchioOperatore = t.operatore;
-                    if (vecchioOperatore !== this.operatoreSelezione) {
-                        const oldOp = this.operatori.find(o => o.nome === vecchioOperatore);
-                        if (oldOp) {
-                            oldOp.oreSettimanali = Math.max(0, oldOp.oreSettimanali - t.durataOre);
-                        }
-                        const newOp = this.operatori.find(o => o.nome === this.operatoreSelezione);
-                        if (newOp) {
-                            newOp.oreSettimanali += t.durataOre;
-                        }
-                    }
                     t.banchina = this.banchinaSelezione;
                     t.operatore = this.operatoreSelezione;
                     t.startOra = this.orarioSelezioneRiassegnazione;
+                    t.giorno = targetGiorno;
                     t.isDelayed = false;
                     t.requiresResolution = false;
                     t.ritardoOre = 0;
+                    // Ricalcola dinamicamente le ore settimanali degli operatori
+                    this.ricalcolaOreSettimanaliOperatori();
                     this.emergenzaAttiva = false;
                     this.turnoInRitardo = null;
                     this._closeModal();
                     this.saveState();
+                    // Naviga al giorno del turno assegnato
+                    this.selezionaGiorno(targetGiorno);
                     // Invio SMS ed Email di notifica del nuovo turno all'operatore assegnato
                     const msgSms = `NOTIFICA [Porto]: Ti è stato assegnato il turno del giorno ${this.getNomeGiorno(t.giorno)} al ${t.banchina} a partire dalle ${this.fmtOra(t.startOra)}.`;
                     this.inviaNotificaSimulata('SMS', t.operatore, msgSms);
@@ -952,7 +1164,7 @@ var PianificazioneTurni;
                     }
                     if (typeof Toastify !== 'undefined') {
                         Toastify({
-                            text: `✅ Riassegnato: ${t.nome} → ${t.banchina} (${t.operatore})`,
+                            text: `Riassegnato: ${t.nome} → ${t.banchina} (${t.operatore})`,
                             duration: 4000, gravity: 'top', position: 'right',
                             style: { background: 'linear-gradient(to right,#00b09b,#0d6efd)' }
                         }).showToast();
@@ -1111,7 +1323,7 @@ var PianificazioneTurni;
             this.saveState();
             if (typeof Toastify !== 'undefined') {
                 Toastify({
-                    text: `📩 ${tipo} inviato a ${operatoreNome} (${dettaglioDestinatario})`,
+                    text: `${tipo} inviato a ${operatoreNome} (${dettaglioDestinatario})`,
                     duration: 3500,
                     gravity: 'bottom',
                     position: 'left',

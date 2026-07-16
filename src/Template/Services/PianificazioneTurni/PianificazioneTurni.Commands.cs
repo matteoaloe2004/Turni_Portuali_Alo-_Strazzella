@@ -6,5 +6,6 @@ namespace Template.Services.PianificazioneTurni
         public double NuovaFasciaOraria { get; set; }
         public string NuovaBanchina { get; set; }
         public string NuovoOperatore { get; set; }
+        public int? Giorno { get; set; }
     }
 }

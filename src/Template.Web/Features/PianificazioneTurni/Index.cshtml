@@ -3,40 +3,263 @@
 @{
     ViewData["Title"] = "Pianificazione Turni";
 }
-
 <style>
+    @@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+    :root {
+        --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        --success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        --warning-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        --danger-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        --card-border: 1px solid rgba(226, 232, 240, 0.8);
+        --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.03), 0 4px 12px -2px rgba(0, 0, 0, 0.02);
+        --glow-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+        --font-heading: 'Outfit', -apple-system, sans-serif;
+        --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    }
+
+    /* Custom scrollbar for premium feel */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    body, .onit-page {
+        font-family: var(--font-body);
+        background-color: #f8fafc;
+    }
+
+    h1, h2, h3, h4, h5, h6, .navbar-brand, .modal-title, .gantt-block-title {
+        font-family: var(--font-heading);
+    }
+
     .text-decoration-hover-underline:hover {
         text-decoration: underline !important;
         cursor: pointer;
     }
-    .clickable-operator-card {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 10px;
-        transition: all 0.2s ease-in-out;
+
+    /* Page header navbar */
+    .navbar-light {
+        background: rgba(255, 255, 255, 0.8) !important;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
+    }
+
+    /* Task cards styling */
+    .clickable-task-card {
+        background: #ffffff;
+        border: var(--card-border) !important;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    .clickable-task-card:hover {
+        border-color: #93c5fd !important;
+        transform: translateY(-3px);
+        box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.08), 0 4px 10px -5px rgba(0, 0, 0, 0.03);
+    }
+    .clickable-task-card.selected-active {
+        background: linear-gradient(135deg, #f0f7ff 0%, #e0f2fe 100%) !important;
+        border-color: #3b82f6 !important;
+        box-shadow: var(--glow-shadow) !important;
+    }
+    .clickable-task-card.selected-active::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--primary-gradient);
+    }
+
+    /* Gantt layout refinement */
+    .gantt-container {
+        border: var(--card-border) !important;
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+    }
+    .gantt-row {
+        border-bottom: 1px solid #f1f5f9 !important;
+        background: #ffffff;
+        transition: background-color 0.2s ease;
+    }
+    .gantt-row:hover {
+        background-color: #fafbfc;
+    }
+    .gantt-row-label {
+        background: #f8fafc !important;
+        border-right: 1px solid #e2e8f0 !important;
+        box-shadow: inset -2px 0 5px rgba(0,0,0,0.01);
+    }
+
+    /* Interactive visual feedback for compatible lanes */
+    .gantt-row-compatible .gantt-row-track {
+        animation: lane-pulse 2s infinite ease-in-out;
         cursor: pointer;
     }
-    .clickable-operator-card:hover {
-        background: #ffffff;
-        border-color: #3b82f6;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
-        transform: translateY(-2px);
+    .gantt-row-compatible:hover .gantt-row-track {
+        background-color: rgba(16, 185, 129, 0.05) !important;
     }
-    .clickable-ship-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 8px 10px;
-        margin-bottom: 8px;
-        transition: all 0.2s ease-in-out;
-        cursor: pointer;
+    .gantt-row-compatible:hover .gantt-row-hover-suggest {
+        opacity: 1 !important;
     }
-    .clickable-ship-card:hover {
-        background: #f8fafc;
-        border-color: #3b82f6;
-        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.04);
-        transform: translateX(3px);
+
+    @@keyframes lane-pulse {
+        0% { background-color: rgba(255, 255, 255, 1); }
+        50% { background-color: rgba(16, 185, 129, 0.02); }
+        100% { background-color: rgba(255, 255, 255, 1); }
+    }
+
+    /* Gantt blocks premium styling */
+    .gantt-block {
+        border-radius: 8px !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        border: 1px solid transparent !important;
+        transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 0 10px !important;
+    }
+    .gantt-block:hover {
+        box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.15), 0 4px 6px -2px rgba(59, 130, 246, 0.05);
+        transform: translateY(-2px) scale(1.01);
+        z-index: 10;
+    }
+    .gantt-block-normal {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
+        border-color: #93c5fd !important;
+        border-left: 4px solid #3b82f6 !important;
+        color: #1e40af !important;
+        box-shadow: 0 4px 10px rgba(59, 130, 246, 0.08);
+    }
+    .gantt-block-delayed {
+        background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%) !important;
+        border-color: #fde68a !important;
+        border-left: 4px solid #f59e0b !important;
+        color: #b45309 !important;
+        box-shadow: 0 4px 10px rgba(245, 158, 11, 0.05);
+    }
+    .gantt-block-collision {
+        background: linear-gradient(135deg, #ffffff 0%, #fef2f2 100%) !important;
+        border-color: #fecaca !important;
+        border-left: 4px solid #ef4444 !important;
+        color: #b91c1c !important;
+        box-shadow: 0 4px 10px rgba(239, 68, 68, 0.05);
+    }
+    .gantt-block-midnight {
+        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%) !important;
+        border-color: #f59e0b !important;
+        border-left: 4px solid #ef4444 !important;
+        color: #f8fafc !important;
+        box-shadow: 0 4px 12px rgba(49, 46, 129, 0.3) !important;
+        animation: pulse-midnight-glow 2s infinite alternate;
+    }
+    .gantt-block-midnight .gantt-block-sub {
+        color: #cbd5e0 !important;
+    }
+    @@keyframes pulse-midnight-glow {
+        0% { box-shadow: 0 0 6px rgba(245, 158, 11, 0.4); }
+        100% { box-shadow: 0 0 16px rgba(239, 68, 68, 0.8), inset 0 0 8px rgba(245, 158, 11, 0.2); }
+    }
+
+    /* Calendar days buttons */
+    .calendar-btn {
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    }
+    .calendar-btn:hover {
+        border-color: #3b82f6 !important;
+        transform: translateY(-3px) !important;
+        box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.05) !important;
+    }
+    .calendar-btn.active {
+        background: var(--primary-gradient) !important;
+        border-color: transparent !important;
+        color: #ffffff !important;
+        box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.3) !important;
+    }
+
+    /* Cards premium look */
+    .card {
+        border: var(--card-border) !important;
+        border-radius: 12px !important;
+        box-shadow: var(--card-shadow) !important;
+        background: #ffffff;
+    }
+    .card-header {
+        background-color: #ffffff !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        font-family: var(--font-heading);
+    }
+
+    /* Avatar / Initial circle badge for operator list */
+    .operator-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+        color: #0369a1;
+        font-weight: 700;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #ffffff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* Force full-viewport application workspace */
+    html, body {
+        height: 100vh !important;
+        overflow: hidden !important;
+        margin: 0;
+        padding: 0;
+    }
+    .onit-page {
+        height: 100vh !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+    }
+    #app-turni {
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        height: calc(100vh - 120px) !important;
+        overflow: hidden !important;
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+    .workspace-row {
+        flex: 1 !important;
+        min-height: 0 !important;
+        height: 100% !important;
+    }
+
+    /* Sticky time header axis inside Gantt */
+    .gantt-hour-row {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 100 !important;
+        background-color: #f8fafc !important;
+        border-bottom: 2px solid #cbd5e1 !important;
     }
 </style>
 
@@ -55,239 +278,288 @@
 
 <div id="app-turni" class="container-fluid py-3 px-4" v-cloak>
 
-    <!-- ALERT EMERGENZA rimosso per ridurre Visual Competition (Nielsen H8) -->
-
     <!-- DEMO TOAST CONTAINER (non-intrusive notification) -->
     <div id="demo-toast-container" style="position:fixed;top:16px;right:16px;z-index:9999;"></div>
 
-    <div class="row g-0">
+    <!-- SEED JSON FOR VUE -->
+    <script type="application/json" id="Seed_JSON">@Html.Raw(Model.ToJson())</script>
 
-        <!-- COLONNA SINISTRA: ARRIVI OGGI -->
-        <div class="col-md-2 border-end pe-3">
-            <p class="text-secondary text-uppercase mb-2 small fw-bold" style="letter-spacing:.05rem;font-size:.72rem;">
-                <i class="fa-solid fa-ship me-1"></i> Arrivi del Giorno
-            </p>
-            <div class="card border-0 shadow-sm rounded-3 d-flex flex-column" style="background: #f8fafc; border: 1px solid #e2e8f0 !important; height: 720px;">
-                <div class="card-header bg-white border-bottom py-2 px-3 d-flex align-items-center justify-content-between flex-shrink-0">
-                    <h6 class="mb-0 fw-bold text-dark" style="font-size: .75rem;">
-                        <i class="fa-solid fa-ship text-primary me-1.5"></i>Arrivi (Oggi)
-                    </h6>
-                    <span v-if="getTurniDelGiorno().length > 0" class="badge bg-primary" style="font-size: 0.65rem;">
-                        {{ getTurniDelGiorno().length }}
-                    </span>
-                </div>
-                <div class="card-body p-2" style="flex: 1; overflow-y: auto;">
-                    <div v-for="t in getTurniDelGiorno()" :key="t.id" class="clickable-ship-card"
-                         v-on:click="apriDettagliNave(t.nome)"
-                         title="Clicca per visualizzare la scheda dettagliata della nave">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <span class="fw-bold text-dark" style="font-size:.8rem;">
-                                <i class="fa-solid fa-ship text-muted me-1 small"></i>{{ t.nome }}
-                            </span>
-                            <span v-if="t.isDelayed" class="badge bg-danger" style="font-size:.6rem;">Ritardo</span>
-                            <span v-else class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.6rem;">In Orario</span>
-                        </div>
-                        <div class="text-muted" style="font-size:.68rem;">
-                            {{ t.banchina }} &middot; {{ fmtOra(t.startOra) }} &middot; {{ fmtDurata(t.durataOre) }}
-                        </div>
-                        <span class="badge bg-secondary-subtle text-secondary mt-1" style="font-size:.58rem;">{{ t.ruoloRichiesto }}</span>
-                    </div>
-                    <div v-if="getTurniDelGiorno().length === 0" class="text-muted text-center py-4" style="font-size: 0.8rem;">
-                        <i class="fa-solid fa-circle-info d-block mb-1 text-secondary fs-5"></i> Nessun arrivo per questo giorno
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- AREA PRINCIPALE -->
-        <div class="col-md-8 px-3 border-end">
-            <!-- FILTRI DI RICERCA E VISUALIZZAZIONE -->
-            <div class="card border-0 shadow-sm rounded-3 mb-3" style="background: rgba(15, 23, 42, 0.02); border: 1px solid rgba(0, 0, 0, 0.05);">
-                <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
-                    <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 280px;">
-                        <span class="text-secondary small fw-bold text-uppercase"><i class="fa-solid fa-filter text-primary me-1"></i> Filtra:</span>
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
-                            <input type="text" class="form-control border-start-0 ps-0 bg-light-subtle" placeholder="Cerca per nave, operatore, molo o qualifica..." v-model="filtroRicerca" v-on:input="saveState">
-                            <button v-if="filtroRicerca" class="btn btn-outline-secondary border-start-0 bg-light-subtle" type="button" v-on:click="filtroRicerca = ''; saveState();">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle py-1.5 px-2.5" style="font-size: 0.68rem; font-weight: 500;">
-                            Filtro Attivo: <strong class="text-dark ms-1">{{ filtroRicerca || 'Nessuno (mostra tutto)' }}</strong>
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- CALENDARIO SETTIMANALE -->
-            <div class="mb-3 p-3 rounded-3" style="background: rgba(15, 23, 42, 0.03); border: 1px solid rgba(0, 0, 0, 0.05);">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <p class="text-secondary text-uppercase mb-0 small fw-bold" style="letter-spacing:.05rem;font-size:.72rem;">
-                        <i class="fa-solid fa-calendar-days text-primary me-1"></i> Calendario Programmazione Settimanale
-                    </p>
-                    <span class="badge bg-primary-subtle text-primary fw-semibold px-2 py-1" style="font-size: 0.65rem;">
-                        Seleziona un giorno per pianificare
-                    </span>
-                </div>
-                <div class="d-flex gap-2 overflow-x-auto pt-2 px-2 pb-1" style="scrollbar-width: thin;">
-                    <button v-for="g in giorniSettimana" :key="g.index"
-                            class="btn flex-fill text-start py-3 px-3 border rounded-3 position-relative transition-all d-flex flex-column"
-                            v-bind:class="giornoSelezionato === g.index ? 'btn-primary border-primary shadow-sm' : 'btn-white bg-white border-light-subtle text-dark'"
-                            v-on:click="selezionaGiorno(g.index)"
-                            style="min-width: 110px; transition: all 0.2s ease;">
-                        <span class="small fw-semibold mb-1" v-bind:class="giornoSelezionato === g.index ? 'text-white-50' : 'text-muted'" style="font-size: 0.65rem;">
-                            {{ g.giornoSettimana }}
-                        </span>
-                        <span class="fw-bold" v-bind:class="giornoSelezionato === g.index ? 'text-white' : 'text-dark'" style="font-size: 0.85rem; line-height: 1.1;">
-                            {{ g.nome }}
-                        </span>
-                        <span class="small mt-1" v-bind:class="giornoSelezionato === g.index ? 'text-white-50' : 'text-muted'" style="font-size: 0.65rem;">
-                            {{ g.dataStr }}
-                        </span>
-                        <!-- Alert badge se c'è un'emergenza attiva su quel giorno -->
-                        <span v-if="emergenzaAttiva && turnoInRitardo && turnoInRitardo.giorno === g.index" 
-                              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white"
-                              style="font-size: 0.5rem; padding: 0.35em 0.5em;"
-                              title="Emergenza attiva">
-                              !
-                        </span>
-                    </button>
-                </div>
-            </div>
-
-            <p class="text-secondary text-uppercase mb-2 small fw-bold" style="letter-spacing:.05rem;font-size:.72rem;">
-                <i class="fa-solid fa-calendar-check me-1"></i> Timeline Turni
-            </p>
-
-            <div class="gantt-container">
-
-                <!-- Header ore -->
-                <div class="gantt-hour-row">
-                    <div class="gantt-hour-row-label"></div>
-                    <div class="gantt-hour-row-track">
-                        <span v-for="h in oreTimeline" :key="h" class="gantt-hour-tick" v-bind:style="{ left: tickLeft(h) }">
-                            {{ fmtTick(h) }}
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Righe banchine -->
-                <div v-for="banchina in banchine" :key="banchina" class="gantt-row">
-                    <div class="gantt-row-label">{{ banchina }}</div>
-                    <div class="gantt-row-track">
-                        <!-- Grid lines verticali -->
-                        <div v-for="h in oreTimeline" :key="'vl'+h" class="gantt-vline" v-bind:style="{ left: tickLeft(h) }"></div>
-
-                        <!-- Blocchi turno -->
-                        <div v-for="t in getTurniPerBanchina(banchina)" :key="t.id"
-                             class="gantt-block"
-                             v-bind:class="getBlockClass(t)"
-                             v-bind:style="{ 
-                                 left: blockLeft(t), 
-                                 width: blockWidth(t),
-                                 opacity: isElementoFiltrato(t) ? 1 : 0.15,
-                                 filter: isElementoFiltrato(t) ? 'none' : 'grayscale(60%)'
-                             }"
-                             v-on:click="handleBlockClick(t)"
-                             v-bind:title="t.isDelayed ? '⚠️ Nave in ritardo – clicca per risolvere' : (isBloccoInCollisione(t) && !t.isDelayed ? '🔒 Nave bloccata – risolvi prima la nave in ritardo' : 'Dettagli nave ' + t.nome)">
-                            <div class="gantt-block-title">
-                                 <i class="fa-solid fa-ship me-1 small"></i>{{ t.nome }}
-                            </div>
-                            <div class="gantt-block-sub">
-                                <i class="fa-solid fa-user-gear me-1"></i>{{ t.operatore }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- FASCIA RISORSE -->
-            <div class="border-top pt-3 mt-3">
-                <p class="text-secondary text-uppercase mb-2 small fw-bold" style="letter-spacing:.05rem;font-size:.72rem;">
-                    <i class="fa-solid fa-users-gear me-1"></i> Risorse — Ore Settimanali Operai
+    <div class="row g-3 flex-grow-1 workspace-row">
+        <!-- COLONNA SINISTRA: BACKLOG TASK DA ASSEGNARE (col-md-3) -->
+        <div class="col-md-3 d-flex flex-column h-100" style="min-height: 0;">
+            <div class="d-flex align-items-center justify-content-between mb-2 flex-shrink-0">
+                <p class="text-secondary text-uppercase mb-0 small fw-bold" style="letter-spacing:.05rem;font-size:.72rem;">
+                    <i class="fa-solid fa-list-check me-1 text-primary"></i> Backlog Task da Assegnare
                 </p>
-                <div class="row g-3">
-                    <div v-for="op in operatori" :key="op.nome" class="col-xl-2 col-lg-3 col-md-4"
-                          v-bind:style="{ opacity: isOperatoreFiltrato(op) ? 1 : 0.25 }">
-                        <div class="clickable-operator-card"
-                             v-bind:class="op.reperibile ? 'border-info bg-info-subtle bg-opacity-10' : ''"
-                             v-on:click="apriDettagliOperatore(op)"
-                             title="Clicca per visualizzare la scheda dettagliata dell'operatore">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <div class="d-flex align-items-center gap-1">
-                                    <i v-if="op.reperibile" class="fa-solid fa-phone text-info me-0.5" style="font-size: 0.68rem;" title="Lavoratore A Chiamata / Reperibile"></i>
-                                    <span class="fw-bold text-dark" style="font-size:.75rem;">{{ op.nome }}</span>
-                                    <span class="badge" v-bind:class="op.reperibile ? 'bg-info text-white' : 'bg-secondary-subtle text-secondary border border-secondary-subtle'" style="font-size:.58rem;padding:.12em .35em;">
-                                        {{ op.reperibile ? 'A Chiamata' : op.ruolo }}
-                                    </span>
-                                </div>
-                                <span class="font-monospace fw-semibold"
-                                      v-bind:class="getOpStatus(op)==='danger'?'text-danger':getOpStatus(op)==='warning'?'text-warning':'text-muted'"
-                                      style="font-size:.68rem;">
-                                    {{ op.oreSettimanali }}/{{ op.oreMassime }}h
+                <span v-if="tasksDaAssegnareGiorno.length > 0" class="badge bg-primary" style="font-size: 0.65rem;">
+                    {{ tasksDaAssegnareGiorno.length }}
+                </span>
+            </div>
+            
+            <div class="card border-0 shadow-sm rounded-3 d-flex flex-column" style="background: #f8fafc; border: 1px solid #e2e8f0 !important; min-height: 0; flex: 1;">
+                <div class="card-header bg-white border-bottom py-2.5 px-3">
+                    <h6 class="mb-0 fw-bold text-dark" style="font-size: .8rem;">
+                        <i class="fa-solid fa-clipboard-list text-primary me-2"></i>Task da Pianificare
+                    </h6>
+                </div>
+                
+                <div class="card-body p-2" style="flex: 1; overflow-y: auto;">
+                    <div v-for="task in tasksDaAssegnareGiorno" :key="task.id" 
+                          class="clickable-task-card p-3 mb-2 rounded-3 border transition-all position-relative"
+                          v-bind:class="{ 'selected-active': selectedTask && selectedTask.id === task.id }"
+                          v-on:click="selectTask(task)"
+                          style="cursor: pointer; transition: all 0.2s ease;">
+                        
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="d-flex align-items-center gap-1.5">
+                                <span class="fw-bold text-dark" style="font-size:.85rem; line-height: 1.2;">
+                                    {{ task.nome }}
                                 </span>
+                                <button type="button" class="btn btn-link p-0 text-muted border-0 d-flex align-items-center justify-content-center" v-on:click.stop="apriDettagliNave(task.nome)" title="Visualizza scheda della nave" style="font-size: 0.72rem; outline: none; box-shadow: none;">
+                                    <i class="fa-solid fa-circle-info text-primary-subtle text-hover-primary"></i>
+                                </button>
                             </div>
-                            <div class="resource-bar progress">
-                                <div class="progress-bar" role="progressbar"
-                                     v-bind:style="{ width: getOpPercent(op) + '%' }"
-                                     v-bind:class="getOpStatus(op)==='danger'?'bg-danger':getOpStatus(op)==='warning'?'bg-warning':(op.reperibile ? 'bg-info' : 'bg-secondary')">
-                                </div>
-                            </div>
+                            <span class="badge bg-primary text-white" style="font-size:.65rem; font-weight: 500;">
+                                {{ task.competenzaRichiesta }}
+                            </span>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-light text-muted" style="font-size:.72rem;">
+                            <span>
+                                <i class="fa-regular fa-clock me-1"></i>Durata: <strong>{{ task.durataOre }}h</strong>
+                            </span>
+                            <span v-if="selectedTask && selectedTask.id === task.id" class="text-primary fw-semibold">
+                                Selezionato <i class="fa-solid fa-circle-check ms-0.5"></i>
+                            </span>
+                            <span v-else class="text-secondary small">
+                                Clicca per assegnare
+                            </span>
                         </div>
                     </div>
+                    
+                    <div v-if="tasksDaAssegnareGiorno.length === 0" class="text-muted text-center py-5" style="font-size: 0.82rem;">
+                        <i class="fa-solid fa-circle-check d-block mb-2 text-success fs-3"></i>
+                        Tutti i task di oggi sono stati assegnati!
+                    </div>
+                </div>
+                
+                <div class="card-footer bg-white border-top p-2.5 text-center text-muted small" style="font-size: 0.7rem;" v-if="selectedTask">
+                    <i class="fa-solid fa-circle-info text-primary me-1"></i> Seleziona un operatore idoneo a destra per assegnare il task <strong>"{{ selectedTask.nome }}"</strong>.
                 </div>
             </div>
 
-        </div>
-
-        <!-- COLONNA DESTRA: REGISTRO NOTIFICHE -->
-        <div class="col-md-2 ps-3">
-            <p class="text-secondary text-uppercase mb-2 small fw-bold" style="letter-spacing:.05rem;font-size:.72rem;">
-                <i class="fa-solid fa-paper-plane me-1"></i> Notifiche Inviate
-            </p>
-            <div class="card border-0 shadow-sm rounded-3 d-flex flex-column" style="background: #f8fafc; border: 1px solid #e2e8f0 !important; height: 720px;">
-                <div class="card-header bg-white border-bottom py-2 px-3 d-flex align-items-center justify-content-between flex-shrink-0">
+            <!-- REGISTRO NOTIFICHE (SPOSTATO NELLA COLONNA DI SINISTRA) -->
+            <div class="card border-0 shadow-sm rounded-3 d-flex flex-column mt-3" style="border: 1px solid #e2e8f0 !important; background: #f8fafc; min-height: 0; flex: 1;">
+                <div class="card-header bg-white border-bottom py-2 px-3 d-flex align-items-center justify-content-between">
                     <h6 class="mb-0 fw-bold text-dark" style="font-size: .75rem;">
-                        <i class="fa-solid fa-paper-plane text-primary me-1.5"></i>Notifiche (Sim.)
+                        <i class="fa-solid fa-paper-plane text-primary me-2"></i>Log Notifiche Simulate
                     </h6>
                     <span v-if="notificheSimulate.length > 0" class="badge bg-primary" style="font-size: 0.65rem;">
                         {{ notificheSimulate.length }}
                     </span>
                 </div>
-                <div class="card-body p-2" style="flex: 1; overflow-y: auto; font-size: 0.7rem;">
-                    
-                    <div v-for="notifica in notificheSimulate" :key="notifica.id" class="p-2 mb-2 rounded border" 
-                          v-bind:class="notifica.tipo === 'SMS' ? 'border-primary-subtle bg-primary-subtle bg-opacity-10' : 'border-info-subtle bg-info-subtle bg-opacity-10'">
+                <div class="card-body p-2 d-flex flex-column gap-2 overflow-y-auto" style="scrollbar-width: thin;">
+                    <div v-for="notifica in notificheSimulate" :key="notifica.id" class="p-2 rounded border bg-white flex-shrink-0" 
+                          v-bind:class="notifica.tipo === 'SMS' ? 'border-primary-subtle' : 'border-info-subtle'"
+                          style="font-size: 0.68rem; width: 100%;">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <span class="fw-bold" v-bind:class="notifica.tipo === 'SMS' ? 'text-primary' : 'text-info'">
                                 <i v-if="notifica.tipo === 'SMS'" class="fa-solid fa-comment-sms me-1"></i>
                                 <i v-else class="fa-solid fa-envelope me-1"></i>
                                 {{ notifica.tipo }}
                             </span>
-                            <span class="text-muted" style="font-size: 0.6rem;">{{ notifica.timestamp }}</span>
+                            <span class="text-muted" style="font-size: 0.58rem;">{{ notifica.timestamp }}</span>
                         </div>
-                        <div class="mb-1 text-dark" style="font-size: 0.65rem;">
-                            <strong>A:</strong> {{ notifica.destinatario }} <span class="text-muted" style="font-size: 0.58rem;">({{ notifica.dettaglioDestinatario }})</span>
+                        <div class="mb-1 text-dark" style="font-weight: 500;">
+                            <strong>A:</strong> {{ notifica.destinatario }}
                         </div>
-                        <div class="text-secondary bg-white p-1.5 rounded border small font-monospace" style="white-space: pre-line; line-height: 1.2; font-size: 0.62rem;">
+                        <div class="text-secondary small font-monospace" style="font-size: 0.62rem; word-break: break-all;">
                             {{ notifica.messaggio }}
                         </div>
                     </div>
-
-                    <div v-if="notificheSimulate.length === 0" class="text-muted text-center py-4">
-                        <i class="fa-solid fa-paper-plane d-block mb-1 text-muted fs-6"></i> Nessun invio simulato
+                    <div v-if="notificheSimulate.length === 0" class="text-muted w-100 text-center py-3" style="font-size: 0.75rem;">
+                        Nessun invio notifica simulato nel log
                     </div>
                 </div>
-                <div class="card-footer bg-light py-1 px-3 text-end flex-shrink-0" v-if="notificheSimulate.length > 0">
-                    <button class="btn btn-link btn-xs text-danger p-0 fw-semibold text-decoration-none" style="font-size: 0.6rem;" v-on:click="svuotaNotifiche">
+                <div class="card-footer bg-light py-2.5 px-3 text-end" v-if="notificheSimulate.length > 0">
+                    <button class="btn btn-link btn-xs text-danger p-0 fw-semibold text-decoration-none" style="font-size: 0.65rem;" v-on:click="svuotaNotifiche">
                         <i class="fa-solid fa-trash me-1"></i>Svuota registro
                     </button>
                 </div>
             </div>
+        </div>
+
+        <!-- COLONNA DESTRA: WORKSPACE DI PIANIFICAZIONE (col-md-9) -->
+        <div class="col-md-9 d-flex flex-column h-100" style="min-height: 0;">
+            <!-- FILTRI & GIORNO SELEZIONATO ROW -->
+            <div class="row g-3 mb-2 flex-shrink-0">
+                <div class="col-lg-8">
+                    <!-- CALENDARIO SETTIMANALE -->
+                    <div class="p-2.5 rounded-3 bg-white border" style="border: 1px solid #e2e8f0 !important;">
+                        <div class="d-flex align-items-center justify-content-between mb-2 px-1">
+                            <p class="text-secondary text-uppercase mb-0 small fw-bold" style="letter-spacing:.05rem;font-size:.68rem;">
+                                <i class="fa-solid fa-calendar-days text-primary me-1"></i> Calendario Programmazione
+                            </p>
+                        </div>
+                        <div class="d-flex gap-2 overflow-x-auto pt-3 pb-2 px-1" style="scrollbar-width: thin;">
+                            <button v-for="g in giorniSettimana" :key="g.index"
+                                    class="btn calendar-btn py-2 px-3 rounded-3 position-relative transition-all d-flex flex-column text-start"
+                                    v-bind:class="{ 'active': giornoSelezionato === g.index }"
+                                    v-on:click="selezionaGiorno(g.index)"
+                                    style="min-width: 135px; transition: all 0.2s ease;">
+                                <span class="fw-bold mb-0.5" v-bind:class="giornoSelezionato === g.index ? 'text-white' : 'text-dark'" style="font-size: 0.82rem; line-height: 1.1;">
+                                    {{ g.giornoSettimana }}
+                                </span>
+                                <div class="d-flex align-items-center gap-1.5">
+                                    <span class="fw-semibold font-monospace" v-bind:class="giornoSelezionato === g.index ? 'text-white-50' : 'text-muted'" style="font-size: 0.68rem;">
+                                        {{ g.dataStr }}
+                                    </span>
+                                    <span v-if="g.index === 0" class="badge rounded-pill fw-bold" v-bind:class="giornoSelezionato === g.index ? 'bg-white text-primary' : 'bg-primary-subtle text-primary'" style="font-size: 0.52rem; padding: 2px 4px;">
+                                        Oggi
+                                    </span>
+                                    <span v-else-if="g.index === 1" class="badge rounded-pill fw-bold" v-bind:class="giornoSelezionato === g.index ? 'bg-white text-secondary' : 'bg-light text-secondary'" style="font-size: 0.52rem; padding: 2px 4px;">
+                                        Domani
+                                    </span>
+                                </div>
+                                <!-- Alert badge se c'è un'emergenza attiva su quel giorno -->
+                                <span v-if="emergenzaAttiva && turnoInRitardo && turnoInRitardo.giorno === g.index" 
+                                      class="position-absolute badge rounded-pill bg-danger border border-white"
+                                      style="font-size: 0.55rem; padding: 0.35em 0.55em; top: 6px; right: 6px; z-index: 10;"
+                                      title="Emergenza attiva">
+                                      !
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <!-- FILTRO RICERCA OPERATORI/TURNI -->
+                    <div class="p-2.5 rounded-3 bg-white border h-100 d-flex flex-column justify-content-center" style="border: 1px solid #e2e8f0 !important;">
+                        <p class="text-secondary text-uppercase mb-2 small fw-bold px-1" style="letter-spacing:.05rem;font-size:.68rem;">
+                            <i class="fa-solid fa-filter text-primary me-1"></i> Ricerca Rapida
+                        </p>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                            <input type="text" class="form-control border-start-0 ps-0 bg-light-subtle" placeholder="Cerca operatore o qualifica..." v-model="filtroRicerca" v-on:input="saveState">
+                            <button v-if="filtroRicerca" class="btn btn-outline-secondary border-start-0 bg-light-subtle" type="button" v-on:click="filtroRicerca = ''; saveState();">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GANTT CHART DEGLI OPERATORI -->
+            <p class="text-secondary text-uppercase mb-2 small fw-bold flex-shrink-0" style="letter-spacing:.05rem;font-size:.72rem;">
+                <i class="fa-solid fa-calendar-check me-1"></i> Timeline Occupazione Operatori &mdash; Giorno: <strong>{{ getNomeGiorno(giornoSelezionato) }}</strong>
+            </p>
+            <div class="gantt-container flex-grow-1 min-height-0 overflow-y-auto mb-2" style="border: 1px solid #e2e8f0 !important;">
+
+                <!-- Header ore -->
+                <div class="gantt-hour-row bg-light border-bottom">
+                    <div class="gantt-hour-row-label fw-bold text-secondary" style="font-size: 0.72rem; padding-left: 1rem; width: 230px; min-width: 230px; flex-shrink: 0; display: flex; align-items: center;">Operatore</div>
+                    <div class="gantt-hour-row-track">
+                        <span v-for="h in oreTimeline" :key="h" class="gantt-hour-tick text-secondary" style="font-size: 0.65rem; font-weight: 600;" v-bind:style="{ left: tickLeft(h) }">
+                            {{ fmtTick(h) }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Righe Operatori -->
+                <div v-for="op in getOperatoriFiltrati()" :key="op.nome" 
+                     class="gantt-row border-bottom position-relative"
+                     v-bind:class="{ 
+                         'opacity-25 pointer-events-none': isOperatoreIncompatibile(op),
+                         'gantt-row-compatible': selectedTask && !isOperatoreIncompatibile(op)
+                     }"
+                     v-on:click="selectedTask && !isOperatoreIncompatibile(op) ? assegnaTask(op) : null"
+                     v-bind:style="{ height: '66px', transition: 'all 0.25s ease', cursor: selectedTask && !isOperatoreIncompatibile(op) ? 'pointer' : 'default' }">
+                    
+                    <!-- Label Operatore con Badge Diagnostici e Avatar -->
+                    <div class="gantt-row-label d-flex align-items-center gap-2.5 px-3" style="width: 230px; min-width: 230px; flex-shrink: 0; border-right: 1px solid #f1f5f9; background: #fafafa;">
+                        <div class="operator-avatar flex-shrink-0">
+                            {{ op.nome.charAt(0) }}
+                        </div>
+                        <div class="flex-grow-1 min-width-0">
+                            <div class="d-flex align-items-center justify-content-between mb-0.5">
+                                <div class="d-flex align-items-center gap-1 text-truncate">
+                                    <i v-if="op.reperibile" class="fa-solid fa-phone text-info" style="font-size: 0.65rem;" title="Reperibile a chiamata"></i>
+                                    <span class="fw-bold text-dark text-truncate text-decoration-hover-underline" style="font-size:.78rem;" v-on:click.stop="apriDettagliOperatore(op)" title="Clicca per visualizzare la scheda dell'operatore">{{ op.nome }}</span>
+                                </div>
+                                <button type="button" class="btn btn-link p-0 text-muted border-0 d-flex align-items-center justify-content-center" v-on:click.stop="apriDettagliOperatore(op)" title="Visualizza scheda dell'operatore" style="font-size: 0.72rem; outline: none; box-shadow: none;">
+                                    <i class="fa-solid fa-circle-info text-primary-subtle text-hover-primary"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Progress bar e ore -->
+                            <div class="d-flex align-items-center gap-1.5 mb-1" style="font-size: 0.62rem;">
+                                <div class="flex-grow-1 bg-light rounded-pill overflow-hidden" style="height: 4px;">
+                                    <div class="h-100 rounded-pill" v-bind:class="'bg-' + getOpStatus(op)" v-bind:style="{ width: getOpPercent(op) + '%' }"></div>
+                                </div>
+                                <span class="font-monospace text-muted fw-semibold" style="font-size: 0.62rem; min-width: 32px; text-align: right;">
+                                    {{ op.oreSettimanaliAttuali || op.oreSettimanali }}/40h
+                                </span>
+                            </div>
+
+                            <!-- Scadenza Contratto / Patente -->
+                            <div class="d-flex align-items-center" style="font-size: 0.62rem; line-height: 1;">
+                                <span v-if="getPatenteStatus(op) === 'expired'" class="text-danger fw-bold d-flex align-items-center gap-1" title="Contratto/Patente scaduto! Non utilizzabile.">
+                                    <i class="fa-solid fa-circle-xmark text-danger" style="font-size: 0.58rem;"></i> Scaduto ({{ getPatenteFormatted(op) }})
+                                </span>
+                                <span v-else-if="getPatenteStatus(op) === 'warning'" class="text-warning fw-semibold d-flex align-items-center gap-1" title="Contratto/Patente in scadenza a breve.">
+                                    <i class="fa-solid fa-triangle-exclamation text-warning" style="font-size: 0.58rem;"></i> Scadenza: {{ getPatenteFormatted(op) }}
+                                </span>
+                                <span v-else class="text-muted d-flex align-items-center gap-1" title="Contratto/Patente valido">
+                                    <i class="fa-solid fa-circle-check text-success" style="font-size: 0.58rem;"></i> Scadenza: {{ getPatenteFormatted(op) }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Track Gantt dell'Operatore -->
+                    <div class="gantt-row-track position-relative flex-grow-1" style="height: 100%;">
+                        <!-- Grid lines verticali -->
+                        <div v-for="h in oreTimeline" :key="'vl'+h" class="gantt-vline" v-bind:style="{ left: tickLeft(h) }"></div>
+
+                        <!-- Blocchi turni assegnati -->
+                        <div v-for="t in getTurniPerOperatore(op.nome)" :key="t.id"
+                             class="gantt-block"
+                             v-bind:class="getBlockClass(t)"
+                             v-bind:style="{ 
+                                 left: blockLeft(t), 
+                                 width: blockWidth(t),
+                                 opacity: isElementoFiltrato(t) ? 1 : 0.15,
+                                 filter: isElementoFiltrato(t) ? 'none' : 'grayscale(60%)',
+                                 height: '38px',
+                                 top: '14px'
+                             }"
+                             v-on:click.stop="handleBlockClick(t)"
+                             v-bind:title="t.isDelayed ? 'Nave in ritardo – clicca per risolvere' : (isBloccoInCollisione(t) && !t.isDelayed ? 'Dettagli nave ' + t.nome + ' (Bloccata per modifiche)' : 'Dettagli nave ' + t.nome)">
+                            <div class="gantt-block-title fw-bold d-flex align-items-center justify-content-between" style="font-size: 0.72rem; line-height: 1.2;">
+                                 <span><i class="fa-solid fa-ship me-1 small"></i>{{ t.nome }}</span>
+                                 <span v-if="t.startOra + (t.isDelayed ? t.ritardoOre : 0) + t.durataOre > 24 || t.startOra + (t.isDelayed ? t.ritardoOre : 0) >= 23" class="badge bg-warning text-dark p-1 ms-1 d-flex align-items-center gap-1 shadow-sm" style="font-size: 0.55rem; border-radius: 4px; line-height: 1;" title="A cavallo di mezzanotte / Giorno successivo">
+                                     <i class="fa-solid fa-moon small"></i> +24h
+                                 </span>
+                            </div>
+                            <div class="gantt-block-sub font-monospace" style="font-size: 0.62rem; opacity: 0.9;">
+                                <i class="fa-solid fa-anchor me-1"></i>{{ t.banchina }}
+                            </div>
+                        </div>
+
+                        <!-- Hover overlay suggerimento slot vuoto quando idoneo -->
+                        <div v-if="selectedTask && !isOperatoreIncompatibile(op)" 
+                             class="gantt-row-hover-suggest position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+                             style="pointer-events: none; opacity: 0; background: rgba(25, 135, 84, 0.04); border: 2px dashed rgba(25, 135, 84, 0.2); transition: all 0.2s ease;">
+                            <span class="badge bg-success text-white fw-bold shadow-sm" style="font-size: 0.65rem;">
+                                <i class="fa-solid fa-plus-circle me-1"></i> Clicca per assegnare "{{ selectedTask.nome }}"
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
         </div>
     </div>
 
@@ -333,8 +605,15 @@
                         <i class="fa-solid fa-circle-check fs-4 mt-0.5 text-success"></i>
                         <div>
                             <h6 class="fw-bold text-success mb-1" style="font-size: .85rem;">Soluzione Ottimale Trovata</h6>
+                            <div v-if="soluzioneOttimale.motivoScelta" class="mb-2">
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.68rem; border-radius: 4px;">
+                                    <i class="fa-solid fa-layer-group me-1"></i> Criterio: {{ soluzioneOttimale.motivoScelta }}
+                                </span>
+                            </div>
                             <p class="mb-0 text-secondary" style="line-height: 1.5; font-size: .8rem;">
-                                Sposta il turno al <strong>{{ soluzioneOttimale.moloSuggerito }}</strong> alle ore <strong>{{ fmtOra(soluzioneOttimale.orarioSuggerito) }}</strong>.
+                                Sposta il turno al <strong>{{ soluzioneOttimale.moloSuggerito }}</strong>
+                                <span v-if="soluzioneOttimale.giornoSuggerito !== turnoInRitardo.giorno">il giorno <strong>{{ getNomeGiorno(soluzioneOttimale.giornoSuggerito) }}</strong></span>
+                                alle ore <strong>{{ fmtOra(soluzioneOttimale.orarioSuggerito) }}</strong>.
                                 Assegnato a <strong>{{ soluzioneOttimale.operatoreSuggerito }}</strong> (Carico: {{ soluzioneOttimale.oreSettimanaliOperatore }}h/40h).
                             </p>
                         </div>
@@ -344,7 +623,7 @@
                         <div>
                             <h6 class="fw-bold text-warning mb-1" style="font-size: .85rem; color: #b45309 !important;">Nessuna Soluzione Automatica</h6>
                             <p class="mb-0 text-secondary" style="line-height: 1.5; font-size: .8rem; color: #78350f !important;">
-                                ⚠️ Impossibile automatizzare: Nessuna banchina libera trovata per questo orario o nessun operatore disponibile entro il limite di 40h.
+                                Impossibile automatizzare: Nessuna banchina libera trovata per questo orario o nessun operatore disponibile entro il limite di 40h.
                             </p>
                         </div>
                     </div>
@@ -420,8 +699,8 @@
                                     <tr>
                                         <td class="text-muted ps-0 py-1">Abilitazioni Molo:</td>
                                         <td class="fw-bold py-1">
-                                            <span v-if="operatoreSelezionatoDettaglio.abilitazioni && operatoreSelezionatoDettaglio.abilitazioni.length > 0" class="d-flex flex-wrap gap-1">
-                                                <span v-for="ab in operatoreSelezionatoDettaglio.abilitazioni" :key="ab" class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size: 0.65rem;">
+                                            <span v-if="operatoreSelezionatoDettaglio.abilitazioni && (Array.isArray(operatoreSelezionatoDettaglio.abilitazioni) ? operatoreSelezionatoDettaglio.abilitazioni.length > 0 : operatoreSelezionatoDettaglio.abilitazioni.trim().length > 0)" class="d-flex flex-wrap gap-1">
+                                                <span v-for="ab in (Array.isArray(operatoreSelezionatoDettaglio.abilitazioni) ? operatoreSelezionatoDettaglio.abilitazioni : operatoreSelezionatoDettaglio.abilitazioni.split(',').map(function(s){return s.trim();}).filter(Boolean))" :key="ab" class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1 rounded" style="font-size: 0.7rem; font-weight: 600;">
                                                     {{ ab }}
                                                 </span>
                                             </span>
@@ -616,7 +895,13 @@
                 appVueModel.startDemoTimer();
             },
             computed: {
-                alternative: function () { return appVueModel.alternative; }
+                alternative: function () { return appVueModel.alternative; },
+                tasksDaAssegnareGiorno: function () {
+                    var g = appVueModel.giornoSelezionato;
+                    return appVueModel.tasksDaAssegnare.filter(function (t) {
+                        return t.giorno === g;
+                    });
+                }
             },
             methods: {
                 fmtOra:     function (h)  { return appVueModel.fmtOra(h); },
@@ -627,6 +912,7 @@
                 blockWidth: function (t)  { return appVueModel.blockWidth(t); },
                 tickLeft:   function (h)  { return appVueModel.tickLeft(h); },
                 getTurniPerBanchina: function (b) { return appVueModel.getTurniPerBanchina(b); },
+                getTurniPerOperatore: function (n) { return appVueModel.getTurniPerOperatore(n); },
                 getOpPercent:  function (op) { return appVueModel.getOpPercent(op); },
                 getOpStatus:   function (op) { return appVueModel.getOpStatus(op); },
                 getBanchineFiltrate:    function () { return appVueModel.getBanchineFiltrate(); },
@@ -663,7 +949,13 @@
                 applicaSoluzioneProposta:    function (idx) { appVueModel.applicaSoluzioneProposta(idx); },
                 getDettaglioConflittoAttuale: function () { return appVueModel.getDettaglioConflittoAttuale(); },
                 getSenzaOperatoriStandardDisponibili: function () { return appVueModel.getSenzaOperatoriStandardDisponibili(); },
-                causaRitardoCasuale:         function ()    { appVueModel.causaRitardoCasuale(); }
+                causaRitardoCasuale:         function ()    { appVueModel.causaRitardoCasuale(); },
+                selectTask:                  function (t)   { appVueModel.selectTask(t); },
+                assegnaTask:                 function (op)  { appVueModel.assegnaTask(op); },
+                isOperatoreIncompatibile:    function (op)  { return appVueModel.isOperatoreIncompatibile(op); },
+                getIncompatibilitaMotivo:    function (op)  { return appVueModel.getIncompatibilitaMotivo(op); },
+                getPatenteStatus:            function (op)  { return appVueModel.getPatenteStatus(op); },
+                getPatenteFormatted:         function (op)  { return appVueModel.getPatenteFormatted(op); }
             }
         });
     </script>

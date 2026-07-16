@@ -11973,9 +11973,10 @@ textarea.form-control-lg {
 
 /* Normal block */
 .gantt-block-normal {
-  background-color: #e8f0fe;
+  background-color: #d4e4fd;
   border-left: 3px solid #0d6efd;
   color: #0d47a1;
+  box-shadow: 0 1px 3px rgba(13, 110, 253, 0.12);
 }
 
 /* Delayed block (pulsating) */
@@ -12038,14 +12039,13 @@ textarea.form-control-lg {
   /* Usa un colore fisso di sfondo, fai pulsare l'opacità */
 }
 
-/* Poka-Yoke: blocco interazione sulla nave NON in ritardo durante una collisione */
+/* Poka-Yoke: blocco visivamente distinto durante una collisione ma comunque cliccabile per consultare dettagli */
 .gantt-block-locked {
-  pointer-events: none !important;
-  cursor: default !important;
-  opacity: 0.45 !important;
-  filter: grayscale(40%) !important;
+  cursor: pointer !important;
+  opacity: 0.6 !important;
+  filter: grayscale(20%) !important;
   animation: none !important;
-  outline: none !important;
+  outline: 1px dashed #94a3b8 !important;
   box-shadow: none !important;
 }
 

@@ -199,7 +199,7 @@
           "buildTransitive/net6.0/_._": {}
         }
       },
-      "System.Linq.Dynamic.Core/1.5.0": {
+      "System.Linq.Dynamic.Core/1.6.0": {
         "type": "package",
         "compile": {
           "lib/net8.0/System.Linq.Dynamic.Core.dll": {
@@ -567,10 +567,10 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "System.Linq.Dynamic.Core/1.5.0": {
-      "sha512": "AnJlNFlkw9+grV+o3J0N/YolsD0F/03AFnFxBDgxs1eG87JF/RszdJM4HH9wUl4HrajYK/83xyyZ7bNI6J6vjg==",
+    "System.Linq.Dynamic.Core/1.6.0": {
+      "sha512": "6xGWCu89VdrAYpw07KSbvVZC21XcJ5YSEzPEFbWBZsgeATTep5c5x/MQA/QS15HVHqoAtYIAHzr3ke6zCyOX7g==",
       "type": "package",
-      "path": "system.linq.dynamic.core/1.5.0",
+      "path": "system.linq.dynamic.core/1.6.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -625,7 +625,7 @@
         "lib/uap10.0.10240/System.Linq.Dynamic.Core.pri",
         "lib/uap10.0.10240/System.Linq.Dynamic.Core.xml",
         "logo.png",
-        "system.linq.dynamic.core.1.5.0.nupkg.sha512",
+        "system.linq.dynamic.core.1.6.0.nupkg.sha512",
         "system.linq.dynamic.core.nuspec"
       ]
     }
@@ -633,7 +633,7 @@
   "projectFileDependencyGroups": {
     "net8.0": [
       "Microsoft.EntityFrameworkCore >= 8.0.11",
-      "System.Linq.Dynamic.Core >= 1.5.0"
+      "System.Linq.Dynamic.Core >= 1.6.0"
     ]
   },
   "packageFolders": {
@@ -693,7 +693,7 @@
           },
           "System.Linq.Dynamic.Core": {
             "target": "Package",
-            "version": "[1.5.0, )"
+            "version": "[1.6.0, )"
           }
         },
         "imports": [
@@ -715,17 +715,5 @@
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.315/PortableRuntimeIdentifierGraph.json"
       }
     }
-  },
-  "logs": [
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Il pacchetto 'System.Linq.Dynamic.Core' 1.5.0 presenta una vulnerabilità nota di gravità alta, https://github.com/advisories/GHSA-4cv2-4hjh-77rx",
-      "libraryId": "System.Linq.Dynamic.Core",
-      "targetGraphs": [
-        "net8.0"
-      ]
-    }
-  ]
+  }
 }
