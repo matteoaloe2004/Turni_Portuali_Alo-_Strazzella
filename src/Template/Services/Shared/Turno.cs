@@ -19,5 +19,10 @@ namespace Template.Services.Shared
         public bool RequiresResolution { get; set; }
         public double RitardoOre { get; set; }
         public int Giorno { get; set; }
+
+        public int EtaGiorno { get; set; }
+        public double EtaOra { get; set; }
+        public int EtdGiorno { get; set; }
+        public double EtdOra { get; set; }
     }
 }

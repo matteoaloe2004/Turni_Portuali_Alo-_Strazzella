@@ -53,6 +53,23 @@ namespace Template.Web.Features.PianificazioneTurni
         }
 
         [HttpPost]
+        public virtual async Task<IActionResult> CalcolaMigliorSoluzioneTask([FromBody] CalcolaMigliorSoluzioneTaskQuery query)
+        {
+            if (query == null)
+            {
+                return BadRequest("I dati della query non sono validi.");
+            }
+
+            var result = await _sharedService.Query(query);
+            if (result == null)
+            {
+                return NotFound("Nessuna alternativa trovata.");
+            }
+
+            return Json(result);
+        }
+
+        [HttpPost]
         public virtual async Task<IActionResult> SpostaTurno([FromBody] SpostaTurnoCommand command)
         {
             if (command == null)

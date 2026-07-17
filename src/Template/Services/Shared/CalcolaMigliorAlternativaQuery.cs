@@ -15,6 +15,12 @@ namespace Template.Services.Shared
         public List<Turno> CurrentTurni { get; set; }
     }
 
+    public class CalcolaMigliorSoluzioneTaskQuery
+    {
+        public int TaskId { get; set; }
+        public List<Turno> CurrentTurni { get; set; }
+    }
+
     public class MigliorAlternativaDTO
     {
         public string MoloSuggerito { get; set; }
@@ -27,6 +33,45 @@ namespace Template.Services.Shared
 
     public partial class SharedService
     {
+        public async Task<MigliorAlternativaDTO> Query(CalcolaMigliorSoluzioneTaskQuery qry)
+        {
+            var task = await _dbContext.TasksDaAssegnare.FirstOrDefaultAsync(t => t.Id == qry.TaskId);
+            if (task == null)
+            {
+                return null;
+            }
+
+            // Create a mock Turno representing the task
+            var tempTurno = new Turno
+            {
+                Id = -task.Id, // Negative ID to avoid overlap with existing turni
+                Nome = task.Nome,
+                StartOra = task.EtaOra,
+                DurataOre = task.DurataOre,
+                RuoloRichiesto = task.CompetenzaRichiesta,
+                Giorno = task.Giorno,
+                IsDelayed = false,
+                RequiresResolution = false,
+                RitardoOre = 0,
+                EtaGiorno = task.EtaGiorno,
+                EtaOra = task.EtaOra,
+                EtdGiorno = task.EtdGiorno,
+                EtdOra = task.EtdOra
+            };
+
+            // Call the same solver!
+            var calcolaQuery = new CalcolaMigliorAlternativaQuery
+            {
+                TurnoId = tempTurno.Id,
+                RitardoOre = 0,
+                StartOra = tempTurno.StartOra,
+                Giorno = tempTurno.Giorno,
+                CurrentTurni = qry.CurrentTurni != null ? qry.CurrentTurni.Concat(new[] { tempTurno }).ToList() : new List<Turno> { tempTurno }
+            };
+
+            return await Query(calcolaQuery);
+        }
+
         public async Task<MigliorAlternativaDTO> Query(CalcolaMigliorAlternativaQuery qry)
         {
             System.Console.WriteLine($"[DIAGNOSTIC] Query - TurnoId: {qry.TurnoId}, RitardoOre: {qry.RitardoOre}, StartOra: {qry.StartOra}, Giorno: {qry.Giorno}");
@@ -85,22 +130,16 @@ namespace Template.Services.Shared
 
             MigliorAlternativaDTO result = null;
 
-            // Helper to get shifts for a specific day
-            Func<int, Task<List<Turno>>> getShiftsForDay = async (day) =>
+            // Fetch all other shifts for constraint evaluation
+            List<Turno> allShifts = null;
+            if (qry.CurrentTurni != null && qry.CurrentTurni.Count > 0)
             {
-                if (qry.CurrentTurni != null && qry.CurrentTurni.Count > 0)
-                {
-                    return qry.CurrentTurni
-                        .Where(t => t.Id != targetShift.Id && t.Giorno == day)
-                        .ToList();
-                }
-                else
-                {
-                    return await _dbContext.Turni
-                        .Where(t => t.Id != targetShift.Id && t.Giorno == day)
-                        .ToListAsync();
-                }
-            };
+                allShifts = qry.CurrentTurni.Where(t => t.Id != targetShift.Id).ToList();
+            }
+            else
+            {
+                allShifts = await _dbContext.Turni.Where(t => t.Id != targetShift.Id).ToListAsync();
+            }
 
             // ==========================================
             // CRITERIO 1: Riassegnazione Standard (Stesso Giorno, Operatore di linea)
@@ -109,9 +148,8 @@ namespace Template.Services.Shared
             if (sameDayPossible)
             {
                 double sameDayMinOra = Math.Max(7.0, arrivalTime);
-                var sameDayShifts = await getShiftsForDay(currentGiorno);
                 
-                result = FindSolution(targetShift, sameDayMinOra, currentGiorno, banchine, sameDayShifts, allOperators.Where(o => !o.Reperibile).ToList(), 40.0);
+                result = FindSolution(targetShift, sameDayMinOra, currentGiorno, banchine, allShifts, allOperators.Where(o => !o.Reperibile).ToList(), 40.0);
                 if (result != null)
                 {
                     result.MotivoScelta = "Riassegnazione Standard (Stesso giorno, operatore di linea)";
@@ -126,9 +164,8 @@ namespace Template.Services.Shared
             if (sameDayPossible)
             {
                 double sameDayMinOra = Math.Max(7.0, arrivalTime);
-                var sameDayShifts = await getShiftsForDay(currentGiorno);
 
-                result = FindSolution(targetShift, sameDayMinOra, currentGiorno, banchine, sameDayShifts, allOperators.Where(o => o.Reperibile).ToList(), 40.0);
+                result = FindSolution(targetShift, sameDayMinOra, currentGiorno, banchine, allShifts, allOperators.Where(o => o.Reperibile).ToList(), 40.0);
                 if (result != null)
                 {
                     result.MotivoScelta = "Attivazione Reperibilità (Stesso giorno, operatore a chiamata)";
@@ -140,14 +177,13 @@ namespace Template.Services.Shared
             // ==========================================
             // CRITERIO 3: Slittamento Temporale (Giorni Successivi, Operatore idoneo, <40h)
             // ==========================================
-            for (int offset = 1; offset < 7; offset++)
+            for (int offset = 1; offset <= 1; offset++)
             {
                 int futureDay = (currentGiorno + offset) % 7;
-                var futureShifts = await getShiftsForDay(futureDay);
                 recalculateHoursForDay(allOperators, futureDay);
 
                 // Prima proviamo operatore di linea (non reperibile)
-                result = FindSolution(targetShift, 7.0, futureDay, banchine, futureShifts, allOperators.Where(o => !o.Reperibile).ToList(), 40.0);
+                result = FindSolution(targetShift, 7.0, futureDay, banchine, allShifts, allOperators.Where(o => !o.Reperibile).ToList(), 40.0);
                 if (result != null)
                 {
                     result.MotivoScelta = $"Slittamento Temporale (Giorno +{offset}, operatore di linea)";
@@ -156,7 +192,7 @@ namespace Template.Services.Shared
                 }
 
                 // Poi proviamo operatore reperibile
-                result = FindSolution(targetShift, 7.0, futureDay, banchine, futureShifts, allOperators.Where(o => o.Reperibile).ToList(), 40.0);
+                result = FindSolution(targetShift, 7.0, futureDay, banchine, allShifts, allOperators.Where(o => o.Reperibile).ToList(), 40.0);
                 if (result != null)
                 {
                     result.MotivoScelta = $"Slittamento Temporale (Giorno +{offset}, operatore a chiamata)";
@@ -171,16 +207,15 @@ namespace Template.Services.Shared
             var overtimeLimits = new[] { 60.0, 80.0 };
             foreach (var maxOre in overtimeLimits)
             {
-                for (int offset = 0; offset < 7; offset++)
+                for (int offset = 0; offset <= 1; offset++)
                 {
                     int day = (currentGiorno + offset) % 7;
                     double startSearch = (offset == 0) ? Math.Max(7.0, arrivalTime) : 7.0;
                     if (offset == 0 && !sameDayPossible) continue;
 
-                    var dayShifts = await getShiftsForDay(day);
                     recalculateHoursForDay(allOperators, day);
 
-                    result = FindSolution(targetShift, startSearch, day, banchine, dayShifts, allOperators, maxOre);
+                    result = FindSolution(targetShift, startSearch, day, banchine, allShifts, allOperators, maxOre);
                     if (result != null)
                     {
                         result.MotivoScelta = $"Deroga Straordinari (Sforamento a {maxOre}h, Giorno +{offset})";
@@ -193,16 +228,15 @@ namespace Template.Services.Shared
             // ==========================================
             // CRITERIO 5: Deroga Qualifica (Operatore non abilitato per la banchina)
             // ==========================================
-            for (int offset = 0; offset < 7; offset++)
+            for (int offset = 0; offset <= 1; offset++)
             {
                 int day = (currentGiorno + offset) % 7;
                 double startSearch = (offset == 0) ? Math.Max(7.0, arrivalTime) : 7.0;
                 if (offset == 0 && !sameDayPossible) continue;
 
-                var dayShifts = await getShiftsForDay(day);
                 recalculateHoursForDay(allOperators, day);
 
-                result = FindSolution(targetShift, startSearch, day, banchine, dayShifts, allOperators, 80.0, ignoreAbilitazioni: true);
+                result = FindSolution(targetShift, startSearch, day, banchine, allShifts, allOperators, 80.0, ignoreAbilitazioni: true);
                 if (result != null)
                 {
                     result.MotivoScelta = $"Deroga Qualifica (Operatore non abilitato al molo, Giorno +{offset})";
@@ -215,16 +249,15 @@ namespace Template.Services.Shared
             // CRITERIO 6: Emergenza Estrema (Qualsiasi operatore, ignorando ruolo e ore)
             // ==========================================
             var absoluteAllOperators = await _dbContext.Operatori.ToListAsync();
-            for (int offset = 0; offset < 7; offset++)
+            for (int offset = 0; offset <= 1; offset++)
             {
                 int day = (currentGiorno + offset) % 7;
                 double startSearch = (offset == 0) ? Math.Max(7.0, arrivalTime) : 7.0;
                 if (offset == 0 && !sameDayPossible) continue;
 
-                var dayShifts = await getShiftsForDay(day);
                 recalculateHoursForDay(absoluteAllOperators, day);
 
-                result = FindSolution(targetShift, startSearch, day, banchine, dayShifts, absoluteAllOperators, 168.0, ignoreAbilitazioni: true);
+                result = FindSolution(targetShift, startSearch, day, banchine, allShifts, absoluteAllOperators, 168.0, ignoreAbilitazioni: true);
                 if (result != null)
                 {
                     result.MotivoScelta = $"Emergenza Estrema (Deroga ruolo e qualifiche, Giorno +{offset})";
@@ -232,8 +265,53 @@ namespace Template.Services.Shared
                     return result;
                 }
             }
+
+            // ==========================================
+            // CRITERIO 7: Ultima Risorsa (Nessun vincolo, garantisce sempre una soluzione)
+            // ==========================================
+            if (result == null)
+            {
+                System.Console.WriteLine("[DIAGNOSTIC] Query - Criteri 1-6 falliti. Attivazione Criterio 7 (Ultima Risorsa)");
+                var backupOperators = await _dbContext.Operatori.ToListAsync();
+                for (int offset = 0; offset <= 1; offset++)
+                {
+                    int day = (currentGiorno + offset) % 7;
+                    double startSearch = 7.0; // Ricomincia dall'inizio della giornata lavorativa
+                    
+                    // Cerca uno slot senza controllare ETA/ETD, patente, riposo obbligatorio o ore settimanali
+                    for (double ora = startSearch; ora <= 24.0 - targetShift.DurataOre; ora += 0.5)
+                    {
+                        foreach (var b in banchine)
+                        {
+                            foreach (var op in backupOperators)
+                            {
+                                // Controlla solo la sovrapposizione oraria rigida sul Gantt per evitare blocchi sovrapposti sullo stesso operatore/molo
+                                bool overlap = allShifts.Any(o => 
+                                    (o.Banchina == b || o.Operatore == op.Nome) && o.Giorno == day &&
+                                    !(ora + targetShift.DurataOre <= o.StartOra + (o.IsDelayed ? o.RitardoOre : 0) ||
+                                      ora >= o.StartOra + (o.IsDelayed ? o.RitardoOre : 0) + o.DurataOre));
+                                
+                                if (!overlap)
+                                {
+                                    return new MigliorAlternativaDTO
+                                    {
+                                        MoloSuggerito = b,
+                                        OrarioSuggerito = ora,
+                                        OperatoreSuggerito = op.Nome,
+                                        OreSettimanaliOperatore = op.OreSettimanali + targetShift.DurataOre,
+                                        GiornoSuggerito = day,
+                                        MotivoScelta = $"Risoluzione di Emergenza (Assegnazione forzata di ultima risorsa, Giorno +{offset})"
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             return null;
         }
+
         private MigliorAlternativaDTO FindSolution(
             Turno targetShift, 
             double minOra, 
@@ -246,20 +324,39 @@ namespace Template.Services.Shared
         {
             double maxScanOra = 24.0;
 
-            for (double ora = minOra; ora <= maxScanOra; ora += 0.5)
+            for (double ora = minOra; ora <= maxScanOra - targetShift.DurataOre; ora += 0.5)
             {
                 var candidates = new List<MigliorAlternativaDTO>();
 
+                double candStart = targetGiorno * 24.0 + ora;
+                double candEnd = candStart + targetShift.DurataOre;
+
+                // Check day offset constraint (max 1 day from original arrival day)
+                int dayOffset = targetGiorno - targetShift.Giorno;
+                if (dayOffset < 0 || dayOffset > 1) continue;
+
+                // Check ship's ETA/ETD window (adjusting for day offset)
+                double shipEta = (targetShift.EtaGiorno + dayOffset) * 24.0 + targetShift.EtaOra + targetShift.RitardoOre;
+                double shipEtd = (targetShift.EtdGiorno + dayOffset) * 24.0 + targetShift.EtdOra + targetShift.RitardoOre;
+                if (candStart < shipEta || candEnd > shipEtd) continue;
+
                 foreach (var b in banchine)
                 {
-                    // Check if dock is occupied at [ora, ora + duration]
+                    // Check if dock is occupied at [candStart, candEnd]
                     bool dockOccupied = otherShifts.Any(o => o.Banchina == b &&
-                        !(ora + targetShift.DurataOre <= o.StartOra + o.RitardoOre || ora >= o.StartOra + o.RitardoOre + o.DurataOre));
+                        !(candEnd <= o.Giorno * 24.0 + (o.StartOra + (o.IsDelayed ? o.RitardoOre : 0)) ||
+                          candStart >= o.Giorno * 24.0 + (o.StartOra + (o.IsDelayed ? o.RitardoOre : 0)) + o.DurataOre));
 
                     if (dockOccupied) continue;
 
                     foreach (var op in operators)
                     {
+                        // Check if license is expired
+                        if (op.PatenteValidaFinoAl < System.DateTime.Today) continue;
+
+                        // Check if in mandatory rest
+                        if (op.InRiposoObbligatorio) continue;
+
                         // Check dock qualification
                         if (!ignoreAbilitazioni && !string.IsNullOrEmpty(op.Abilitazioni))
                         {
@@ -271,11 +368,34 @@ namespace Template.Services.Shared
                         // Check weekly hours limit
                         if (op.OreSettimanali + targetShift.DurataOre > maxOre) continue;
 
-                        // Check if operator is busy on another shift at overlapping time
-                        bool opBusy = otherShifts.Any(o => o.Operatore == op.Nome &&
-                            !(ora + targetShift.DurataOre <= o.StartOra + o.RitardoOre || ora >= o.StartOra + o.RitardoOre + o.DurataOre));
+                        // Check operator overlap and 11-hour consecutive rest time
+                        bool hasOperatorConflict = false;
+                        foreach (var other in otherShifts.Where(o => o.Operatore == op.Nome))
+                        {
+                            double otherStart = other.Giorno * 24.0 + (other.StartOra + (other.IsDelayed ? other.RitardoOre : 0));
+                            double otherEnd = otherStart + other.DurataOre;
 
-                        if (opBusy) continue;
+                            // Overlap
+                            if (candStart < otherEnd && candEnd > otherStart)
+                            {
+                                hasOperatorConflict = true;
+                                break;
+                            }
+
+                            // 11h Rest Period
+                            if (candStart >= otherEnd && candStart - otherEnd < 11.0)
+                            {
+                                hasOperatorConflict = true;
+                                break;
+                            }
+                            if (candEnd <= otherStart && otherStart - candEnd < 11.0)
+                            {
+                                hasOperatorConflict = true;
+                                break;
+                            }
+                        }
+
+                        if (hasOperatorConflict) continue;
 
                         candidates.Add(new MigliorAlternativaDTO
                         {

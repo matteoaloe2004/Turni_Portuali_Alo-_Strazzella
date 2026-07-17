@@ -48,12 +48,17 @@ module PianificazioneTurni {
 
         public tasksDaAssegnare: any[];
         public selectedTask: any;
+        public soluzioneTaskSuggerita: any;
+
+        // Navigazione tab (gestita da Vue, non da Bootstrap JS)
+        public activeTab: string;
 
         constructor() {
             this.alertConflittoForzatoChiuso = false;
             this.soluzioneOttimale = null;
+            this.soluzioneTaskSuggerita = null;
             this.orarioInizio = 0;
-            this.orarioFine = 24;
+            this.orarioFine = 28;
             this.oreTimeline = [];
             for (let h = this.orarioInizio; h <= this.orarioFine; h++) this.oreTimeline.push(h);
 
@@ -88,10 +93,6 @@ module PianificazioneTurni {
                 { nome: 'Simona', ruolo: 'Stivatore', oreSettimanali: 8, oreMassime: 40, abilitazioni: ['Banchina Sud', 'Banchina Ovest'], reperibile: true }
             ];
 
-            this.veicolo = '';
-            this.identificativo = '';
-            this.hasConflict = false;
-
             // Turni con ruoloRichiesto distribuiti su 7 giorni (0=Oggi, 1=Domani, 2=Dopodomani, ecc.)
             this.turni = [
                 // Oggi (Giorno 0) - ALTISSIMA OCCUPAZIONE
@@ -99,81 +100,38 @@ module PianificazioneTurni {
                 { id: 2, nome: 'MCL Poseidon', banchina: 'Molo Est', startOra: 11, durataOre: 3, operatore: 'Marco', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
                 { id: 3, nome: 'MCL Europa', banchina: 'Banchina Sud', startOra: 7, durataOre: 4, operatore: 'Anna', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
                 { id: 4, nome: 'MCL Zephyrus', banchina: 'Molo Nord', startOra: 8, durataOre: 2.5, operatore: 'Filippo', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-                { id: 25, nome: 'MCL Polaris', banchina: 'Molo Nord', startOra: 11, durataOre: 3, operatore: 'Elena', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-                { id: 26, nome: 'MCL Triton II', banchina: 'Banchina Ovest', startOra: 9, durataOre: 4, operatore: 'Davide', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-                { id: 27, nome: 'MCL Galaxia', banchina: 'Banchina Sud', startOra: 11.5, durataOre: 3.5, operatore: 'Sofia', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-                { id: 28, nome: 'MCL Nereus', banchina: 'Banchina Ovest', startOra: 13.5, durataOre: 3.5, operatore: 'Luigi', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-                { id: 40, nome: 'MCL Oceania', banchina: 'Molo Est', startOra: 14.5, durataOre: 3, operatore: 'Giorgio', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-                { id: 41, nome: 'MCL Calypso', banchina: 'Banchina Sud', startOra: 15.5, durataOre: 4, operatore: 'Paola', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-                { id: 42, nome: 'MCL Vesper', banchina: 'Molo Nord', startOra: 14.5, durataOre: 3, operatore: 'Matteo', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-                { id: 43, nome: 'MCL Orion III', banchina: 'Banchina Ovest', startOra: 17.5, durataOre: 4, operatore: 'Stefano', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-                { id: 44, nome: 'MCL Titanus', banchina: 'Molo Est', startOra: 18, durataOre: 3.5, operatore: 'Giovanni', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-                { id: 45, nome: 'MCL Genesis', banchina: 'Banchina Sud', startOra: 20, durataOre: 3.5, operatore: 'Sara', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-                { id: 46, nome: 'MCL Hesperia', banchina: 'Molo Nord', startOra: 18, durataOre: 3, operatore: 'Andrea', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
 
                 // Domani (Giorno 1) - ALTISSIMA OCCUPAZIONE
                 { id: 5, nome: 'MCL Atlas', banchina: 'Banchina Ovest', startOra: 14, durataOre: 3.5, operatore: 'Giorgio', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
                 { id: 6, nome: 'MCL Orion', banchina: 'Molo Nord', startOra: 7, durataOre: 2.5, operatore: 'Davide', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
                 { id: 7, nome: 'MCL Hercules', banchina: 'Banchina Ovest', startOra: 9.5, durataOre: 3, operatore: 'Giovanni', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
                 { id: 8, nome: 'MCL Titanic', banchina: 'Banchina Sud', startOra: 14, durataOre: 4, operatore: 'Sara', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
-                { id: 29, nome: 'MCL Cosmos', banchina: 'Banchina Ovest', startOra: 8, durataOre: 2.5, operatore: 'Luigi', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
-                { id: 30, nome: 'MCL Hyperion', banchina: 'Molo Est', startOra: 10, durataOre: 3, operatore: 'Matteo', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
-                { id: 31, nome: 'MCL Vega', banchina: 'Banchina Sud', startOra: 9, durataOre: 4.5, operatore: 'Paola', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
-                { id: 32, nome: 'MCL Eclipse', banchina: 'Molo Nord', startOra: 16.5, durataOre: 3.5, operatore: 'Elena', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
-                { id: 47, nome: 'MCL Prometheus', banchina: 'Molo Est', startOra: 13.5, durataOre: 3.5, operatore: 'Filippo', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
-                { id: 48, nome: 'MCL Sentinel', banchina: 'Banchina Sud', startOra: 18.5, durataOre: 3, operatore: 'Anna', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
-                { id: 49, nome: 'MCL Valiant', banchina: 'Molo Est', startOra: 17.5, durataOre: 4, operatore: 'Carla', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
-                { id: 50, nome: 'MCL Voyager II', banchina: 'Banchina Ovest', startOra: 18, durataOre: 3.5, operatore: 'Stefano', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
 
                 // Dopodomani (Giorno 2) - ALTA OCCUPAZIONE
                 { id: 9, nome: 'MCL Aurora', banchina: 'Molo Est', startOra: 15, durataOre: 3.5, operatore: 'Elena', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 2 },
                 { id: 10, nome: 'MCL Neptun', banchina: 'Molo Nord', startOra: 12, durataOre: 3, operatore: 'Elena', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 2 },
                 { id: 11, nome: 'MCL Phoenix', banchina: 'Banchina Ovest', startOra: 16.5, durataOre: 2.5, operatore: 'Carla', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 2 },
                 { id: 12, nome: 'MCL Pegasus', banchina: 'Banchina Sud', startOra: 7, durataOre: 2.5, operatore: 'Sofia', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 2 },
-                { id: 51, nome: 'MCL Antares', banchina: 'Molo Est', startOra: 8.5, durataOre: 3.5, operatore: 'Andrea', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 2 },
-                { id: 52, nome: 'MCL Sirena', banchina: 'Banchina Sud', startOra: 10, durataOre: 3, operatore: 'Marco', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 2 },
-                { id: 53, nome: 'MCL Odyssey II', banchina: 'Banchina Ovest', startOra: 8.5, durataOre: 4, operatore: 'Luigi', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 2 },
-                { id: 54, nome: 'MCL Leviathan', banchina: 'Molo Nord', startOra: 16, durataOre: 4, operatore: 'Davide', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 2 },
-                { id: 55, nome: 'MCL Teseo', banchina: 'Banchina Sud', startOra: 14, durataOre: 3.5, operatore: 'Sara', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 2 },
-                { id: 56, nome: 'MCL Centurion', banchina: 'Molo Est', startOra: 19, durataOre: 3, operatore: 'Giorgio', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 2 },
 
                 // Giorno 3
                 { id: 13, nome: 'MCL Triton', banchina: 'Molo Est', startOra: 8, durataOre: 3, operatore: 'Elena', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 3 },
                 { id: 14, nome: 'MCL Centaur', banchina: 'Molo Nord', startOra: 10.5, durataOre: 2.5, operatore: 'Filippo', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 3 },
                 { id: 15, nome: 'MCL Odyssey', banchina: 'Banchina Ovest', startOra: 12.5, durataOre: 4, operatore: 'Giorgio', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 3 },
-                { id: 57, nome: 'MCL Kraken', banchina: 'Molo Est', startOra: 12, durataOre: 3.5, operatore: 'Matteo', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 3 },
-                { id: 58, nome: 'MCL Valkyrie', banchina: 'Banchina Sud', startOra: 9, durataOre: 4, operatore: 'Paola', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 3 },
-                { id: 59, nome: 'MCL Spartan', banchina: 'Banchina Ovest', startOra: 8, durataOre: 3, operatore: 'Luigi', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 3 },
-                { id: 60, nome: 'MCL Hydra', banchina: 'Banchina Sud', startOra: 14, durataOre: 4, operatore: 'Anna', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 3 },
-                { id: 61, nome: 'MCL Vanguard', banchina: 'Molo Nord', startOra: 14.5, durataOre: 3, operatore: 'Davide', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 3 },
 
                 // Giorno 4
                 { id: 16, nome: 'MCL Voyager', banchina: 'Banchina Sud', startOra: 9, durataOre: 3, operatore: 'Anna', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 4 },
                 { id: 17, nome: 'MCL Discovery', banchina: 'Molo Est', startOra: 11, durataOre: 2.5, operatore: 'Davide', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 4 },
                 { id: 18, nome: 'MCL Adventure', banchina: 'Molo Nord', startOra: 13.5, durataOre: 3, operatore: 'Andrea', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 4 },
-                { id: 62, nome: 'MCL Zenith', banchina: 'Banchina Ovest', startOra: 8.5, durataOre: 3.5, operatore: 'Stefano', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 4 },
-                { id: 63, nome: 'MCL Poseidon II', banchina: 'Molo Est', startOra: 14.5, durataOre: 4, operatore: 'Matteo', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 4 },
-                { id: 64, nome: 'MCL Explorer', banchina: 'Banchina Sud', startOra: 13, durataOre: 4.5, operatore: 'Sofia', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 4 },
-                { id: 65, nome: 'MCL Phoenix II', banchina: 'Banchina Ovest', startOra: 13.5, durataOre: 3.5, operatore: 'Giovanni', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 4 },
-                { id: 66, nome: 'MCL Orion Light', banchina: 'Molo Nord', startOra: 17.5, durataOre: 3, operatore: 'Filippo', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 4 },
 
                 // Giorno 5
                 { id: 19, nome: 'MCL Mariner', banchina: 'Banchina Ovest', startOra: 8, durataOre: 4, operatore: 'Giorgio', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 5 },
                 { id: 20, nome: 'MCL Navigator', banchina: 'Banchina Sud', startOra: 11, durataOre: 2.5, operatore: 'Marco', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 5 },
                 { id: 21, nome: 'MCL Freedom', banchina: 'Molo Est', startOra: 12.5, durataOre: 3.5, operatore: 'Filippo', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 5 },
-                { id: 67, nome: 'MCL Defender', banchina: 'Banchina Ovest', startOra: 13, durataOre: 4, operatore: 'Luigi', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 5 },
-                { id: 68, nome: 'MCL Solaria', banchina: 'Molo Nord', startOra: 9.5, durataOre: 3.5, operatore: 'Elena', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 5 },
-                { id: 69, nome: 'MCL Eclipse II', banchina: 'Banchina Sud', startOra: 14.5, durataOre: 3.5, operatore: 'Sara', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 5 },
-                { id: 70, nome: 'MCL Genesis II', banchina: 'Molo Est', startOra: 17, durataOre: 4, operatore: 'Matteo', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 5 },
 
                 // Giorno 6
                 { id: 22, nome: 'MCL Oasis', banchina: 'Molo Nord', startOra: 8, durataOre: 3, operatore: 'Davide', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 6 },
                 { id: 23, nome: 'MCL Allure', banchina: 'Banchina Ovest', startOra: 11, durataOre: 2.5, operatore: 'Luigi', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 6 },
-                { id: 24, nome: 'MCL Harmony', banchina: 'Banchina Sud', startOra: 13.5, durataOre: 4, operatore: 'Sara', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 6 },
-                { id: 71, nome: 'MCL Titan', banchina: 'Molo Est', startOra: 9, durataOre: 3.5, operatore: 'Andrea', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 6 },
-                { id: 72, nome: 'MCL Poseidon III', banchina: 'Banchina Ovest', startOra: 14.5, durataOre: 4, operatore: 'Giorgio', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 6 },
-                { id: 73, nome: 'MCL Athena II', banchina: 'Molo Est', startOra: 13.5, durataOre: 3, operatore: 'Matteo', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 6 },
-                { id: 74, nome: 'MCL Galaxia II', banchina: 'Banchina Sud', startOra: 18, durataOre: 3.5, operatore: 'Sofia', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 6 }
+                { id: 24, nome: 'MCL Harmony', banchina: 'Banchina Sud', startOra: 13.5, durataOre: 4, operatore: 'Sara', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 6 }
             ];
 
             this.giornoSelezionato = 0; // Giorno 0: Oggi
@@ -213,7 +171,12 @@ module PianificazioneTurni {
             this.attivaPersonaleAChiamata = false;
             this.tasksDaAssegnare = [];
             this.selectedTask = null;
+            this.activeTab = 'pianificazione';
             this.loadFromSeed();
+        }
+
+        public setActiveTab(tab: string): void {
+            this.activeTab = tab;
         }
 
         public ricalcolaOreSettimanaliOperatori(): void {
@@ -303,10 +266,11 @@ module PianificazioneTurni {
         // ---- Local Storage Persistence ----
         public saveState(): void {
             try {
-                localStorage.setItem('port_scheduler_data_version', '11');
+                localStorage.setItem('port_scheduler_data_version', '15');
                 localStorage.setItem('port_scheduler_turni', JSON.stringify(this.turni));
                 localStorage.setItem('port_scheduler_operatori', JSON.stringify(this.operatori));
                 localStorage.setItem('port_scheduler_giorno_selezionato', JSON.stringify(this.giornoSelezionato));
+                localStorage.setItem('port_scheduler_tasks', JSON.stringify(this.tasksDaAssegnare));
                 localStorage.setItem('port_scheduler_emergenza', JSON.stringify({
                     emergenzaAttiva: this.emergenzaAttiva,
                     turnoInRitardoId: this.turnoInRitardo ? this.turnoInRitardo.id : null
@@ -321,7 +285,7 @@ module PianificazioneTurni {
         private loadState(): boolean {
             try {
                 const version = localStorage.getItem('port_scheduler_data_version');
-                if (version !== '11') {
+                if (version !== '15') {
                     // Invalida cache e forza il caricamento dei nuovi dati
                     localStorage.removeItem('port_scheduler_turni');
                     localStorage.removeItem('port_scheduler_operatori');
@@ -329,7 +293,8 @@ module PianificazioneTurni {
                     localStorage.removeItem('port_scheduler_emergenza');
                     localStorage.removeItem('port_scheduler_filtro_ricerca');
                     localStorage.removeItem('port_scheduler_notifiche');
-                    localStorage.setItem('port_scheduler_data_version', '11');
+                    localStorage.removeItem('port_scheduler_tasks');
+                    localStorage.setItem('port_scheduler_data_version', '15');
                     this.loadFromSeed();
                     return false;
                 }
@@ -340,6 +305,7 @@ module PianificazioneTurni {
                 const savedEmergenza = localStorage.getItem('port_scheduler_emergenza');
                 const savedFiltro = localStorage.getItem('port_scheduler_filtro_ricerca');
                 const savedNotifiche = localStorage.getItem('port_scheduler_notifiche');
+                const savedTasks = localStorage.getItem('port_scheduler_tasks');
 
                 if (savedTurni && savedOperatori) {
                     this.loadFromSeed();
@@ -350,16 +316,6 @@ module PianificazioneTurni {
                             t.id = 1000 + index;
                         }
                     });
-                    // Forza il reset se la struttura dei turni caricati è obsoleta
-                    if (parsedTurni.length > 0 && typeof parsedTurni[0].giorno === 'undefined') {
-                        localStorage.removeItem('port_scheduler_turni');
-                        localStorage.removeItem('port_scheduler_operatori');
-                        localStorage.removeItem('port_scheduler_giorno_selezionato');
-                        localStorage.removeItem('port_scheduler_emergenza');
-                        localStorage.removeItem('port_scheduler_filtro_ricerca');
-                        localStorage.removeItem('port_scheduler_notifiche');
-                        return false;
-                    }
                     this.turni = parsedTurni;
                     this.operatori = JSON.parse(savedOperatori);
                     this.operatori.forEach((op: any) => {
@@ -378,6 +334,9 @@ module PianificazioneTurni {
                     }
                     if (savedNotifiche) {
                         this.notificheSimulate = JSON.parse(savedNotifiche);
+                    }
+                    if (savedTasks) {
+                        this.tasksDaAssegnare = JSON.parse(savedTasks);
                     }
                     if (savedEmergenza) {
                         const em = JSON.parse(savedEmergenza);
@@ -404,6 +363,7 @@ module PianificazioneTurni {
                 localStorage.removeItem('port_scheduler_emergenza');
                 localStorage.removeItem('port_scheduler_filtro_ricerca');
                 localStorage.removeItem('port_scheduler_notifiche');
+                localStorage.removeItem('port_scheduler_tasks');
                 window.location.reload();
             } catch (e) {
                 console.error("Errore nel ripristino del localStorage", e);
@@ -436,30 +396,27 @@ module PianificazioneTurni {
             console.log("Simula Ritardo chiamata. Emergenza attiva:", this.emergenzaAttiva);
             if (this.emergenzaAttiva) {
                 if (typeof Toastify !== 'undefined') {
-                    Toastify({
-                        text: "[!] C'è già un'emergenza attiva. Risolvila prima di causarne un'altra.",
-                        duration: 3000, gravity: 'top', position: 'right',
-                        style: { background: 'linear-gradient(to right, #ff5f6d, #ffc371)' }
-                    }).showToast();
+                        Toastify({
+                            text: "[!] C'è già un'emergenza attiva. Risolvila prima di causarne un'altra.",
+                            duration: 3000, gravity: 'top', position: 'right',
+                            style: { background: "#ff9800" }
+                        }).showToast();
                 }
                 return;
             }
 
             const currentDay = Number(this.giornoSelezionato ?? 0);
-            console.log("Giorno selezionato (numerico):", currentDay);
 
             // Seleziona una nave a caso da qualsiasi giorno della settimana
             let turniCandidati = this.turni.filter(t => !t.isDelayed);
-            console.log("Candidati totali della settimana per ritardo:", turniCandidati.length);
 
             if (turniCandidati.length === 0) {
-                console.warn("Nessun turno disponibile per ritardi.");
                 if (typeof Toastify !== 'undefined') {
-                    Toastify({
-                        text: "Nessun turno disponibile per causare un ritardo.",
-                        duration: 3000, gravity: 'top', position: 'right',
-                        style: { background: 'linear-gradient(to right, #ff5f6d, #ffc371)' }
-                    }).showToast();
+                        Toastify({
+                            text: "Nessun turno disponibile per causare un ritardo.",
+                            duration: 3000, gravity: 'top', position: 'right',
+                            style: { background: "#ff9800" }
+                        }).showToast();
                 }
                 return;
             }
@@ -469,8 +426,6 @@ module PianificazioneTurni {
 
             const ritardiDisponibili = [1.5, 2, 2.5];
             const randRitardo = ritardiDisponibili[Math.floor(Math.random() * ritardiDisponibili.length)];
-
-            console.log(`Assegno ritardo a turno ID ${turno.id} (${turno.nome}): +${randRitardo}h`);
 
             turno.isDelayed = true;
             turno.requiresResolution = true;
@@ -487,7 +442,6 @@ module PianificazioneTurni {
             this.inviaNotificaSimulata('SMS', turno.operatore, msgSms);
 
             if (Number(turno.giorno) !== currentDay) {
-                console.log("Navigo al giorno del ritardo:", turno.giorno);
                 this.selezionaGiorno(turno.giorno);
             } else {
                 this.saveState();
@@ -497,19 +451,17 @@ module PianificazioneTurni {
                 Toastify({
                     text: `[!] EMERGENZA: La nave ${turno.nome} è in ritardo di ${this.fmtDurata(randRitardo)}!`,
                     duration: 5000, gravity: 'top', position: 'right',
-                    style: { background: 'linear-gradient(to right, #e63946, #d62828)' }
+                    style: { background: "#dc3545" }
                 }).showToast();
             }
         }
 
         // ---- Formattazione ----
         public fmtOra(h: number): string {
-            // Clamp per sicurezza: non mostrare mai ore negative
             if (h < 0) h = 0;
             const hh = Math.floor(h);
             const mm = Math.round((h - hh) * 60);
             if (hh >= 24) {
-                // Sforamento mezzanotte: visualizza come giorno +1
                 const hNext = hh - 24;
                 return `+1g ${hNext.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
             }
@@ -518,7 +470,8 @@ module PianificazioneTurni {
 
         public fmtTick(h: number): string {
             if (h % 2 !== 0) return '';
-            return h.toString().padStart(2, '0') + ':00';
+            const hh = h >= 24 ? h - 24 : h;
+            return hh.toString().padStart(2, '0') + ':00';
         }
 
         public fmtDurata(d: number): string {
@@ -537,46 +490,46 @@ module PianificazioneTurni {
 
         public blockLeft(turno: any): string {
             const s = turno.isDelayed ? turno.startOra + turno.ritardoOre : turno.startOra;
-            const d = turno.durataOre;
-            
-            // Se comincia molto tardi (dalle 23:00 in poi) o va oltre mezzanotte (24:00),
-            // lo teniamo visibile e allineato a fine giornata per facilitarne la visualizzazione e il click.
-            if (s >= 23.0 || (s + d) > 24.0) {
-                const visualStart = Math.min(s, 21.0);
-                return (((visualStart - this.orarioInizio) / this.totalH()) * 100).toFixed(2) + '%';
-            }
-            
             return (((s - this.orarioInizio) / this.totalH()) * 100).toFixed(2) + '%';
         }
 
-        public selectTask(task: any): void {
-            this.selectedTask = this.selectedTask === task ? null : task;
-        }
-
-        public assegnaTask(op: any): void {
-            if (!this.selectedTask || this.isOperatoreIncompatibile(op)) return;
-
-            // Calcola il primo slot disponibile per l'operatore
-            let startOra = 8.0;
-            const existingTurni = this.getTurniPerOperatore(op.nome);
-            existingTurni.sort((a, b) => {
-                const startA = a.isDelayed ? a.startOra + a.ritardoOre : a.startOra;
-                const startB = b.isDelayed ? b.startOra + b.ritardoOre : b.startOra;
-                return startA - startB;
-            });
-
-            for (const t of existingTurni) {
-                const s = t.isDelayed ? t.startOra + t.ritardoOre : t.startOra;
-                const e = s + t.durataOre;
-                if (startOra + this.selectedTask.durataOre <= s) {
-                    break;
-                }
-                if (startOra < e) {
-                    startOra = e;
+        public async selectTask(task: any): Promise<void> {
+            if (this.selectedTask === task) {
+                this.selectedTask = null;
+                this.soluzioneTaskSuggerita = null;
+            } else {
+                this.selectedTask = task;
+                this.soluzioneTaskSuggerita = null;
+                if (task) {
+                    await this.caricaSoluzioneTaskSuggerita(task.id);
                 }
             }
+        }
 
-            const banchina = op.abilitazioni && op.abilitazioni.length > 0 ? op.abilitazioni[0] : 'Molo Est';
+        public async caricaSoluzioneTaskSuggerita(taskId: number): Promise<void> {
+            try {
+                const payload = {
+                    TaskId: taskId,
+                    CurrentTurni: this.turni
+                };
+                const response = await utilities.postJson('/Turni/CalcolaMigliorSoluzioneTask', payload);
+                if (response.ok) {
+                    this.soluzioneTaskSuggerita = await response.json();
+                } else {
+                    this.soluzioneTaskSuggerita = null;
+                }
+            } catch (e) {
+                console.error("Errore nel caricamento della soluzione del task dal DSS", e);
+                this.soluzioneTaskSuggerita = null;
+            }
+        }
+
+        public applicaSoluzioneTaskSuggerita(): void {
+            if (!this.selectedTask || !this.soluzioneTaskSuggerita) return;
+
+            const sol = this.soluzioneTaskSuggerita;
+            const op = this.operatori.find(o => o.nome === sol.operatoreSuggerito);
+            if (!op) return;
 
             const maxId = this.turni.length > 0 ? Math.max(...this.turni.map((t: any) => t.id).filter((id: number) => id < 1000000)) : 0;
             const nextId = (maxId < 0 ? 0 : maxId) + 1;
@@ -584,7 +537,153 @@ module PianificazioneTurni {
             const nuovoTurno = {
                 id: nextId,
                 nome: this.selectedTask.nome,
-                banchina: banchina,
+                banchina: sol.moloSuggerito,
+                startOra: sol.orarioSuggerito,
+                durataOre: this.selectedTask.durataOre,
+                operatore: sol.operatoreSuggerito,
+                ruoloRichiesto: this.selectedTask.competenzaRichiesta,
+                isDelayed: false,
+                requiresResolution: false,
+                ritardoOre: 0,
+                giorno: sol.giornoSuggerito,
+                etaGiorno: this.selectedTask.etaGiorno,
+                etaOra: this.selectedTask.etaOra,
+                etdGiorno: this.selectedTask.etdGiorno,
+                etdOra: this.selectedTask.etdOra
+            };
+
+            this.turni.push(nuovoTurno);
+            this.ricalcolaOreSettimanaliOperatori();
+            this.tasksDaAssegnare = this.tasksDaAssegnare.filter(t => t.id !== this.selectedTask.id);
+
+            // Notifica
+            const tipoNotifica = op.reperibile ? 'SMS' : 'Email';
+            const dettaglioDest = op.reperibile ? 'Cellulare' : 'Email aziendale';
+            const msgNotifica = `Pianificazione turno per nave ${nuovoTurno.nome} assegnato a te al ${nuovoTurno.banchina} il giorno ${this.getNomeGiorno(nuovoTurno.giorno)} dalle ore ${this.fmtOra(nuovoTurno.startOra)} alle ${this.fmtOra(nuovoTurno.startOra + nuovoTurno.durataOre)}.`;
+
+            this.notificheSimulate.unshift({
+                id: Date.now() + 1,
+                destinatario: op.nome,
+                dettaglioDestinatario: dettaglioDest,
+                tipo: tipoNotifica,
+                messaggio: msgNotifica,
+                timestamp: new Date().toLocaleTimeString()
+            });
+
+            const giornoAssegnato = nuovoTurno.giorno;
+            this.selectedTask = null;
+            this.soluzioneTaskSuggerita = null;
+            this.saveState();
+
+            // Naviga al giorno del turno assegnato
+            this.selezionaGiorno(giornoAssegnato);
+
+            if (typeof Toastify !== 'undefined') {
+                Toastify({
+                    text: `Task assegnato con successo a ${op.nome} (${this.getNomeGiorno(giornoAssegnato)})!`,
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "#2e7d32"
+                }).showToast();
+            }
+        }
+
+        public assegnaTask(op: any): void {
+            if (!this.selectedTask || this.isOperatoreIncompatibile(op)) return;
+
+            const t = this.selectedTask;
+            const giorno = this.giornoSelezionato;
+            const durata = t.durataOre;
+
+            let startOra = -1;
+            let finalBanchina = '';
+
+            const etaGiorno = typeof t.etaGiorno !== 'undefined' ? t.etaGiorno : giorno;
+            const etaOra = typeof t.etaOra !== 'undefined' ? t.etaOra : 7.0;
+            const etdGiorno = typeof t.etdGiorno !== 'undefined' ? t.etdGiorno : giorno;
+            const etdOra = typeof t.etdOra !== 'undefined' ? t.etdOra : 24.0;
+
+            const candidateBanchine = (op.abilitazioni && op.abilitazioni.length > 0)
+                ? op.abilitazioni
+                : this.banchine;
+
+            for (let ora = 7.0; ora <= 24.0 - durata; ora += 0.5) {
+                const candStart = giorno * 24.0 + ora;
+                const candEnd = candStart + durata;
+
+                const dayOffset = giorno - t.giorno;
+                if (dayOffset < 0 || dayOffset > 1) continue;
+
+                const shipEta = (etaGiorno + dayOffset) * 24.0 + etaOra;
+                const shipEtd = (etdGiorno + dayOffset) * 24.0 + etdOra;
+                if (candStart < shipEta || candEnd > shipEtd) continue;
+
+                let opConflict = false;
+                for (const other of this.turni.filter(o => o.operatore === op.nome)) {
+                    const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
+                    const otherStart = other.giorno * 24.0 + oS;
+                    const otherEnd = otherStart + other.durataOre;
+
+                    // Overlap
+                    if (candStart < otherEnd && candEnd > otherStart) {
+                        opConflict = true;
+                        break;
+                    }
+                    // 11h Rest gaps
+                    if (candStart >= otherEnd && candStart - otherEnd < 11.0) {
+                        opConflict = true;
+                        break;
+                    }
+                    if (candEnd <= otherStart && otherStart - candEnd < 11.0) {
+                        opConflict = true;
+                        break;
+                    }
+                }
+                if (opConflict) continue;
+
+                let foundBanchina = '';
+                for (const banchina of candidateBanchine) {
+                    const dockOccupied = this.turni.some(other => {
+                        if (other.banchina !== banchina) return false;
+                        const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
+                        const otherStart = other.giorno * 24.0 + oS;
+                        const otherEnd = otherStart + other.durataOre;
+                        return candStart < otherEnd && candEnd > otherStart;
+                    });
+                    if (!dockOccupied) {
+                        foundBanchina = banchina;
+                        break;
+                    }
+                }
+
+                if (foundBanchina) {
+                    startOra = ora;
+                    finalBanchina = foundBanchina;
+                    break;
+                }
+            }
+
+            if (startOra === -1) {
+                if (typeof Toastify !== 'undefined') {
+                    Toastify({
+                        text: `Nessuno slot valido trovato per ${op.nome} oggi nel rispetto di ETA/ETD, slittamento massimo e riposo obbligatorio.`,
+                        duration: 5000,
+                        gravity: "top",
+                        position: "right",
+                        backgroundColor: "#d32f2f"
+                    }).showToast();
+                }
+                return;
+            }
+
+            const maxId = this.turni.length > 0 ? Math.max(...this.turni.map((t: any) => t.id).filter((id: number) => id < 1000000)) : 0;
+            const nextId = (maxId < 0 ? 0 : maxId) + 1;
+
+            const nuovoTurno = {
+                id: nextId,
+                nome: this.selectedTask.nome,
+                banchina: finalBanchina,
                 startOra: startOra,
                 durataOre: this.selectedTask.durataOre,
                 operatore: op.nome,
@@ -592,15 +691,15 @@ module PianificazioneTurni {
                 isDelayed: false,
                 requiresResolution: false,
                 ritardoOre: 0,
-                giorno: this.giornoSelezionato
+                giorno: this.giornoSelezionato,
+                etaGiorno: this.selectedTask.etaGiorno,
+                etaOra: this.selectedTask.etaOra,
+                etdGiorno: this.selectedTask.etdGiorno,
+                etdOra: this.selectedTask.etdOra
             };
 
             this.turni.push(nuovoTurno);
-
-            // Ricalcola dinamicamente le ore settimanali degli operatori
             this.ricalcolaOreSettimanaliOperatori();
-
-            // Rimuovi il task dal backlog
             this.tasksDaAssegnare = this.tasksDaAssegnare.filter(t => t.id !== this.selectedTask.id);
 
             // Notifica simulata (SMS/Email)
@@ -634,12 +733,14 @@ module PianificazioneTurni {
         public isOperatoreIncompatibile(op: any): boolean {
             if (!this.selectedTask) return false;
 
+            const competenzaRichiesta = this.selectedTask.competenzaRichiesta || this.selectedTask.ruoloRichiesto || 'Gruista';
+
             // 1. Skill check
             let haCompetenza = false;
             if (op.competenze && Array.isArray(op.competenze)) {
-                haCompetenza = op.competenze.indexOf(this.selectedTask.competenzaRichiesta) !== -1;
+                haCompetenza = op.competenze.indexOf(competenzaRichiesta) !== -1;
             } else if (op.ruolo) {
-                haCompetenza = op.ruolo === this.selectedTask.competenzaRichiesta;
+                haCompetenza = op.ruolo === competenzaRichiesta;
             }
             if (!haCompetenza) return true;
 
@@ -659,12 +760,14 @@ module PianificazioneTurni {
         public getIncompatibilitaMotivo(op: any): string {
             if (!this.selectedTask) return '';
 
+            const competenzaRichiesta = this.selectedTask.competenzaRichiesta || this.selectedTask.ruoloRichiesto || 'Gruista';
+
             // 1. Skill check
             let haCompetenza = false;
             if (op.competenze && Array.isArray(op.competenze)) {
-                haCompetenza = op.competenze.indexOf(this.selectedTask.competenzaRichiesta) !== -1;
+                haCompetenza = op.competenze.indexOf(competenzaRichiesta) !== -1;
             } else if (op.ruolo) {
-                haCompetenza = op.ruolo === this.selectedTask.competenzaRichiesta;
+                haCompetenza = op.ruolo === competenzaRichiesta;
             }
             if (!haCompetenza) return 'Nessuna qualifica';
 
@@ -682,16 +785,7 @@ module PianificazioneTurni {
         }
 
         public blockWidth(turno: any): string {
-            const s = turno.isDelayed ? turno.startOra + turno.ritardoOre : turno.startOra;
             const d = turno.durataOre;
-            
-            if (s >= 23.0 || (s + d) > 24.0) {
-                // Se va a fine giornata o oltre, lo mostriamo con una larghezza fissa o proporzionale che arrivi a fine timeline (24:00)
-                const visualStart = Math.min(s, 21.0);
-                const visualDur = 24.0 - visualStart;
-                return ((visualDur / this.totalH()) * 100).toFixed(2) + '%';
-            }
-            
             return ((d / this.totalH()) * 100).toFixed(2) + '%';
         }
 
@@ -708,30 +802,42 @@ module PianificazioneTurni {
         }
 
         public isBloccoInCollisione(t: any): boolean {
+            if (!t.operatore) return false;
+            
             const startT = t.isDelayed ? t.startOra + t.ritardoOre : t.startOra;
-            const endT = startT + t.durataOre;
+            const candStart = t.giorno * 24.0 + startT;
+            const candEnd = candStart + t.durataOre;
 
             return this.turni.some(other => {
-                if (other.id === t.id || other.giorno !== t.giorno) return false;
+                if (other.id === t.id) return false;
 
                 const startO = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
-                const endO = startO + other.durataOre;
+                const otherStart = other.giorno * 24.0 + startO;
+                const otherEnd = otherStart + other.durataOre;
 
-                const siSovrappongono = startT < endO && endT > startO;
-                if (!siSovrappongono) return false;
-
-                // Collisione banchina (molo) o operatore
-                const isColliding = (t.banchina === other.banchina || t.operatore === other.operatore);
-                if (isColliding) {
-                    const msg = `COLLISIONE RILEVATA: ${t.nome} (ID: ${t.id}, Molo: ${t.banchina}, Op: ${t.operatore}, Ore: ${startT}-${endT}) si sovrappone con ${other.nome} (ID: ${other.id}, Molo: ${other.banchina}, Op: ${other.operatore}, Ore: ${startO}-${endO})`;
-                    console.log("[DIAGNOSTIC] " + msg);
-                    fetch('/Turni/LogDiagnostic', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: msg })
-                    }).catch(err => { });
+                // 1. Collisione molo (sovrapposizione stesso molo)
+                if (t.banchina === other.banchina) {
+                    if (candStart < otherEnd && candEnd > otherStart) {
+                        return true;
+                    }
                 }
-                return isColliding;
+
+                // 2. Collisione operatore (sovrapposizione o riposo insufficiente < 11 ore)
+                if (t.operatore === other.operatore) {
+                    // Sovrapposizione
+                    if (candStart < otherEnd && candEnd > otherStart) {
+                        return true;
+                    }
+                    // Riposo di 11h
+                    if (candStart >= otherEnd && candStart - otherEnd < 11.0) {
+                        return true;
+                    }
+                    if (candEnd <= otherStart && otherStart - candEnd < 11.0) {
+                        return true;
+                    }
+                }
+
+                return false;
             });
         }
 
@@ -745,19 +851,18 @@ module PianificazioneTurni {
 
             return {
                 'gantt-block-delayed': t.isDelayed && !crossesMidnight,
-                'gantt-block-normal': !t.isDelayed && !isLocked && !crossesMidnight,
-                'gantt-block-collision': collision && t.isDelayed && !crossesMidnight,
+                'gantt-block-normal': !t.isDelayed && !isLocked && !crossesMidnight && !collision,
+                'gantt-block-collision': collision,
                 'gantt-block-locked': isLocked && !crossesMidnight,
-                'gantt-block-midnight': crossesMidnight
+                'gantt-block-midnight': crossesMidnight && !collision
             };
         }
 
-        // ---- Poka-Yoke: Click handler – solo la nave in ritardo è cliccabile per la risoluzione, le altre aprono la scheda dettagli ----
+        // ---- Poka-Yoke: Click handler ----
         public handleBlockClick(t: any): void {
             if (t.isDelayed) {
                 this.apriModale(t);
             } else {
-                // Qualsiasi altra nave, anche se in collisione o bloccata temporaneamente, è cliccabile in lettura (scheda dettagli)
                 this.apriDettagliNave(t.nome);
             }
         }
@@ -766,21 +871,17 @@ module PianificazioneTurni {
         public startDemoTimer(): void {
             const INTERVAL_MS = 25000; // 25 secondi
             setInterval(() => {
-                // Se c'è già una nave in ritardo, non crearne un'altra
                 const anyDelayed = this.turni.some((t: any) => t.isDelayed);
                 if (anyDelayed) return;
 
-                // Seleziona una nave a caso da qualsiasi giorno della settimana
                 let candidates = this.turni.filter((t: any) => !t.isDelayed);
                 if (candidates.length === 0) return;
 
                 const ship = candidates[Math.floor(Math.random() * candidates.length)];
 
-                // Calcola un ritardo che crea sovrapposizione con un'altra nave
                 const ritardiDisponibili = [1.5, 2, 2.5, 3];
                 const ritardo = ritardiDisponibili[Math.floor(Math.random() * ritardiDisponibili.length)];
 
-                // Applica ritardo
                 ship.isDelayed = true;
                 ship.requiresResolution = true;
                 ship.ritardoOre = ritardo;
@@ -788,18 +889,15 @@ module PianificazioneTurni {
                 this.turnoInRitardo = ship;
                 this.emergenzaAttiva = true;
 
-                // Forza aggiornamento reattivo Vue
                 this.turni = [...this.turni];
 
                 const currentDay = Number(this.giornoSelezionato ?? 0);
                 if (Number(ship.giorno) !== currentDay) {
-                    console.log("Navigo al giorno del ritardo (timer):", ship.giorno);
                     this.selezionaGiorno(ship.giorno);
                 } else {
                     this.saveState();
                 }
 
-                // Mostra toast non intrusivo
                 this.showDemoToast(`[!] Aggiornamento: La nave ${ship.nome} ha subito un ritardo di +${this.fmtDurata(ritardo)}.`);
             }, INTERVAL_MS);
         }
@@ -829,7 +927,7 @@ module PianificazioneTurni {
             return 'warning';
         }
 
-        // ---- Filtri modale (Prevenzione Errore HCI) ----
+        // ---- Filtri modale ----
         public getBanchineFiltrate(): string[] {
             if (!this.turnoInRitardo) return [];
             const t = this.turnoInRitardo;
@@ -837,7 +935,7 @@ module PianificazioneTurni {
             const nEnd = nStart + t.durataOre;
 
             return this.banchine.filter(b => {
-                if (this.derogaVincoli) return true; // Se in deroga, mostra tutti i moli
+                if (this.derogaVincoli) return true;
                 return !this.turni.some(other => {
                     if (other.id === t.id || other.banchina !== b || other.giorno !== t.giorno) return false;
                     const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
@@ -849,43 +947,112 @@ module PianificazioneTurni {
 
         public getOperatoriFiltrati(): any[] {
             let list = this.operatori;
-
-            // Applica filtro ricerca testuale (Ricerca Rapida)
             if (this.filtroRicerca) {
                 list = list.filter(op => this.isOperatoreFiltrato(op));
             }
-
             return list;
         }
 
         public getDettaglioConflittoOperatore(op: any): string {
-            if (!this.turnoInRitardo) return '';
-            const t = this.turnoInRitardo;
-            const nStart = this.orarioSelezioneRiassegnazione;
+            if (!this.turnoInRitardo && !this.selectedTask) return '';
+            const t = this.turnoInRitardo || this.selectedTask;
+            const nStart = this.turnoInRitardo ? this.orarioSelezioneRiassegnazione : (t.etaOra || 7.0);
             const nEnd = nStart + t.durataOre;
 
             let warnings: string[] = [];
+            let successes: string[] = [];
 
-            if (op.reperibile) {
-                warnings.push('Reperibile');
+            // 1. Competenza check
+            const competenzaRichiesta = t.competenzaRichiesta || t.ruoloRichiesto || 'Gruista';
+            let haCompetenza = false;
+            if (op.competenze && Array.isArray(op.competenze)) {
+                haCompetenza = op.competenze.indexOf(competenzaRichiesta) !== -1;
+            } else if (op.ruolo) {
+                haCompetenza = op.ruolo === competenzaRichiesta;
             }
-            if (op.oreSettimanali + t.durataOre > op.oreMassime) {
-                warnings.push(`Ore max superate (${op.oreSettimanali + t.durataOre}/${op.oreMassime}h)`);
+            if (haCompetenza) {
+                successes.push('competenza disponibile');
+            } else {
+                warnings.push('manca qualifica');
             }
-            if (this.banchinaSelezione && op.abilitazioni.length > 0 && !op.abilitazioni.includes(this.banchinaSelezione)) {
-                warnings.push(`Non abilitato a ${this.banchinaSelezione}`);
+
+            // 2. Patente check
+            let patenteValida = true;
+            if (op.patenteValidaFinoAl) {
+                const scadenza = new Date(op.patenteValidaFinoAl);
+                const oggi = new Date();
+                if (scadenza < oggi) {
+                    patenteValida = false;
+                    warnings.push('patente non valida');
+                }
             }
-            const haSovrapposizione = this.turni.some(other => {
-                if (other.operatore !== op.nome || other.id === t.id || other.giorno !== t.giorno) return false;
+            if (patenteValida) {
+                // assume valid if not specified or date is in future
+            }
+
+            // 3. Riposo check
+            let riposoValido = !op.inRiposoObbligatorio;
+            if (op.inRiposoObbligatorio) {
+                warnings.push('riposo insufficiente');
+            }
+
+            // 4. Ore check
+            const orePreviste = op.oreSettimanali + t.durataOre;
+            if (orePreviste > op.oreMassime) {
+                warnings.push('limite ore superato');
+            }
+
+            // 5. Abilitazione banchina check
+            const bSel = this.turnoInRitardo ? this.banchinaSelezione : (t.banchina || '');
+            if (bSel && op.abilitazioni && op.abilitazioni.length > 0 && !op.abilitazioni.includes(bSel)) {
+                warnings.push('non abilitato');
+            }
+
+            // 6. Time overlap and 11-hour rest period checks
+            const candStart = t.giorno * 24.0 + nStart;
+            const candEnd = candStart + t.durataOre;
+            let haRestConflitto = false;
+            let hasOverlap = false;
+
+            this.turni.forEach(other => {
+                if (other.operatore !== op.nome || other.id === t.id) return;
                 const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
-                const oE = oS + other.durataOre;
-                return nStart < oE && nEnd > oS;
+                const otherStart = other.giorno * 24.0 + oS;
+                const otherEnd = otherStart + other.durataOre;
+
+                if (candStart < otherEnd && candEnd > otherStart) {
+                    hasOverlap = true;
+                }
+                if (candStart >= otherEnd && candStart - otherEnd < 11.0) {
+                    haRestConflitto = true;
+                }
+                if (candEnd <= otherStart && otherStart - candEnd < 11.0) {
+                    haRestConflitto = true;
+                }
             });
-            if (haSovrapposizione) {
-                warnings.push('Sovrapposizione oraria');
+
+            if (hasOverlap) {
+                warnings.push('sovrapposizione oraria');
+            }
+            if (haRestConflitto) {
+                warnings.push('riposo insufficiente');
             }
 
-            return warnings.length > 0 ? `[${warnings.join(' | ')}]` : '[Ok]';
+            // Success checks if not warning
+            if (!warnings.includes('riposo insufficiente')) {
+                successes.push('riposo sufficiente');
+            }
+            if (!warnings.includes('sovrapposizione oraria')) {
+                successes.push('disponibilità corretta');
+            }
+
+            const successPart = successes.map(s => `✔ ${s}`).join(' | ');
+            const warningPart = warnings.map(w => `❌ ${w}`).join(' | ');
+
+            if (warnings.length > 0) {
+                return (successPart ? successPart + ' — ' : '') + warningPart;
+            }
+            return successPart;
         }
 
         private isBanchinaOccupata(b: string, start: number, durata: number, ignoreId: number, giorno: number): boolean {
@@ -908,10 +1075,9 @@ module PianificazioneTurni {
             });
         }
 
-        private trovaSoluzioneMiglioreAdOra(
+        public trovaSoluzioneMiglioreAdOra(
             t: any, ora: number, conDeroga: boolean, forceChiamata: boolean = false
         ): { banchina: string, operatore: string, note: string, motivazione: string, usaChiamata: boolean } | null {
-            // Se la nave è in ritardo, non consentiamo soluzioni prima dell'arrivo comprensivo di ritardo
             if (t.isDelayed && ora < t.startOra + t.ritardoOre) {
                 return null;
             }
@@ -920,8 +1086,9 @@ module PianificazioneTurni {
             const moliLiberi = this.banchine.filter(b => !this.isBanchinaOccupata(b, ora, t.durataOre, t.id, t.giorno));
             if (moliLiberi.length === 0) return null;
 
+            const ruoloRichiesto = t.competenzaRichiesta || t.ruoloRichiesto || 'Gruista';
             const opDisponibili = this.operatori.filter(op => {
-                if (op.ruolo !== t.ruoloRichiesto) return false;
+                if (op.ruolo !== ruoloRichiesto) return false;
                 if (op.reperibile && !includiChiamata) return false;
                 if (!conDeroga && op.oreSettimanali + t.durataOre > op.oreMassime) return false;
                 if (this.isOperatoreOccupato(op.nome, ora, t.durataOre, t.id, t.giorno)) return false;
@@ -1023,7 +1190,6 @@ module PianificazioneTurni {
         public calcolaSoluzioniProposte(t: any, autoSearch: boolean = false): void {
             this.soluzioniProposte = [];
 
-            // Clamp minimo: inizio operativo (7:00)
             const minOra = t.isDelayed ? t.startOra + t.ritardoOre : 7;
             if (this.orarioSelezioneRiassegnazione < 7) {
                 this.orarioSelezioneRiassegnazione = 7;
@@ -1041,17 +1207,14 @@ module PianificazioneTurni {
             };
 
             if (autoSearch) {
-                // Tier 1: standard, nessuna deroga, nessuna chiamata
                 if (cerca(targetTime, false, false)) {
                     this.derogaVincoli = false;
                     this.attivaPersonaleAChiamata = false;
                 }
-                // Tier 2: standard, nessuna deroga, con chiamata
                 else if (cerca(targetTime, false, true)) {
                     this.derogaVincoli = false;
                     this.attivaPersonaleAChiamata = true;
                 }
-                // Tier 3: avanza nel tempo (standard, nessuna chiamata)
                 else {
                     const oraAvanti = scanAvanti(false, false);
                     if (oraAvanti !== null) {
@@ -1060,7 +1223,6 @@ module PianificazioneTurni {
                         this.derogaVincoli = false;
                         this.attivaPersonaleAChiamata = false;
                     } else {
-                        // Tier 4: avanza nel tempo con chiamata
                         const oraChiamata = scanAvanti(false, true);
                         if (oraChiamata !== null) {
                             this.orarioSelezioneRiassegnazione = oraChiamata;
@@ -1068,7 +1230,6 @@ module PianificazioneTurni {
                             this.derogaVincoli = false;
                             this.attivaPersonaleAChiamata = true;
                         } else {
-                            // Tier 5: con deroga
                             const oraDeroga = scanAvanti(true, true);
                             if (oraDeroga !== null) {
                                 this.orarioSelezioneRiassegnazione = oraDeroga;
@@ -1080,7 +1241,6 @@ module PianificazioneTurni {
                     }
                 }
             } else {
-                // Slider manuale: auto-attiva chiamata se standard non disponibile all'ora attuale
                 if (!cerca(targetTime, this.derogaVincoli, false) && cerca(targetTime, this.derogaVincoli, true)) {
                     this.attivaPersonaleAChiamata = true;
                 } else if (cerca(targetTime, this.derogaVincoli, false)) {
@@ -1104,7 +1264,7 @@ module PianificazioneTurni {
                     orario: targetTime,
                     banchina: solOra.banchina,
                     operatore: solOra.operatore,
-                    ruolo: t.ruoloRichiesto,
+                    ruolo: t.ruoloRichiesto || t.competenzaRichiesta,
                     note: solOra.note,
                     usaChiamata: solOra.usaChiamata
                 });
@@ -1121,7 +1281,7 @@ module PianificazioneTurni {
                         orario: ora,
                         banchina: solAlt.banchina,
                         operatore: solAlt.operatore,
-                        ruolo: t.ruoloRichiesto,
+                        ruolo: t.ruoloRichiesto || t.competenzaRichiesta,
                         note: solAlt.note,
                         usaChiamata: solAlt.usaChiamata
                     });
@@ -1136,8 +1296,9 @@ module PianificazioneTurni {
             const ora = this.orarioSelezioneRiassegnazione;
             const b = this.banchinaSelezione || t.banchina;
 
+            const ruoloRichiesto = t.competenzaRichiesta || t.ruoloRichiesto || 'Gruista';
             const ciSonoStandard = this.operatori.some(op =>
-                op.ruolo === t.ruoloRichiesto &&
+                op.ruolo === ruoloRichiesto &&
                 !op.reperibile &&
                 (this.derogaVincoli || op.oreSettimanali + t.durataOre <= op.oreMassime) &&
                 (this.derogaVincoli || op.abilitazioni.length === 0 || op.abilitazioni.includes(b)) &&
@@ -1160,7 +1321,6 @@ module PianificazioneTurni {
 
         // ---- Modale ----
         public async apriModale(turno: any): Promise<void> {
-            // Consentiamo l'apertura se richiede risoluzione, se è in ritardo o se ha una collisione/conflitto rilevato
             if (!turno.requiresResolution && !this.isBloccoInCollisione(turno) && !turno.isDelayed) return;
             this.banchinaSelezione = turno.banchina || '';
             this.operatoreSelezione = '';
@@ -1171,8 +1331,7 @@ module PianificazioneTurni {
             this.turnoInRitardo = turno;
             this.orarioSelezioneRiassegnazione = turno.startOra + (turno.isDelayed ? turno.ritardoOre : 0);
 
-            // Inizializza i campi in base al ruolo richiesto
-            const ruolo = turno.ruoloRichiesto || 'Gruista';
+            const ruolo = turno.ruoloRichiesto || turno.competenzaRichiesta || 'Gruista';
             if (ruolo === 'Gruista') {
                 this.veicolo = 'Gru Portacontainer';
             } else if (ruolo === 'Mulettista') {
@@ -1181,7 +1340,7 @@ module PianificazioneTurni {
                 this.veicolo = 'Ralla di Banchina';
             }
             this.identificativo = `TRN-0${turno.id}-${ruolo.substring(0, 3).toUpperCase()}`;
-            this.hasConflict = true; // default in conflict state
+            this.hasConflict = true;
 
             this.soluzioneOttimale = null;
             await this.caricaSoluzioneOttimale();
@@ -1227,7 +1386,7 @@ module PianificazioneTurni {
         }
 
         public aggiornaSoluzioniDSS(): void {
-            // Deprecato - l'algoritmo gira sul backend
+            // Deprecato
         }
 
         public async confermaRiassegnazione(): Promise<void> {
@@ -1246,7 +1405,6 @@ module PianificazioneTurni {
                 this.formError = `Impossibile confermare: l'orario selezionato (${this.fmtOra(this.orarioSelezioneRiassegnazione)}) è precedente all'arrivo stimato della nave (${this.fmtOra(t.startOra + t.ritardoOre)}).`;
                 return;
             }
-            const durata = t.durataOre;
 
             const command = {
                 TurnoId: t.id,
@@ -1273,7 +1431,6 @@ module PianificazioneTurni {
                     t.requiresResolution = false;
                     t.ritardoOre         = 0;
 
-                    // Ricalcola dinamicamente le ore settimanali degli operatori
                     this.ricalcolaOreSettimanaliOperatori();
 
                     this.emergenzaAttiva = false;
@@ -1281,17 +1438,15 @@ module PianificazioneTurni {
                     this._closeModal();
                     this.saveState();
 
-                    // Naviga al giorno del turno assegnato
                     this.selezionaGiorno(targetGiorno);
 
-                    // Invio SMS ed Email di notifica del nuovo turno all'operatore assegnato
+                    // Invio notifica
                     const msgSms = `NOTIFICA [Porto]: Ti è stato assegnato il turno del giorno ${this.getNomeGiorno(t.giorno)} al ${t.banchina} a partire dalle ${this.fmtOra(t.startOra)}.`;
                     this.inviaNotificaSimulata('SMS', t.operatore, msgSms);
 
                     const msgEmail = `Gentile ${t.operatore},\n\nTi informiamo che l'Ufficio Coordinamento ha modificato il piano turni.\n\nDettagli del turno assegnato:\n- Giorno: ${this.getNomeGiorno(t.giorno)}\n- Banchina: ${t.banchina}\n- Orario: ${this.fmtOra(t.startOra)} - ${this.fmtOra(t.startOra + t.durataOre)}\n- Durata: ${this.fmtDurata(t.durataOre)}\n\nSi prega di presentarsi puntualmente.\n\nCordiali saluti,\nUfficio Turni Portuali`;
                     this.inviaNotificaSimulata('EMAIL', t.operatore, msgEmail);
 
-                    // Se l'operatore è cambiato, inviamo una notifica di annullamento al vecchio operatore
                     if (vecchioOperatore && vecchioOperatore !== t.operatore) {
                         const msgAnnullamento = `NOTIFICA [Porto]: Il tuo turno del giorno ${this.getNomeGiorno(t.giorno)} per la nave ${t.nome} è stato cancellato/riassegnato.`;
                         this.inviaNotificaSimulata('SMS', vecchioOperatore, msgAnnullamento);
@@ -1301,7 +1456,7 @@ module PianificazioneTurni {
                         Toastify({
                             text: `Riassegnato: ${t.nome} → ${t.banchina} (${t.operatore})`,
                             duration: 4000, gravity: 'top', position: 'right',
-                            style: { background: 'linear-gradient(to right,#00b09b,#0d6efd)' }
+                            style: { background: "#198754" }
                         }).showToast();
                     }
                 } else {
@@ -1342,12 +1497,9 @@ module PianificazioneTurni {
         }
 
         public apriDettagliOperatoreDaNome(nome: string): void {
-            // Chiudi la modale nave se aperta
             this.chiudiDettagliNave();
-
             const op = this.operatori.find(o => o.nome === nome);
             if (op) {
-                // Ritarda leggermente l'apertura per permettere a Bootstrap di rimuovere il vecchio backdrop
                 setTimeout(() => {
                     this.apriDettagliOperatore(op);
                 }, 200);
@@ -1393,7 +1545,7 @@ module PianificazioneTurni {
                 t.nome.toLowerCase().includes(query) ||
                 t.operatore.toLowerCase().includes(query) ||
                 t.banchina.toLowerCase().includes(query) ||
-                t.ruoloRichiesto.toLowerCase().includes(query)
+                (t.ruoloRichiesto || t.competenzaRichiesta || '').toLowerCase().includes(query)
             );
         }
 
@@ -1474,7 +1626,7 @@ module PianificazioneTurni {
                     duration: 3500,
                     gravity: 'bottom',
                     position: 'left',
-                    style: { background: tipo === 'SMS' ? '#4f46e5' : '#0ea5e9' }
+                    backgroundColor: tipo === 'SMS' ? '#4f46e5' : '#0ea5e9'
                 }).showToast();
             }
         }
@@ -1482,6 +1634,262 @@ module PianificazioneTurni {
         public svuotaNotifiche(): void {
             this.notificheSimulate = [];
             this.saveState();
+        }
+
+        // ==========================================
+        // NUOVE FUNZIONI CLIENT-SIDE PER CONSOLE OPERATIVA
+        // ==========================================
+
+        public getTaskPriority(task: any): string {
+            if (!task) return 'Bassa';
+            const etaGiorno = typeof task.etaGiorno !== 'undefined' ? task.etaGiorno : task.giorno;
+            const etaOra = typeof task.etaOra !== 'undefined' ? task.etaOra : 7.0;
+            const etdGiorno = typeof task.etdGiorno !== 'undefined' ? task.etdGiorno : task.giorno;
+            const etdOra = typeof task.etdOra !== 'undefined' ? task.etdOra : 24.0;
+
+            const windowSize = (etdGiorno - etaGiorno) * 24.0 + (etdOra - etaOra);
+            if (windowSize <= task.durataOre) return 'Critica';
+            if (windowSize <= task.durataOre + 1.5) return 'Alta';
+            if (windowSize <= task.durataOre + 4) return 'Media';
+            return 'Bassa';
+        }
+
+        public getTaskPriorityClass(task: any): string {
+            const p = this.getTaskPriority(task);
+            if (p === 'Critica') return 'bg-danger text-white border border-light font-weight-bold';
+            if (p === 'Alta') return 'bg-danger text-white';
+            if (p === 'Media') return 'bg-warning text-dark';
+            return 'bg-secondary text-white';
+        }
+
+        public getTaskJobType(task: any): string {
+            if (!task || !task.nome) return 'Lavorazione Standard';
+            if (task.nome.toLowerCase().includes('scarico')) return 'Scarico merci';
+            if (task.nome.toLowerCase().includes('carico')) return 'Carico merci';
+            return 'Movimentazione';
+        }
+
+        public getTaskShipName(task: any): string {
+            if (!task || !task.nome) return 'Nave N/D';
+            let name = task.nome;
+            name = name.replace(/^MCL\s+/i, '');
+            name = name.replace(/^(Scarico|Carico)\s+/i, '');
+            return name.trim() || task.nome;
+        }
+
+        public getTaskDock(task: any): string {
+            if (!task) return 'Da assegnare';
+            return task.banchina || 'Molo preferenziale';
+        }
+
+        public getOperatoreCompatibilityScore(op: any, task: any): number {
+            if (!task) return 100;
+            if (this.isOperatoreIncompatibile(op)) return 0;
+            
+            let score = 100;
+            const warnings = this.getDettaglioConflittoOperatore(op);
+            if (warnings) {
+                if (warnings.includes('Reperibile')) score -= 10;
+                if (warnings.includes('Ore max superate')) score -= 30;
+                if (warnings.includes('Non abilitato a')) score -= 20;
+                if (warnings.includes('Riposo obbligatorio')) return 0;
+                if (warnings.includes('Sovrapposizione oraria')) return 0;
+                if (warnings.includes('Riposo insufficiente')) return 0;
+            }
+            
+            if (op.oreSettimanali + task.durataOre > op.oreMassime - 2) {
+                score -= 15;
+            }
+            
+            return Math.max(0, score);
+        }
+
+        public getResourceStats(ruolo: string): any {
+            const ops = this.operatori.filter(o => o.ruolo === ruolo);
+            const occupatiNomi = new Set(this.turni.filter(t => t.giorno === this.giornoSelezionato).map(t => t.operatore));
+            
+            let disponibili = 0;
+            let occupati = 0;
+            let reperibili = 0;
+            
+            ops.forEach(op => {
+                if (op.reperibile) {
+                    reperibili++;
+                } else if (occupatiNomi.has(op.nome)) {
+                    occupati++;
+                } else {
+                    const hasValidLicense = this.getPatenteStatus(op) !== 'expired';
+                    if (hasValidLicense && !op.inRiposoObbligatorio) {
+                        disponibili++;
+                    }
+                }
+            });
+            
+            return { disponibili, occupati, reperibili };
+        }
+
+        public get soluzioniDSSTask(): any[] {
+            if (!this.selectedTask) return [];
+            const list: any[] = [];
+            const t = this.selectedTask;
+            
+            // Opzione A: Soluzione Ottimale dal Backend
+            if (this.soluzioneTaskSuggerita) {
+                const sol = this.soluzioneTaskSuggerita;
+                const op = this.operatori.find(o => o.nome === sol.operatoreSuggerito);
+                const isChiamata = op ? !!op.reperibile : false;
+                
+                const vantaggi = [];
+                const compromessi = [];
+                if (!isChiamata) {
+                    vantaggi.push("Minor costo (standard)");
+                } else {
+                    compromessi.push("Costo maggiore (reperibile)");
+                }
+                if (sol.motivoScelta) {
+                    vantaggi.push(`Criterio: ${sol.motivoScelta}`);
+                }
+                if (op && op.abilitazioni && (op.abilitazioni.length === 0 || op.abilitazioni.includes(sol.moloSuggerito))) {
+                    vantaggi.push("Molo abilitato");
+                } else {
+                    compromessi.push("Deroga abilitazione molo");
+                }
+
+                list.push({
+                    titolo: "Soluzione A (Ottimale)",
+                    molo: sol.moloSuggerito,
+                    orario: sol.orarioSuggerito,
+                    operatore: sol.operatoreSuggerito,
+                    giorno: sol.giornoSuggerito,
+                    score: 95,
+                    vantaggi: vantaggi.length > 0 ? vantaggi : ["Nessun conflitto"],
+                    compromessi: compromessi.length > 0 ? compromessi : ["Nessuno"]
+                });
+            }
+            
+            // Opzioni B e C: Operatori dello stesso ruolo ordinati per compatibilità
+            const competenzaRichiesta = t.competenzaRichiesta || t.ruoloRichiesto || 'Gruista';
+            const opsMolt = this.operatori.filter(op => {
+                if (op.ruolo !== competenzaRichiesta) return false;
+                if (this.soluzioneTaskSuggerita && op.nome === this.soluzioneTaskSuggerita.operatoreSuggerito) return false;
+                return true;
+            });
+
+            // Calcoliamo e ordiniamo per score decrescente
+            const opsConScore = opsMolt.map(op => {
+                const score = this.getOperatoreCompatibilityScore(op, t);
+                return { op, score };
+            });
+
+            opsConScore.sort((a, b) => b.score - a.score);
+
+            // Prendiamo le migliori alternative per riempire fino a 3 soluzioni in totale
+            for (const item of opsConScore) {
+                if (list.length >= 3) break;
+                const op = item.op;
+                const score = item.score;
+                
+                const isChiamata = !!op.reperibile;
+                const vantaggi = [];
+                const compromessi = [];
+
+                if (!isChiamata) {
+                    vantaggi.push("Minor costo (standard)");
+                } else {
+                    compromessi.push("Costo maggiore (reperibile)");
+                }
+
+                const bSel = t.banchina || 'Molo Est';
+                if (op.abilitazioni && (op.abilitazioni.length === 0 || op.abilitazioni.includes(bSel))) {
+                    vantaggi.push("Molo abilitato");
+                } else {
+                    compromessi.push("Non abilitato al molo");
+                }
+
+                if (op.oreSettimanali + t.durataOre > op.oreMassime) {
+                    compromessi.push("Superamento ore massime");
+                } else {
+                    vantaggi.push("Ore residue sufficienti");
+                }
+
+                if (score === 0) {
+                    compromessi.push("Violazione vincoli");
+                }
+
+                list.push({
+                    titolo: `Soluzione ${String.fromCharCode(65 + list.length)} (Alternativa)`,
+                    molo: bSel,
+                    orario: t.etaOra || 7.0,
+                    operatore: op.nome,
+                    giorno: t.giorno,
+                    score: score,
+                    vantaggi: vantaggi.length > 0 ? vantaggi : ["Nessun conflitto"],
+                    compromessi: compromessi.length > 0 ? compromessi : ["Nessuno"]
+                });
+            }
+            
+            return list;
+        }
+
+        public applicaSoluzioneDSSSelezionata(sol: any): void {
+            if (!this.selectedTask) return;
+            const op = this.operatori.find(o => o.nome === sol.operatore);
+            if (!op) return;
+            
+            const maxId = this.turni.length > 0 ? Math.max(...this.turni.map((t: any) => t.id).filter((id: number) => id < 1000000)) : 0;
+            const nextId = (maxId < 0 ? 0 : maxId) + 1;
+            
+            const nuovoTurno = {
+                id: nextId,
+                nome: this.selectedTask.nome,
+                banchina: sol.molo,
+                startOra: sol.orario,
+                durataOre: this.selectedTask.durataOre,
+                operatore: sol.operatore,
+                ruoloRichiesto: this.selectedTask.competenzaRichiesta,
+                isDelayed: false,
+                requiresResolution: false,
+                ritardoOre: 0,
+                giorno: sol.giorno,
+                etaGiorno: this.selectedTask.etaGiorno,
+                etaOra: this.selectedTask.etaOra,
+                etdGiorno: this.selectedTask.etdGiorno,
+                etdOra: this.selectedTask.etdOra
+            };
+
+            this.turni.push(nuovoTurno);
+            this.ricalcolaOreSettimanaliOperatori();
+            this.tasksDaAssegnare = this.tasksDaAssegnare.filter(t => t.id !== this.selectedTask.id);
+
+            // Notifica
+            const tipoNotifica = op.reperibile ? 'SMS' : 'Email';
+            const dettaglioDest = op.reperibile ? 'Cellulare' : 'Email aziendale';
+            const msgNotifica = `Pianificazione turno per nave ${nuovoTurno.nome} assegnato a te al ${nuovoTurno.banchina} il giorno ${this.getNomeGiorno(nuovoTurno.giorno)} dalle ore ${this.fmtOra(nuovoTurno.startOra)} alle ${this.fmtOra(nuovoTurno.startOra + nuovoTurno.durataOre)}.`;
+
+            this.notificheSimulate.unshift({
+                id: Date.now() + 1,
+                destinatario: op.nome,
+                dettaglioDestinatario: dettaglioDest,
+                tipo: tipoNotifica,
+                messaggio: msgNotifica,
+                timestamp: new Date().toLocaleTimeString()
+            });
+
+            const giornoAssegnato = nuovoTurno.giorno;
+            this.selectedTask = null;
+            this.soluzioneTaskSuggerita = null;
+            this.saveState();
+            this.selezionaGiorno(giornoAssegnato);
+
+            if (typeof Toastify !== 'undefined') {
+                Toastify({
+                    text: `Task assegnato con successo a ${op.nome} (${this.getNomeGiorno(giornoAssegnato)})!`,
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "#2e7d32"
+                }).showToast();
+            }
         }
     }
 }

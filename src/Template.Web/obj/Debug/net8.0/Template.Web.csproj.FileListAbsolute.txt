@@ -398,11 +398,11 @@ C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto 
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\bin\Debug\net8.0\appsettings.json
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\bin\Debug\net8.0\bundleconfig.json
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\bin\Debug\net8.0\compilerconfig.json
+C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\bin\Debug\net8.0\Features\PianificazioneTurni\tsconfig.json
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\bin\Debug\net8.0\package-lock.json
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\bin\Debug\net8.0\package.json
-C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\bin\Debug\net8.0\tsdefgen.json
-C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\bin\Debug\net8.0\Features\PianificazioneTurni\tsconfig.json
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\bin\Debug\net8.0\tsconfig.json
+C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\bin\Debug\net8.0\tsdefgen.json
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\bin\Debug\net8.0\Template.Web.staticwebassets.runtime.json
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\bin\Debug\net8.0\Template.Web.staticwebassets.endpoints.json
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\bin\Debug\net8.0\Template.Web.exe
@@ -775,6 +775,7 @@ C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto 
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\obj\Debug\net8.0\Template.Web.RazorAssemblyInfo.cache
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\obj\Debug\net8.0\Template.Web.RazorAssemblyInfo.cs
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\obj\Debug\net8.0\Template.Web.sourcelink.json
+C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\obj\Debug\net8.0\en\Template.Web.resources.cs
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\obj\Debug\net8.0\en\Template.Web.resources.dll
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\obj\Debug\net8.0\rjimswa.dswa.cache.json
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\obj\Debug\net8.0\rjsmrazor.dswa.cache.json
@@ -790,4 +791,3 @@ C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto 
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\obj\Debug\net8.0\Template.Web.pdb
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\obj\Debug\net8.0\Template.Web.genruntimeconfig.cache
 C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\obj\Debug\net8.0\ref\Template.Web.dll
-C:\Users\matte\Desktop\Progetti Unibo\3 Anno\Laboratorio Uomo-Macchina\Progetto Turni_Portuali\src\Template.Web\obj\Debug\net8.0\en\Template.Web.resources.cs

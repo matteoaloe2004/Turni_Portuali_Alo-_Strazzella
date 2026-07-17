@@ -6,67 +6,74 @@
 .gantt-container {
     width: 100%;
     overflow-x: auto;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background-color: #ffffff;
 }
 
 /* Each molo row */
 .gantt-row {
     display: flex;
     align-items: stretch;
-    border-bottom: 1px solid #f0f0f0;
-    min-height: 64px;
+    border-bottom: 1px solid #e2e8f0;
+    min-height: 56px;
 }
 
 /* Label column */
 .gantt-row-label {
-    width: 130px;
-    min-width: 130px;
+    width: 160px;
+    min-width: 160px;
     flex-shrink: 0;
     display: flex;
-    align-items: center;
-    font-size: 0.78rem;
+    flex-direction: column;
+    justify-content: center;
+    font-size: 0.75rem;
     font-weight: 600;
-    color: #495057;
-    padding-right: 8px;
+    color: #334155;
+    padding: 6px 12px;
+    border-right: 1px solid #cbd5e1;
+    background-color: #f8fafc;
 }
 
 /* Horizontal track where blocks sit */
 .gantt-row-track {
     flex: 1;
     position: relative;
-    min-width: 800px;
-    min-height: 56px;
-    border-left: 1px solid #e9ecef;
+    min-width: 1000px;
+    min-height: 52px;
 }
 
-/* Hour header row (same flex structure) */
+/* Hour header row */
 .gantt-hour-row {
     display: flex;
     align-items: flex-end;
-    padding-bottom: 4px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 2px solid #94a3b8;
+    background-color: #f1f5f9;
 }
 
 .gantt-hour-row-label {
-    width: 130px;
-    min-width: 130px;
+    width: 160px;
+    min-width: 160px;
     flex-shrink: 0;
+    height: 32px;
+    border-right: 1px solid #cbd5e1;
 }
 
 .gantt-hour-row-track {
     flex: 1;
     position: relative;
-    min-width: 800px;
-    height: 22px;
+    min-width: 1000px;
+    height: 32px;
 }
 
 /* Individual hour tick */
 .gantt-hour-tick {
     position: absolute;
-    top: 0;
+    bottom: 4px;
     transform: translateX(-50%);
-    font-size: 0.65rem;
-    color: #adb5bd;
-    letter-spacing: 0.02em;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #475569;
     font-variant-numeric: tabular-nums;
 }
 
@@ -76,136 +83,155 @@
     top: 0;
     bottom: 0;
     width: 1px;
-    background-color: #f3f3f3;
+    background-color: #f1f5f9;
+    pointer-events: none;
 }
 
-/* Gantt block (positioned absolutely inside track) */
+/* Specific grid line for midnight */
+.gantt-vline-midnight {
+    background-color: #64748b;
+    width: 2px;
+    z-index: 2;
+}
+
+/* Gantt block */
 .gantt-block {
     position: absolute;
-    top: 8px;
-    bottom: 8px;
-    border-radius: 6px;
-    padding: 5px 10px;
+    top: 6px;
+    bottom: 6px;
+    border-radius: 2px;
+    padding: 4px 8px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     overflow: hidden;
     box-sizing: border-box;
-    min-width: 50px;
-    cursor: default;
-    transition: box-shadow 0.2s ease;
+    min-width: 60px;
+    font-size: 0.7rem;
+    border-left-width: 4px;
+    border-left-style: solid;
+    transition: all 0.15s ease;
+    box-shadow: none;
+
+    &:hover {
+        filter: brightness(0.95);
+    }
 }
 
 .gantt-block-title {
-    font-size: 0.72rem;
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-bottom: 1px;
 }
 
 .gantt-block-sub {
     font-size: 0.62rem;
-    opacity: 0.8;
+    opacity: 0.9;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-/* Normal block */
+/* Verde: Assegnazione valida (Standard) */
 .gantt-block-normal {
-    background-color: #e8f0fe;
-    border-left: 3px solid #0d6efd;
-    color: #0d47a1;
+    background-color: #dcfce7;
+    border-color: #22c55e;
+    color: #14532d;
 }
 
-/* Delayed block (pulsating) */
+/* Giallo: Attenzione (Delayed / Alert) */
 .gantt-block-delayed {
-    background-color: #fff3f3;
-    border-left: 3px solid #dc3545;
-    color: #842029;
+    background-color: #fef3c7;
+    border-color: #f59e0b;
+    color: #78350f;
     cursor: pointer;
-    animation: pulse-red 2s ease-in-out infinite;
-
-    &:hover {
-        box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25);
-    }
 }
 
-/* Collision block – operator double-booked */
+/* Rosso: Conflitto (Collision) */
 .gantt-block-collision {
-    background: repeating-linear-gradient(
-        45deg,
-        #fff0f0,
-        #fff0f0 6px,
-        #ffe0e0 6px,
-        #ffe0e0 12px
-    );
-    border-left: 4px solid #ef4444 !important;
-    outline: 2px solid #ef4444;
-    outline-offset: -2px;
-    color: #7f1d1d !important;
-    animation: pulse-collision 1.4s ease-in-out infinite;
+    background-color: #fee2e2;
+    border-color: #ef4444;
+    color: #7f1d1d;
+    outline: 1px solid #ef4444;
+    outline-offset: -1px;
     cursor: pointer;
     z-index: 10;
-
-    &:hover {
-        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.35);
-    }
 }
 
-@keyframes pulse-collision {
-    0%   { outline-color: #ef4444; outline-width: 2px; }
-    50%  { outline-color: #dc2626; outline-width: 3px; }
-    100% { outline-color: #ef4444; outline-width: 2px; }
+/* Blu: Turno a cavallo di mezzanotte / successivo */
+.gantt-block-midnight {
+    background-color: #e0f2fe;
+    border-color: #0ea5e9;
+    color: #0369a1;
 }
 
-@keyframes pulse-good {
-    0% {
-        opacity: 1;
-        transform: scale(1);
-    }
-
-    50% {
-        opacity: 0.6;
-        transform: scale(0.98);
-    }
-
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-.gantt-block-delayed {
-    animation: pulse-good 2s infinite ease-in-out;
-    /* Usa un colore fisso di sfondo, fai pulsare l'opacità */
-}
-
-/* Poka-Yoke: blocco interazione sulla nave NON in ritardo durante una collisione */
+/* Grigio: Bloccato / Non cliccabile */
 .gantt-block-locked {
-    pointer-events: none !important;
-    cursor: default !important;
-    opacity: 0.45 !important;
-    filter: grayscale(40%) !important;
-    animation: none !important;
-    outline: none !important;
-    box-shadow: none !important;
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+    color: #475569;
+    opacity: 0.55;
+    pointer-events: none;
 }
 
-/* Demo toast – notifica non intrusiva gialla in alto a destra */
+/* Backlog card styles */
+.backlog-card {
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background-color: #ffffff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &.selected-task {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 1px #2563eb;
+    }
+}
+
+.backlog-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.backlog-meta {
+    font-size: 0.72rem;
+    color: #475569;
+}
+
+/* Operator list table density */
+.table-dense {
+    font-size: 0.75rem;
+
+    th {
+        font-weight: 600;
+        color: #334155;
+        background-color: #f1f5f9;
+        padding: 6px 8px;
+        border-bottom: 2px solid #cbd5e1;
+    }
+
+    td {
+        padding: 6px 8px;
+        vertical-align: middle;
+        border-bottom: 1px solid #e2e8f0;
+    }
+}
+
+/* Demo toast (compact & professional) */
 .demo-toast {
-    background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    color: #78350f;
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+    background-color: #0f172a;
+    color: #f8fafc;
+    padding: 10px 16px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
     margin-bottom: 8px;
-    animation: toast-slide-in 0.4s ease-out, toast-fade-out 0.5s 3.5s ease-in forwards;
-    max-width: 380px;
-    line-height: 1.4;
+    animation: toast-slide-in 0.3s ease-out, toast-fade-out 0.4s 4.0s ease-in forwards;
+    max-width: 350px;
+    border-left: 4px solid #f59e0b;
 }
 
 @keyframes toast-slide-in {
@@ -215,28 +241,14 @@
 
 @keyframes toast-fade-out {
     from { opacity: 1; }
-    to   { opacity: 0; transform: translateY(-10px); }
-}
-
-/* System alert */
-.alert-emergenza {
-    border-left: 4px solid #fd7e14;
-    background-color: #fff8f0;
-    color: #7f3700;
-    font-size: 0.85rem;
-    border-radius: 4px;
+    to   { opacity: 0; transform: translateY(-5px); }
 }
 
 /* Resource progress bar */
 .resource-bar {
-    height: 5px;
+    height: 4px;
     border-radius: 2px;
-    background-color: #f1f3f7;
-}
-
-/* Modal */
-.modal-backdrop.show {
-    opacity: 0.4 !important;
+    background-color: #e2e8f0;
 }
 
 /* Vue cloak */
@@ -246,21 +258,32 @@
 
 /* Custom header styling to fix visibility and aesthetics */
 .onit-page-menu {
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    padding: 0.65rem 1.5rem !important;
+    background: #0f172a !important;
+    border-bottom: 1px solid #1e293b;
+    padding: 0.5rem 1rem !important;
 
     .navbar-brand {
-        font-size: 1.25rem;
-        letter-spacing: -0.02em;
+        font-size: 1.1rem;
+        letter-spacing: -0.01em;
     }
 
     .nav-link {
+        font-size: 0.85rem;
         transition: color 0.15s ease-in-out;
         
         &:hover {
-            color: #3b82f6 !important; /* light blue on hover */
+            color: #3b82f6 !important;
         }
+    }
+}
+
+/* Notification log */
+.notifica-item {
+    font-size: 0.75rem;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    
+    &:last-child {
+        border-bottom: none;
     }
 }

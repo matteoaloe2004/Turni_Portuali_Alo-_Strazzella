@@ -81,6 +81,12 @@ namespace Template.Web
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            // Pre-initialize and seed the InMemory database on the startup thread to prevent concurrent seeding race conditions.
+            using (var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope())
+            {
+                _ = serviceScope.ServiceProvider.GetRequiredService<TemplateDbContext>();
+            }
+
             // Configure the HTTP request pipeline.
             if (!env.IsDevelopment())
             {
