@@ -165,6 +165,18 @@
         background-color: rgba(59, 130, 246, 0.03) !important;
     }
 
+    /* Poka-Yoke visivo: le card compatibili con il task selezionato pulsano
+       delicatamente per guidare la scelta del coordinatore (vedi README). */
+    @@media (prefers-reduced-motion: no-preference) {
+        .operator-card.op-compatible {
+            animation: pulse-compatible 2.4s ease-in-out infinite;
+        }
+    }
+    @@keyframes pulse-compatible {
+        0%, 100% { box-shadow: var(--shadow-sm), 0 0 0 0 rgba(16, 185, 129, 0.28); }
+        50% { box-shadow: var(--shadow-sm), 0 0 0 6px rgba(16, 185, 129, 0); }
+    }
+
     /* Scrollbar personalizzata per le risorse */
     .custom-scrollbar::-webkit-scrollbar {
         width: 6px;
