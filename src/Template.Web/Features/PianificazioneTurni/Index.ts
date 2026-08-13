@@ -1447,13 +1447,19 @@ module PianificazioneTurni {
             this.formError = '';
         }
 
-        private _closeModal(): void {
-            if (this.modalInstance) { this.modalInstance.hide(); this.modalInstance = null; }
+        // Condivisa dai chiusori di modale: rimuove il backdrop Bootstrap orfano e
+        // ripristina le classi/stili su <body> lasciati dall'apertura del modale.
+        private closeModalBackdropAndBody(): void {
             const bd = document.querySelector('.modal-backdrop');
             if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
             document.body.classList.remove('modal-open');
             document.body.style.overflow = '';
             document.body.style.paddingRight = '';
+        }
+
+        private _closeModal(): void {
+            if (this.modalInstance) { this.modalInstance.hide(); this.modalInstance = null; }
+            this.closeModalBackdropAndBody();
         }
 
         public apriDettagliOperatore(op: any): void {
@@ -1482,11 +1488,7 @@ module PianificazioneTurni {
                 const modal = bootstrap.Modal.getInstance(el);
                 if (modal) modal.hide();
             }
-            const bd = document.querySelector('.modal-backdrop');
-            if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
+            this.closeModalBackdropAndBody();
         }
 
         public getTurniOperatoreSettimana(nome: string): any[] {
@@ -1544,11 +1546,7 @@ module PianificazioneTurni {
                 const modal = bootstrap.Modal.getInstance(el);
                 if (modal) modal.hide();
             }
-            const bd = document.querySelector('.modal-backdrop');
-            if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
+            this.closeModalBackdropAndBody();
         }
 
         public getTurniNaveSettimana(naveNome: string): any[] {

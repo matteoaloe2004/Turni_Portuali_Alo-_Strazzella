@@ -1280,17 +1280,22 @@ var PianificazioneTurni;
             }
             this.formError = '';
         }
-        _closeModal() {
-            if (this.modalInstance) {
-                this.modalInstance.hide();
-                this.modalInstance = null;
-            }
+        // Condivisa dai chiusori di modale: rimuove il backdrop Bootstrap orfano e
+        // ripristina le classi/stili su <body> lasciati dall'apertura del modale.
+        closeModalBackdropAndBody() {
             const bd = document.querySelector('.modal-backdrop');
             if (bd && bd.parentNode)
                 bd.parentNode.removeChild(bd);
             document.body.classList.remove('modal-open');
             document.body.style.overflow = '';
             document.body.style.paddingRight = '';
+        }
+        _closeModal() {
+            if (this.modalInstance) {
+                this.modalInstance.hide();
+                this.modalInstance = null;
+            }
+            this.closeModalBackdropAndBody();
         }
         apriDettagliOperatore(op) {
             this.operatoreSelezionatoDettaglio = op;
@@ -1317,12 +1322,7 @@ var PianificazioneTurni;
                 if (modal)
                     modal.hide();
             }
-            const bd = document.querySelector('.modal-backdrop');
-            if (bd && bd.parentNode)
-                bd.parentNode.removeChild(bd);
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
+            this.closeModalBackdropAndBody();
         }
         getTurniOperatoreSettimana(nome) {
             return this.turni.filter(t => t.operatore === nome);
@@ -1372,12 +1372,7 @@ var PianificazioneTurni;
                 if (modal)
                     modal.hide();
             }
-            const bd = document.querySelector('.modal-backdrop');
-            if (bd && bd.parentNode)
-                bd.parentNode.removeChild(bd);
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
+            this.closeModalBackdropAndBody();
         }
         getTurniNaveSettimana(naveNome) {
             return this.turni.filter(t => t.nome === naveNome);
