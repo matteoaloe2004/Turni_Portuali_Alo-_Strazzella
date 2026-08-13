@@ -4,7 +4,7 @@ declare namespace utilities {
     function postJson(url: string, body: any): Promise<Response>;
 }
 
-module PianificazioneTurni {
+namespace PianificazioneTurni {
 
     type ConflictWarning =
         'MANCA_QUALIFICA' | 'PATENTE_NON_VALIDA' | 'RIPOSO_OBBLIGATORIO' |
@@ -73,75 +73,10 @@ module PianificazioneTurni {
 
             this.banchine = ['Molo Est', 'Molo Nord', 'Banchina Ovest', 'Banchina Sud'];
 
-            // Modello operatore con ruolo, limite contrattuale e abilitazioni per molo
-            this.operatori = [
-                { nome: 'Filippo', ruolo: 'Gruista', oreSettimanali: 28, oreMassime: 35, abilitazioni: ['Molo Est', 'Molo Nord'] },
-                { nome: 'Elena', ruolo: 'Gruista', oreSettimanali: 28, oreMassime: 38, abilitazioni: ['Molo Est', 'Molo Nord'] },
-                { nome: 'Davide', ruolo: 'Gruista', oreSettimanali: 30, oreMassime: 40, abilitazioni: ['Banchina Ovest', 'Molo Nord'] },
-                { nome: 'Anna', ruolo: 'Mulettista', oreSettimanali: 28, oreMassime: 40, abilitazioni: [] }, // jolly: nessuna restrizione
-                { nome: 'Marco', ruolo: 'Mulettista', oreSettimanali: 29, oreMassime: 40, abilitazioni: ['Molo Est', 'Banchina Ovest'] },
-                { nome: 'Sara', ruolo: 'Mulettista', oreSettimanali: 28, oreMassime: 40, abilitazioni: ['Banchina Sud', 'Banchina Ovest'] },
-                { nome: 'Luigi', ruolo: 'Stivatore', oreSettimanali: 31, oreMassime: 40, abilitazioni: ['Banchina Sud', 'Banchina Ovest'] },
-                { nome: 'Giorgio', ruolo: 'Stivatore', oreSettimanali: 29, oreMassime: 40, abilitazioni: [] },
-                { nome: 'Carla', ruolo: 'Stivatore', oreSettimanali: 27, oreMassime: 40, abilitazioni: [] },
-                { nome: 'Roberto', ruolo: 'Coordinatore', oreSettimanali: 24, oreMassime: 45, abilitazioni: [] },
-                { nome: 'Matteo', ruolo: 'Gruista', oreSettimanali: 28, oreMassime: 35, abilitazioni: ['Molo Nord'] },
-                { nome: 'Sofia', ruolo: 'Mulettista', oreSettimanali: 29, oreMassime: 40, abilitazioni: ['Molo Est', 'Banchina Sud'] },
-                { nome: 'Giovanni', ruolo: 'Stivatore', oreSettimanali: 28, oreMassime: 40, abilitazioni: [] },
-                { nome: 'Andrea', ruolo: 'Gruista', oreSettimanali: 26, oreMassime: 35, abilitazioni: ['Banchina Ovest'] },
-                { nome: 'Paola', ruolo: 'Mulettista', oreSettimanali: 30, oreMassime: 40, abilitazioni: ['Banchina Sud'] },
-                { nome: 'Stefano', ruolo: 'Stivatore', oreSettimanali: 30, oreMassime: 40, abilitazioni: ['Molo Nord'] },
-                { nome: 'Vincenzo', ruolo: 'Gruista', oreSettimanali: 10, oreMassime: 35, abilitazioni: ['Molo Est'], reperibile: true },
-                { nome: 'Clara', ruolo: 'Mulettista', oreSettimanali: 8, oreMassime: 40, abilitazioni: [], reperibile: true },
-                { nome: 'Fabio', ruolo: 'Stivatore', oreSettimanali: 12, oreMassime: 40, abilitazioni: [], reperibile: true },
-                { nome: 'Luca', ruolo: 'Gruista', oreSettimanali: 20, oreMassime: 35, abilitazioni: ['Molo Est', 'Molo Nord'] },
-                { nome: 'Antonio', ruolo: 'Gruista', oreSettimanali: 6, oreMassime: 35, abilitazioni: ['Banchina Sud', 'Molo Est'], reperibile: true },
-                { nome: 'Giulia', ruolo: 'Mulettista', oreSettimanali: 24, oreMassime: 40, abilitazioni: ['Banchina Sud', 'Molo Est'] },
-                { nome: 'Francesca', ruolo: 'Mulettista', oreSettimanali: 10, oreMassime: 40, abilitazioni: ['Banchina Ovest', 'Molo Nord'], reperibile: true },
-                { nome: 'Alice', ruolo: 'Stivatore', oreSettimanali: 18, oreMassime: 40, abilitazioni: ['Molo Est', 'Banchina Ovest'] },
-                { nome: 'Simona', ruolo: 'Stivatore', oreSettimanali: 8, oreMassime: 40, abilitazioni: ['Banchina Sud', 'Banchina Ovest'], reperibile: true }
-            ];
-
-            // Turni con ruoloRichiesto distribuiti su 7 giorni (0=Oggi, 1=Domani, 2=Dopodomani, ecc.)
-            this.turni = [
-                // Oggi (Giorno 0) - ALTISSIMA OCCUPAZIONE
-                { id: 1, nome: 'MCL Athena', banchina: 'Molo Est', startOra: 8, durataOre: 2.5, operatore: 'Luigi', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-                { id: 2, nome: 'MCL Poseidon', banchina: 'Molo Est', startOra: 11, durataOre: 3, operatore: 'Marco', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-                { id: 3, nome: 'MCL Europa', banchina: 'Banchina Sud', startOra: 7, durataOre: 4, operatore: 'Anna', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-                { id: 4, nome: 'MCL Zephyrus', banchina: 'Molo Nord', startOra: 8, durataOre: 2.5, operatore: 'Filippo', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 0 },
-
-                // Domani (Giorno 1) - ALTISSIMA OCCUPAZIONE
-                { id: 5, nome: 'MCL Atlas', banchina: 'Banchina Ovest', startOra: 14, durataOre: 3.5, operatore: 'Giorgio', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
-                { id: 6, nome: 'MCL Orion', banchina: 'Molo Nord', startOra: 7, durataOre: 2.5, operatore: 'Davide', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
-                { id: 7, nome: 'MCL Hercules', banchina: 'Banchina Ovest', startOra: 9.5, durataOre: 3, operatore: 'Giovanni', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
-                { id: 8, nome: 'MCL Titanic', banchina: 'Banchina Sud', startOra: 14, durataOre: 4, operatore: 'Sara', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 1 },
-
-                // Dopodomani (Giorno 2) - ALTA OCCUPAZIONE
-                { id: 9, nome: 'MCL Aurora', banchina: 'Molo Est', startOra: 15, durataOre: 3.5, operatore: 'Elena', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 2 },
-                { id: 10, nome: 'MCL Neptun', banchina: 'Molo Nord', startOra: 12, durataOre: 3, operatore: 'Elena', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 2 },
-                { id: 11, nome: 'MCL Phoenix', banchina: 'Banchina Ovest', startOra: 16.5, durataOre: 2.5, operatore: 'Carla', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 2 },
-                { id: 12, nome: 'MCL Pegasus', banchina: 'Banchina Sud', startOra: 7, durataOre: 2.5, operatore: 'Sofia', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 2 },
-
-                // Giorno 3
-                { id: 13, nome: 'MCL Triton', banchina: 'Molo Est', startOra: 8, durataOre: 3, operatore: 'Elena', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 3 },
-                { id: 14, nome: 'MCL Centaur', banchina: 'Molo Nord', startOra: 10.5, durataOre: 2.5, operatore: 'Filippo', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 3 },
-                { id: 15, nome: 'MCL Odyssey', banchina: 'Banchina Ovest', startOra: 12.5, durataOre: 4, operatore: 'Giorgio', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 3 },
-
-                // Giorno 4
-                { id: 16, nome: 'MCL Voyager', banchina: 'Banchina Sud', startOra: 9, durataOre: 3, operatore: 'Anna', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 4 },
-                { id: 17, nome: 'MCL Discovery', banchina: 'Molo Est', startOra: 11, durataOre: 2.5, operatore: 'Davide', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 4 },
-                { id: 18, nome: 'MCL Adventure', banchina: 'Molo Nord', startOra: 13.5, durataOre: 3, operatore: 'Andrea', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 4 },
-
-                // Giorno 5
-                { id: 19, nome: 'MCL Mariner', banchina: 'Banchina Ovest', startOra: 8, durataOre: 4, operatore: 'Giorgio', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 5 },
-                { id: 20, nome: 'MCL Navigator', banchina: 'Banchina Sud', startOra: 11, durataOre: 2.5, operatore: 'Marco', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 5 },
-                { id: 21, nome: 'MCL Freedom', banchina: 'Molo Est', startOra: 12.5, durataOre: 3.5, operatore: 'Filippo', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 5 },
-
-                // Giorno 6
-                { id: 22, nome: 'MCL Oasis', banchina: 'Molo Nord', startOra: 8, durataOre: 3, operatore: 'Davide', ruoloRichiesto: 'Gruista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 6 },
-                { id: 23, nome: 'MCL Allure', banchina: 'Banchina Ovest', startOra: 11, durataOre: 2.5, operatore: 'Luigi', ruoloRichiesto: 'Stivatore', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 6 },
-                { id: 24, nome: 'MCL Harmony', banchina: 'Banchina Sud', startOra: 13.5, durataOre: 4, operatore: 'Sara', ruoloRichiesto: 'Mulettista', isDelayed: false, requiresResolution: false, ritardoOre: 0, giorno: 6 }
-            ];
+            // Valori iniziali vuoti: loadFromSeed() (chiamato a fine costruttore) li
+            // sovrascrive sempre con i dati reali renderizzati dal server in Seed_JSON.
+            this.operatori = [];
+            this.turni = [];
 
             this.giornoSelezionato = 0; // Giorno 0: Oggi
 
@@ -181,6 +116,9 @@ module PianificazioneTurni {
             this.tasksDaAssegnare = [];
             this.selectedTask = null;
             this.activeTab = 'pianificazione';
+            this.veicolo = '';
+            this.identificativo = '';
+            this.hasConflict = false;
             this.loadFromSeed();
         }
 
@@ -916,7 +854,6 @@ module PianificazioneTurni {
             if (!this.turnoInRitardo && !this.selectedTask) return { warnings: [], successes: [] };
             const t = this.turnoInRitardo || this.selectedTask;
             const nStart = this.turnoInRitardo ? this.orarioSelezioneRiassegnazione : (t.etaOra || 7.0);
-            const nEnd = nStart + t.durataOre;
 
             let warnings: ConflictWarning[] = [];
             let successes: string[] = [];
