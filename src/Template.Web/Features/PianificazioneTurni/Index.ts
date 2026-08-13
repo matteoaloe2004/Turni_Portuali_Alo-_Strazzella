@@ -532,11 +532,12 @@ module PianificazioneTurni {
             }
         }
 
-        public applicaSoluzioneTaskSuggerita(): void {
-            if (!this.selectedTask || !this.soluzioneTaskSuggerita) return;
-
-            const sol = this.soluzioneTaskSuggerita;
-            const op = this.operatori.find(o => o.nome === sol.operatoreSuggerito);
+        // Condivisa da assegnaTask() e applicaSoluzioneDSSSelezionata(): crea il turno per
+        // il task selezionato, aggiorna backlog/ore/notifiche e naviga al giorno assegnato.
+        private eseguiAssegnazioneTask(operatoreNome: string, banchina: string, startOra: number, giorno: number): void {
+            const task = this.selectedTask;
+            if (!task) return;
+            const op = this.operatori.find(o => o.nome === operatoreNome);
             if (!op) return;
 
             const maxId = this.turni.length > 0 ? Math.max(...this.turni.map((t: any) => t.id).filter((id: number) => id < 1000000)) : 0;
@@ -544,25 +545,25 @@ module PianificazioneTurni {
 
             const nuovoTurno = {
                 id: nextId,
-                nome: this.selectedTask.nome,
-                banchina: sol.moloSuggerito,
-                startOra: sol.orarioSuggerito,
-                durataOre: this.selectedTask.durataOre,
-                operatore: sol.operatoreSuggerito,
-                ruoloRichiesto: this.selectedTask.competenzaRichiesta,
+                nome: task.nome,
+                banchina: banchina,
+                startOra: startOra,
+                durataOre: task.durataOre,
+                operatore: operatoreNome,
+                ruoloRichiesto: task.competenzaRichiesta,
                 isDelayed: false,
                 requiresResolution: false,
                 ritardoOre: 0,
-                giorno: sol.giornoSuggerito,
-                etaGiorno: this.selectedTask.etaGiorno,
-                etaOra: this.selectedTask.etaOra,
-                etdGiorno: this.selectedTask.etdGiorno,
-                etdOra: this.selectedTask.etdOra
+                giorno: giorno,
+                etaGiorno: task.etaGiorno,
+                etaOra: task.etaOra,
+                etdGiorno: task.etdGiorno,
+                etdOra: task.etdOra
             };
 
             this.turni.push(nuovoTurno);
             this.ricalcolaOreSettimanaliOperatori();
-            this.tasksDaAssegnare = this.tasksDaAssegnare.filter(t => t.id !== this.selectedTask.id);
+            this.tasksDaAssegnare = this.tasksDaAssegnare.filter(t => t.id !== task.id);
 
             // Notifica
             const tipoNotifica = op.reperibile ? 'SMS' : 'Email';
@@ -685,57 +686,7 @@ module PianificazioneTurni {
                 return;
             }
 
-            const maxId = this.turni.length > 0 ? Math.max(...this.turni.map((t: any) => t.id).filter((id: number) => id < 1000000)) : 0;
-            const nextId = (maxId < 0 ? 0 : maxId) + 1;
-
-            const nuovoTurno = {
-                id: nextId,
-                nome: this.selectedTask.nome,
-                banchina: finalBanchina,
-                startOra: startOra,
-                durataOre: this.selectedTask.durataOre,
-                operatore: op.nome,
-                ruoloRichiesto: this.selectedTask.competenzaRichiesta,
-                isDelayed: false,
-                requiresResolution: false,
-                ritardoOre: 0,
-                giorno: this.giornoSelezionato,
-                etaGiorno: this.selectedTask.etaGiorno,
-                etaOra: this.selectedTask.etaOra,
-                etdGiorno: this.selectedTask.etdGiorno,
-                etdOra: this.selectedTask.etdOra
-            };
-
-            this.turni.push(nuovoTurno);
-            this.ricalcolaOreSettimanaliOperatori();
-            this.tasksDaAssegnare = this.tasksDaAssegnare.filter(t => t.id !== this.selectedTask.id);
-
-            // Notifica simulata (SMS/Email)
-            const tipoNotifica = op.reperibile ? 'SMS' : 'Email';
-            const dettaglioDest = op.reperibile ? 'Cellulare' : 'Email aziendale';
-            const msgNotifica = `Pianificazione turno per nave ${nuovoTurno.nome} assegnato a te al ${nuovoTurno.banchina} il giorno ${this.getNomeGiorno(this.giornoSelezionato)} dalle ore ${this.fmtOra(nuovoTurno.startOra)} alle ${this.fmtOra(nuovoTurno.startOra + nuovoTurno.durataOre)}.`;
-
-            this.notificheSimulate.unshift({
-                id: Date.now() + 1,
-                destinatario: op.nome,
-                dettaglioDestinatario: dettaglioDest,
-                tipo: tipoNotifica,
-                messaggio: msgNotifica,
-                timestamp: new Date().toLocaleTimeString()
-            });
-
-            this.selectedTask = null;
-            this.saveState();
-
-            if (typeof Toastify !== 'undefined') {
-                Toastify({
-                    text: `Task assegnato con successo a ${op.nome}!`,
-                    duration: 3000,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: "#2e7d32"
-                }).showToast();
-            }
+            this.eseguiAssegnazioneTask(op.nome, finalBanchina, startOra, this.giornoSelezionato);
         }
 
         public isOperatoreIncompatibile(op: any): boolean {
@@ -1848,63 +1799,7 @@ module PianificazioneTurni {
 
         public applicaSoluzioneDSSSelezionata(sol: any): void {
             if (!this.selectedTask) return;
-            const op = this.operatori.find(o => o.nome === sol.operatore);
-            if (!op) return;
-            
-            const maxId = this.turni.length > 0 ? Math.max(...this.turni.map((t: any) => t.id).filter((id: number) => id < 1000000)) : 0;
-            const nextId = (maxId < 0 ? 0 : maxId) + 1;
-            
-            const nuovoTurno = {
-                id: nextId,
-                nome: this.selectedTask.nome,
-                banchina: sol.molo,
-                startOra: sol.orario,
-                durataOre: this.selectedTask.durataOre,
-                operatore: sol.operatore,
-                ruoloRichiesto: this.selectedTask.competenzaRichiesta,
-                isDelayed: false,
-                requiresResolution: false,
-                ritardoOre: 0,
-                giorno: sol.giorno,
-                etaGiorno: this.selectedTask.etaGiorno,
-                etaOra: this.selectedTask.etaOra,
-                etdGiorno: this.selectedTask.etdGiorno,
-                etdOra: this.selectedTask.etdOra
-            };
-
-            this.turni.push(nuovoTurno);
-            this.ricalcolaOreSettimanaliOperatori();
-            this.tasksDaAssegnare = this.tasksDaAssegnare.filter(t => t.id !== this.selectedTask.id);
-
-            // Notifica
-            const tipoNotifica = op.reperibile ? 'SMS' : 'Email';
-            const dettaglioDest = op.reperibile ? 'Cellulare' : 'Email aziendale';
-            const msgNotifica = `Pianificazione turno per nave ${nuovoTurno.nome} assegnato a te al ${nuovoTurno.banchina} il giorno ${this.getNomeGiorno(nuovoTurno.giorno)} dalle ore ${this.fmtOra(nuovoTurno.startOra)} alle ${this.fmtOra(nuovoTurno.startOra + nuovoTurno.durataOre)}.`;
-
-            this.notificheSimulate.unshift({
-                id: Date.now() + 1,
-                destinatario: op.nome,
-                dettaglioDestinatario: dettaglioDest,
-                tipo: tipoNotifica,
-                messaggio: msgNotifica,
-                timestamp: new Date().toLocaleTimeString()
-            });
-
-            const giornoAssegnato = nuovoTurno.giorno;
-            this.selectedTask = null;
-            this.soluzioneTaskSuggerita = null;
-            this.saveState();
-            this.selezionaGiorno(giornoAssegnato);
-
-            if (typeof Toastify !== 'undefined') {
-                Toastify({
-                    text: `Task assegnato con successo a ${op.nome} (${this.getNomeGiorno(giornoAssegnato)})!`,
-                    duration: 3000,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: "#2e7d32"
-                }).showToast();
-            }
+            this.eseguiAssegnazioneTask(sol.operatore, sol.molo, sol.orario, sol.giorno);
         }
     }
 }
