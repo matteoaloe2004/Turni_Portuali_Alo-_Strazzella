@@ -169,31 +169,6 @@ namespace PianificazioneTurni {
             }
         }
 
-        public getPatenteStatus(op: any): 'expired' | 'warning' | 'valid' {
-            if (!op.patenteValidaFinoAl) return 'valid';
-            const date = new Date(op.patenteValidaFinoAl);
-            const now = new Date();
-            date.setHours(0, 0, 0, 0);
-            now.setHours(0, 0, 0, 0);
-            const diffTime = date.getTime() - now.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays < 0) {
-                return 'expired';
-            } else if (diffDays <= 15) {
-                return 'warning';
-            }
-            return 'valid';
-        }
-
-        public getPatenteFormatted(op: any): string {
-            if (!op.patenteValidaFinoAl) return '';
-            const date = new Date(op.patenteValidaFinoAl);
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            return `${day}/${month}/${year}`;
-        }
-
         // ---- Lifecycle: chiamato da mounted() di Vue ----
         public initEmergenza(): void {
             if (this.loadState()) {
@@ -402,41 +377,9 @@ namespace PianificazioneTurni {
             }
         }
 
-        // ---- Formattazione ----
-        public fmtOra(h: number): string {
-            if (h < 0) h = 0;
-            const hh = Math.floor(h);
-            const mm = Math.round((h - hh) * 60);
-            if (hh >= 24) {
-                const hNext = hh - 24;
-                return `+1g ${hNext.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
-            }
-            return hh.toString().padStart(2, '0') + ':' + mm.toString().padStart(2, '0');
-        }
-
-        public fmtTick(h: number): string {
-            if (h % 2 !== 0) return '';
-            const hh = h >= 24 ? h - 24 : h;
-            return hh.toString().padStart(2, '0') + ':00';
-        }
-
-        public fmtDurata(d: number): string {
-            const h = Math.floor(d);
-            const m = Math.round((d - h) * 60);
-            return m > 0 ? `${h}h ${m}min` : `${h}h`;
-        }
-
         public getNuovoOrario(): string {
             if (!this.turnoInRitardo) return '';
             return this.fmtOra(this.orarioSelezioneRiassegnazione);
-        }
-
-        // ---- Gantt positioning ----
-        private totalH(): number { return this.orarioFine - this.orarioInizio; }
-
-        public blockLeft(turno: any): string {
-            const s = turno.isDelayed ? turno.startOra + turno.ritardoOre : turno.startOra;
-            return (((s - this.orarioInizio) / this.totalH()) * 100).toFixed(2) + '%';
         }
 
         public async selectTask(task: any): Promise<void> {
@@ -681,89 +624,6 @@ namespace PianificazioneTurni {
             return '';
         }
 
-        public blockWidth(turno: any): string {
-            const d = turno.durataOre;
-            return ((d / this.totalH()) * 100).toFixed(2) + '%';
-        }
-
-        public tickLeft(h: number): string {
-            return (((h - this.orarioInizio) / this.totalH()) * 100).toFixed(2) + '%';
-        }
-
-        public getTurniPerBanchina(banchina: string): any[] {
-            return this.turni.filter(t => t.banchina === banchina && t.giorno === this.giornoSelezionato);
-        }
-
-        public getTurniPerOperatore(nome: string): any[] {
-            return this.turni.filter(t => t.operatore === nome && t.giorno === this.giornoSelezionato);
-        }
-
-        public isBloccoInCollisione(t: any): boolean {
-            if (!t.operatore) return false;
-            
-            const startT = t.isDelayed ? t.startOra + t.ritardoOre : t.startOra;
-            const candStart = t.giorno * 24.0 + startT;
-            const candEnd = candStart + t.durataOre;
-
-            return this.turni.some(other => {
-                if (other.id === t.id) return false;
-
-                const startO = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
-                const otherStart = other.giorno * 24.0 + startO;
-                const otherEnd = otherStart + other.durataOre;
-
-                // 1. Collisione molo (sovrapposizione stesso molo)
-                if (t.banchina === other.banchina) {
-                    if (candStart < otherEnd && candEnd > otherStart) {
-                        return true;
-                    }
-                }
-
-                // 2. Collisione operatore (sovrapposizione o riposo insufficiente < 11 ore)
-                if (t.operatore === other.operatore) {
-                    // Sovrapposizione
-                    if (candStart < otherEnd && candEnd > otherStart) {
-                        return true;
-                    }
-                    // Riposo di 11h
-                    if (candStart >= otherEnd && candStart - otherEnd < 11.0) {
-                        return true;
-                    }
-                    if (candEnd <= otherStart && otherStart - candEnd < 11.0) {
-                        return true;
-                    }
-                }
-
-                return false;
-            });
-        }
-
-        // ---- Poka-Yoke: CSS class binding per blocco Gantt ----
-        public getBlockClass(t: any): any {
-            const collision = this.isBloccoInCollisione(t);
-            const isLocked = collision && !t.isDelayed; // Nave originale in collisione = bloccata
-            
-            const startOra = t.isDelayed ? t.startOra + t.ritardoOre : t.startOra;
-            const crossesMidnight = (startOra + t.durataOre) > 24.0 || startOra >= 23.0;
-
-            return {
-                'gantt-block-delayed': t.isDelayed && !crossesMidnight,
-                'gantt-block-normal': !t.isDelayed && !isLocked && !crossesMidnight && !collision,
-                'gantt-block-collision': collision,
-                'gantt-block-locked': isLocked && !crossesMidnight,
-                'gantt-block-midnight': crossesMidnight && !collision
-            };
-        }
-
-        // ---- Poka-Yoke: Click handler ----
-        public handleBlockClick(t: any): void {
-            if (t.isDelayed) {
-                this.apriModale(t);
-            } else {
-                this.apriDettagliNave(t.nome);
-            }
-        }
-
         // ---- Demo Mode: timer automatico per simulare ritardi ----
         public startDemoTimer(): void {
             const INTERVAL_MS = 25000; // 25 secondi
@@ -810,18 +670,6 @@ namespace PianificazioneTurni {
             setTimeout(() => {
                 if (toast.parentNode) toast.parentNode.removeChild(toast);
             }, 4500);
-        }
-
-        // ---- Progress bar helpers ----
-        public getOpPercent(op: any): number {
-            return Math.min(100, (op.oreSettimanali / op.oreMassime) * 100);
-        }
-
-        public getOpStatus(op: any): string {
-            const r = op.oreSettimanali / op.oreMassime;
-            if (r > 0.75) return 'danger';
-            if (r < 0.50) return 'secondary';
-            return 'warning';
         }
 
         // ---- Filtri modale ----
