@@ -393,7 +393,6 @@ module PianificazioneTurni {
         }
 
         public causaRitardoCasuale(): void {
-            console.log("Simula Ritardo chiamata. Emergenza attiva:", this.emergenzaAttiva);
             if (this.emergenzaAttiva) {
                 if (typeof Toastify !== 'undefined') {
                         Toastify({

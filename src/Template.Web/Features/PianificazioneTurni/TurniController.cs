@@ -41,7 +41,6 @@ namespace Template.Web.Features.PianificazioneTurni
             {
                 return BadRequest("I dati della query non sono validi.");
             }
-            System.Console.WriteLine($"[DIAGNOSTIC] CalcolaMigliorAlternativa - turnoId: {query.TurnoId}, ritardoOre: {query.RitardoOre}, startOra: {query.StartOra}, giorno: {query.Giorno}, currentTurni: {query.CurrentTurni?.Count ?? 0}");
 
             var result = await _sharedService.Query(query);
             if (result == null)
@@ -109,14 +108,6 @@ namespace Template.Web.Features.PianificazioneTurni
             }
 
             return Json(new { success = true, message = "Spostamento salvato con successo." });
-        }
-
-        [HttpPost]
-        public virtual IActionResult LogDiagnostic([FromBody] System.Text.Json.JsonElement payload)
-        {
-            var msg = payload.GetProperty("message").GetString();
-            System.Console.WriteLine($"[DIAGNOSTIC SERVER-LOG] {msg}");
-            return Ok();
         }
     }
 }

@@ -37,6 +37,9 @@ Quando una nave accumula ritardo o si genera una collisione oraria, il motore de
 ### 6. Emergenza Estrema (Qualsiasi operatore)
 * **Descrizione**: Come ultima risorsa per garantire che l'utente abbia sempre una soluzione proposta, il sistema assegna il turno a **qualunque operatore disponibile**, ignorando ruolo, abilitazione del molo e limite orario.
 
+### 7. Ultima Risorsa (Nessun vincolo)
+* **Descrizione**: Se anche il Criterio 6 non trova una soluzione, il sistema cerca il primo slot libero ignorando ogni vincolo residuo: non solo ruolo, abilitazione e limite orario, ma anche la finestra ETA/ETD della nave, la validità della patente e il riposo obbligatorio. Garantisce che una proposta venga sempre restituita, al prezzo di una soluzione potenzialmente non conforme che il coordinatore deve validare manualmente.
+
 ---
 
 ## 🔒 Vincoli Logici e Poka-Yoke (Prevenzione Errori)

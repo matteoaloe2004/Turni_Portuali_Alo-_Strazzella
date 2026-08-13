@@ -329,7 +329,6 @@ var PianificazioneTurni;
         }
         causaRitardoCasuale() {
             var _a;
-            console.log("Simula Ritardo chiamata. Emergenza attiva:", this.emergenzaAttiva);
             if (this.emergenzaAttiva) {
                 if (typeof Toastify !== 'undefined') {
                     Toastify({

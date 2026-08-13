@@ -74,8 +74,6 @@ namespace Template.Services.Shared
 
         public async Task<MigliorAlternativaDTO> Query(CalcolaMigliorAlternativaQuery qry)
         {
-            System.Console.WriteLine($"[DIAGNOSTIC] Query - TurnoId: {qry.TurnoId}, RitardoOre: {qry.RitardoOre}, StartOra: {qry.StartOra}, Giorno: {qry.Giorno}");
-            
             Turno targetShift = null;
             if (qry.CurrentTurni != null && qry.CurrentTurni.Count > 0)
             {
@@ -88,7 +86,6 @@ namespace Template.Services.Shared
 
             if (targetShift == null)
             {
-                System.Console.WriteLine($"[DIAGNOSTIC] Query - targetShift non trovato per Id: {qry.TurnoId}");
                 return null;
             }
 
@@ -153,7 +150,6 @@ namespace Template.Services.Shared
                 if (result != null)
                 {
                     result.MotivoScelta = "Riassegnazione Standard (Stesso giorno, operatore di linea)";
-                    System.Console.WriteLine($"[DIAGNOSTIC] Query - Criterio 1 applicato: {result.MotivoScelta}");
                     return result;
                 }
             }
@@ -169,7 +165,6 @@ namespace Template.Services.Shared
                 if (result != null)
                 {
                     result.MotivoScelta = "Attivazione Reperibilità (Stesso giorno, operatore a chiamata)";
-                    System.Console.WriteLine($"[DIAGNOSTIC] Query - Criterio 2 applicato: {result.MotivoScelta}");
                     return result;
                 }
             }
@@ -187,7 +182,6 @@ namespace Template.Services.Shared
                 if (result != null)
                 {
                     result.MotivoScelta = $"Slittamento Temporale (Giorno +{offset}, operatore di linea)";
-                    System.Console.WriteLine($"[DIAGNOSTIC] Query - Criterio 3 (linea) applicato: {result.MotivoScelta}");
                     return result;
                 }
 
@@ -196,7 +190,6 @@ namespace Template.Services.Shared
                 if (result != null)
                 {
                     result.MotivoScelta = $"Slittamento Temporale (Giorno +{offset}, operatore a chiamata)";
-                    System.Console.WriteLine($"[DIAGNOSTIC] Query - Criterio 3 (a chiamata) applicato: {result.MotivoScelta}");
                     return result;
                 }
             }
@@ -219,7 +212,6 @@ namespace Template.Services.Shared
                     if (result != null)
                     {
                         result.MotivoScelta = $"Deroga Straordinari (Sforamento a {maxOre}h, Giorno +{offset})";
-                        System.Console.WriteLine($"[DIAGNOSTIC] Query - Criterio 4 applicato: {result.MotivoScelta}");
                         return result;
                     }
                 }
@@ -240,7 +232,6 @@ namespace Template.Services.Shared
                 if (result != null)
                 {
                     result.MotivoScelta = $"Deroga Qualifica (Operatore non abilitato al molo, Giorno +{offset})";
-                    System.Console.WriteLine($"[DIAGNOSTIC] Query - Criterio 5 applicato: {result.MotivoScelta}");
                     return result;
                 }
             }
@@ -261,7 +252,6 @@ namespace Template.Services.Shared
                 if (result != null)
                 {
                     result.MotivoScelta = $"Emergenza Estrema (Deroga ruolo e qualifiche, Giorno +{offset})";
-                    System.Console.WriteLine($"[DIAGNOSTIC] Query - Criterio 6 applicato: {result.MotivoScelta}");
                     return result;
                 }
             }
@@ -271,7 +261,6 @@ namespace Template.Services.Shared
             // ==========================================
             if (result == null)
             {
-                System.Console.WriteLine("[DIAGNOSTIC] Query - Criteri 1-6 falliti. Attivazione Criterio 7 (Ultima Risorsa)");
                 var backupOperators = await _dbContext.Operatori.ToListAsync();
                 for (int offset = 0; offset <= 1; offset++)
                 {
