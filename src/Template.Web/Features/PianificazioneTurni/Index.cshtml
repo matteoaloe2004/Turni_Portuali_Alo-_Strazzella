@@ -635,8 +635,8 @@
                                                 <div class="mb-2 text-secondary"><strong>Operatore:</strong> <span class="text-dark">{{ sol.operatore }}</span></div>
                                             </div>
                                             
-                                            <button type="button" class="btn btn-primary btn-sm w-100 mt-1 py-1.5 fw-bold" style="font-size: 0.72rem; border-radius: var(--radius-sm);" v-on:click="applicaSoluzioneDSSSelezionata(sol)">
-                                                Assegna Turno
+                                            <button type="button" class="btn btn-primary btn-sm w-100 mt-1 py-1.5 fw-bold" style="font-size: 0.72rem; border-radius: var(--radius-sm);" v-on:click="applicaSoluzioneDSSSelezionata(sol)" title="Applica questa soluzione così come proposta dal DSS">
+                                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Applica soluzione suggerita
                                             </button>
                                         </div>
                                     </div>
@@ -782,8 +782,9 @@
                                          <button class="btn btn-success btn-xs py-1 px-2.5 fw-bold d-inline-flex align-items-center gap-1"
                                                  v-bind:class="{ 'disabled': !selectedTask || isOperatoreIncompatibile(op) }"
                                                  v-bind:disabled="!selectedTask || isOperatoreIncompatibile(op)"
-                                                 style="font-size: 0.7rem; border-radius: var(--radius-sm);" 
-                                                 v-on:click="assegnaTask(op)">
+                                                 style="font-size: 0.7rem; border-radius: var(--radius-sm);"
+                                                 v-on:click="assegnaTask(op)"
+                                                 title="Assegnazione manuale: cerca il primo slot libero per questo operatore oggi">
                                              <i class="fa-solid fa-user-check"></i> Assegna
                                          </button>
                                      </div>
