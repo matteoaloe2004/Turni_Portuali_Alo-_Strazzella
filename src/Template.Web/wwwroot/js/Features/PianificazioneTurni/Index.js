@@ -836,7 +836,7 @@ var PianificazioneTurni;
         }
         getDettaglioConflittoOperatore(op) {
             if (!this.turnoInRitardo && !this.selectedTask)
-                return '';
+                return { warnings: [], successes: [] };
             const t = this.turnoInRitardo || this.selectedTask;
             const nStart = this.turnoInRitardo ? this.orarioSelezioneRiassegnazione : (t.etaOra || 7.0);
             const nEnd = nStart + t.durataOre;
@@ -855,35 +855,29 @@ var PianificazioneTurni;
                 successes.push('competenza disponibile');
             }
             else {
-                warnings.push('manca qualifica');
+                warnings.push('MANCA_QUALIFICA');
             }
             // 2. Patente check
-            let patenteValida = true;
             if (op.patenteValidaFinoAl) {
                 const scadenza = new Date(op.patenteValidaFinoAl);
                 const oggi = new Date();
                 if (scadenza < oggi) {
-                    patenteValida = false;
-                    warnings.push('patente non valida');
+                    warnings.push('PATENTE_NON_VALIDA');
                 }
             }
-            if (patenteValida) {
-                // assume valid if not specified or date is in future
-            }
             // 3. Riposo check
-            let riposoValido = !op.inRiposoObbligatorio;
             if (op.inRiposoObbligatorio) {
-                warnings.push('riposo insufficiente');
+                warnings.push('RIPOSO_OBBLIGATORIO');
             }
             // 4. Ore check
             const orePreviste = op.oreSettimanali + t.durataOre;
             if (orePreviste > op.oreMassime) {
-                warnings.push('limite ore superato');
+                warnings.push('LIMITE_ORE_SUPERATO');
             }
             // 5. Abilitazione banchina check
             const bSel = this.turnoInRitardo ? this.banchinaSelezione : (t.banchina || '');
             if (bSel && op.abilitazioni && op.abilitazioni.length > 0 && !op.abilitazioni.includes(bSel)) {
-                warnings.push('non abilitato');
+                warnings.push('NON_ABILITATO');
             }
             // 6. Time overlap and 11-hour rest period checks
             const candStart = t.giorno * 24.0 + nStart;
@@ -907,21 +901,26 @@ var PianificazioneTurni;
                 }
             });
             if (hasOverlap) {
-                warnings.push('sovrapposizione oraria');
+                warnings.push('SOVRAPPOSIZIONE_ORARIA');
             }
             if (haRestConflitto) {
-                warnings.push('riposo insufficiente');
+                warnings.push('RIPOSO_INSUFFICIENTE');
             }
             // Success checks if not warning
-            if (!warnings.includes('riposo insufficiente')) {
+            if (warnings.indexOf('RIPOSO_OBBLIGATORIO') === -1 && warnings.indexOf('RIPOSO_INSUFFICIENTE') === -1) {
                 successes.push('riposo sufficiente');
             }
-            if (!warnings.includes('sovrapposizione oraria')) {
+            if (warnings.indexOf('SOVRAPPOSIZIONE_ORARIA') === -1) {
                 successes.push('disponibilità corretta');
             }
-            const successPart = successes.map(s => `✔ ${s}`).join(' | ');
-            const warningPart = warnings.map(w => `❌ ${w}`).join(' | ');
-            if (warnings.length > 0) {
+            return { warnings, successes };
+        }
+        formatDettaglioConflitto(conflitto) {
+            const successPart = conflitto.successes.map(s => `✔ ${s}`).join(' | ');
+            const warningPart = conflitto.warnings
+                .map(w => `❌ ${IndexVueModel.CONFLICT_WARNING_LABELS[w]}`)
+                .join(' | ');
+            if (conflitto.warnings.length > 0) {
                 return (successPart ? successPart + ' — ' : '') + warningPart;
             }
             return successPart;
@@ -1526,21 +1525,17 @@ var PianificazioneTurni;
             if (this.isOperatoreIncompatibile(op))
                 return 0;
             let score = 100;
-            const warnings = this.getDettaglioConflittoOperatore(op);
-            if (warnings) {
-                if (warnings.includes('Reperibile'))
-                    score -= 10;
-                if (warnings.includes('Ore max superate'))
-                    score -= 30;
-                if (warnings.includes('Non abilitato a'))
-                    score -= 20;
-                if (warnings.includes('Riposo obbligatorio'))
-                    return 0;
-                if (warnings.includes('Sovrapposizione oraria'))
-                    return 0;
-                if (warnings.includes('Riposo insufficiente'))
-                    return 0;
-            }
+            const conflitto = this.getDettaglioConflittoOperatore(op);
+            if (conflitto.warnings.indexOf('RIPOSO_OBBLIGATORIO') !== -1)
+                return 0;
+            if (conflitto.warnings.indexOf('RIPOSO_INSUFFICIENTE') !== -1)
+                return 0;
+            if (conflitto.warnings.indexOf('SOVRAPPOSIZIONE_ORARIA') !== -1)
+                return 0;
+            if (conflitto.warnings.indexOf('LIMITE_ORE_SUPERATO') !== -1)
+                score -= 30;
+            if (conflitto.warnings.indexOf('NON_ABILITATO') !== -1)
+                score -= 20;
             if (op.oreSettimanali + task.durataOre > op.oreMassime - 2) {
                 score -= 15;
             }
@@ -1721,6 +1716,15 @@ var PianificazioneTurni;
             }
         }
     }
+    IndexVueModel.CONFLICT_WARNING_LABELS = {
+        MANCA_QUALIFICA: 'manca qualifica',
+        PATENTE_NON_VALIDA: 'patente non valida',
+        RIPOSO_OBBLIGATORIO: 'riposo insufficiente',
+        LIMITE_ORE_SUPERATO: 'limite ore superato',
+        NON_ABILITATO: 'non abilitato',
+        SOVRAPPOSIZIONE_ORARIA: 'sovrapposizione oraria',
+        RIPOSO_INSUFFICIENTE: 'riposo insufficiente'
+    };
     PianificazioneTurni.IndexVueModel = IndexVueModel;
 })(PianificazioneTurni || (PianificazioneTurni = {}));
 //# sourceMappingURL=Index.js.map

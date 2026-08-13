@@ -743,7 +743,7 @@
                                          Compatibilità: {{ getOperatoreCompatibilityScore(op, selectedTask) }}%
                                      </span>
                                      <div class="text-secondary text-end font-monospace" style="font-size: 0.65rem; max-width: 60%; line-height: 1.2;">
-                                         {{ getDettaglioConflittoOperatore(op) }}
+                                         {{ formatDettaglioConflitto(getDettaglioConflittoOperatore(op)) }}
                                      </div>
                                  </div>
                                  
@@ -1315,6 +1315,7 @@
                 getTurniNaveSettimana:       function (n)   { return appVueModel.getTurniNaveSettimana(n); },
                 getMoliUtilizzatiNave:       function (n)   { return appVueModel.getMoliUtilizzatiNave(n); },
                 getDettaglioConflittoOperatore: function (op) { return appVueModel.getDettaglioConflittoOperatore(op); },
+                formatDettaglioConflitto: function (conflitto) { return appVueModel.formatDettaglioConflitto(conflitto); },
                 svuotaNotifiche:             function ()    { appVueModel.svuotaNotifiche(); },
                 applicaSoluzioneProposta:    function (idx) { appVueModel.applicaSoluzioneProposta(idx); },
                 getDettaglioConflittoAttuale: function () { return appVueModel.getDettaglioConflittoAttuale(); },
