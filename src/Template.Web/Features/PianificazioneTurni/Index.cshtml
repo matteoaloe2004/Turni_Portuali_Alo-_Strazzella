@@ -557,9 +557,12 @@
                                     <div class="text-secondary small">Molo: <strong>{{ t.banchina }}</strong></div>
                                 </div>
                                 <div class="text-end flex-shrink-0" style="font-size:0.75rem;">
-                                    <div class="text-secondary">ETA <strong>{{ fmtOra(t.startOra) }}</strong></div>
+                                    <div class="text-secondary">
+                                        ETA <strong v-bind:class="{ 'text-decoration-line-through': t.isDelayed }">{{ fmtOra(t.startOra) }}</strong>
+                                        <strong v-if="t.isDelayed" class="text-danger">→ {{ fmtOra(t.startOra + t.ritardoOre) }}</strong>
+                                    </div>
                                     <span class="badge" v-bind:class="t.isDelayed ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-success-subtle text-success border border-success-subtle'" style="font-size:.65rem; border-radius: var(--radius-sm); padding:0.2rem 0.4rem;">
-                                        {{ t.isDelayed ? 'RITARDO' : 'IN ORARIO' }}
+                                        {{ t.isDelayed ? ('RITARDO +' + fmtDurata(t.ritardoOre)) : 'IN ORARIO' }}
                                     </span>
                                 </div>
                             </div>
@@ -848,9 +851,10 @@
                                              opacity: isElementoFiltrato(t) ? 1 : 0.15
                                          }"
                                          v-on:click.stop="handleBlockClick(t)"
-                                         v-bind:title="t.nome + ' | Operatore: ' + t.operatore">
+                                         v-bind:title="t.nome + ' | Operatore: ' + t.operatore + (t.isDelayed ? ' | Ritardo: +' + fmtDurata(t.ritardoOre) : '')">
                                          <div class="gantt-block-title fw-bold" style="font-size: 0.68rem; line-height: 1.1;">
                                              {{ t.nome }}
+                                             <span v-if="t.isDelayed" class="fw-bold" style="font-size: 0.6rem;">+{{ fmtDurata(t.ritardoOre) }}</span>
                                          </div>
                                          <div class="gantt-block-sub" style="font-size: 0.58rem; opacity: 0.9;">
                                              <i class="fa-solid fa-user me-1"></i>{{ t.operatore }}

@@ -119,7 +119,7 @@ var PianificazioneTurni;
         // ---- Local Storage Persistence ----
         saveState() {
             try {
-                localStorage.setItem('port_scheduler_data_version', '15');
+                localStorage.setItem('port_scheduler_data_version', '16');
                 localStorage.setItem('port_scheduler_turni', JSON.stringify(this.turni));
                 localStorage.setItem('port_scheduler_operatori', JSON.stringify(this.operatori));
                 localStorage.setItem('port_scheduler_giorno_selezionato', JSON.stringify(this.giornoSelezionato));
@@ -138,7 +138,7 @@ var PianificazioneTurni;
         loadState() {
             try {
                 const version = localStorage.getItem('port_scheduler_data_version');
-                if (version !== '15') {
+                if (version !== '16') {
                     // Invalida cache e forza il caricamento dei nuovi dati
                     localStorage.removeItem('port_scheduler_turni');
                     localStorage.removeItem('port_scheduler_operatori');
@@ -147,7 +147,7 @@ var PianificazioneTurni;
                     localStorage.removeItem('port_scheduler_filtro_ricerca');
                     localStorage.removeItem('port_scheduler_notifiche');
                     localStorage.removeItem('port_scheduler_tasks');
-                    localStorage.setItem('port_scheduler_data_version', '15');
+                    localStorage.setItem('port_scheduler_data_version', '16');
                     this.loadFromSeed();
                     return false;
                 }
