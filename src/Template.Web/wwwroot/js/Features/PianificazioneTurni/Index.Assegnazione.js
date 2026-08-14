@@ -131,10 +131,12 @@ var PianificazioneTurni;
         if (this.selectedTask === task) {
             this.selectedTask = null;
             this.soluzioneTaskSuggerita = null;
+            this.soluzioneDSSSelezionataIndex = null;
         }
         else {
             this.selectedTask = task;
             this.soluzioneTaskSuggerita = null;
+            this.soluzioneDSSSelezionataIndex = null;
             if (task) {
                 await this.caricaSoluzioneTaskSuggerita(task.id);
             }

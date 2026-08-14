@@ -59,6 +59,11 @@ namespace PianificazioneTurni {
         public selectedTask: any;
         public soluzioneTaskSuggerita: any;
 
+        // Alternativa scelta dal coordinatore nella lista radio delle soluzioni DSS
+        // per il task selezionato (indice in soluzioniDSSTask). Azzerato ad ogni
+        // nuova selezione di task in selectTask().
+        public soluzioneDSSSelezionataIndex: number | null;
+
         // Nome dell'operatore sotto il mouse in "Risorse & Idoneità": usato per
         // evidenziare i suoi turni già assegnati sul Gantt durante l'incastro.
         public hoveredOperatoreNome: string | null;
@@ -119,6 +124,7 @@ namespace PianificazioneTurni {
             this.attivaPersonaleAChiamata = false;
             this.tasksDaAssegnare = [];
             this.selectedTask = null;
+            this.soluzioneDSSSelezionataIndex = null;
             this.hoveredOperatoreNome = null;
             this.activeTab = 'pianificazione';
             this.veicolo = '';

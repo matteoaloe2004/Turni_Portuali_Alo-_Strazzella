@@ -163,9 +163,11 @@ namespace PianificazioneTurni {
         if ((this as any).selectedTask === task) {
             (this as any).selectedTask = null;
             (this as any).soluzioneTaskSuggerita = null;
+            (this as any).soluzioneDSSSelezionataIndex = null;
         } else {
             (this as any).selectedTask = task;
             (this as any).soluzioneTaskSuggerita = null;
+            (this as any).soluzioneDSSSelezionataIndex = null;
             if (task) {
                 await this.caricaSoluzioneTaskSuggerita(task.id);
             }
