@@ -93,6 +93,10 @@ namespace PianificazioneTurni {
         }
     };
 
+    // Non richiamato da mounted() né da alcun elemento del template: iniettava un
+    // ritardo casuale ogni 25s in automatico, cosa che contraddiceva la richiesta del
+    // prof di una maschera di lavoro e non di una dashboard con allerte spontanee.
+    // Tenuto per un eventuale uso manuale futuro, non per abitudine.
     IndexVueModel.prototype.startDemoTimer = function (this: IndexVueModel): void {
         const self = this as any;
         const INTERVAL_MS = 25000; // 25 secondi

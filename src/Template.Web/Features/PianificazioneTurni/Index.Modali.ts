@@ -86,6 +86,14 @@ namespace PianificazioneTurni {
         });
     };
 
+    // NOTA: trovaSoluzioneMiglioreAdOra/calcolaSoluzioniProposte/soluzioniProposte/
+    // applicaSoluzioneProposta/getSenzaOperatoriStandardDisponibili/
+    // modificaParametriManualmente formano un secondo motore di alternative,
+    // calcolato interamente lato client (a differenza del percorso realmente attivo,
+    // che passa dal DSS server-side via CalcolaMigliorAlternativa). Nessun elemento
+    // del template li richiama più: non cancellarli per errore pensando siano refusi,
+    // ma nemmeno stupirsi se sembrano "morti" — lo sono, restano di un'iterazione
+    // precedente del modale di conflitto.
     IndexVueModel.prototype.trovaSoluzioneMiglioreAdOra = function (
         this: IndexVueModel, t: any, ora: number, conDeroga: boolean, forceChiamata: boolean = false
     ): { banchina: string, operatore: string, note: string, motivazione: string, usaChiamata: boolean } | null {

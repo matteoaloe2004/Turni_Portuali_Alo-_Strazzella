@@ -4,6 +4,15 @@ declare namespace utilities {
     function postJson(url: string, body: any): Promise<Response>;
 }
 
+// Questo file definisce la classe IndexVueModel; Index.Gantt.ts, Index.Assegnazione.ts,
+// Index.Modali.ts e Index.Notifiche.ts (caricati dopo, nell'ordine indicato dai <script>
+// in Index.cshtml) le aggiungono altri metodi. TypeScript non ha "partial class" come
+// C#, quindi ogni file dichiara `export interface IndexVueModel { metodo(...): T; }`
+// (che TS unisce alla classe qui sotto per structural merging) e poi assegna
+// l'implementazione vera a `IndexVueModel.prototype.metodo = function (this: IndexVueModel, ...) {...}`.
+// Da qui la regola: un metodo privato/di supporto usato in un solo file resta una
+// funzione di namespace comune (es. totalH, isBanchinaOccupata), non un metodo
+// `private` della classe — `private` non funzionerebbe comunque tra file diversi.
 namespace PianificazioneTurni {
 
     export type ConflictWarning =

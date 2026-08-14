@@ -6,6 +6,14 @@ using System.Threading.Tasks;
 
 namespace Template.Services.Shared
 {
+    // Il vero "motore" del DSS: prova 7 criteri in ordine di preferenza crescente
+    // (dal meno invasivo al più forzato) e restituisce la prima soluzione trovata,
+    // mai la migliore in assoluto — è così che il sistema preferisce sempre la
+    // riassegnazione più semplice possibile prima di violare vincoli (straordinari,
+    // qualifiche, ruolo). Chiamato sia per un turno già assegnato in crisi
+    // (CalcolaMigliorAlternativaQuery) sia per un task ancora da assegnare, che viene
+    // temporaneamente impacchettato in un Turno fittizio per riusare lo stesso solver
+    // (CalcolaMigliorSoluzioneTaskQuery, sotto).
     public class CalcolaMigliorAlternativaQuery
     {
         public int TurnoId { get; set; }

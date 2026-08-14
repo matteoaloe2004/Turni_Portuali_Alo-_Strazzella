@@ -34,6 +34,8 @@ namespace Template.Web.Features.PianificazioneTurni
             return View("~/Features/PianificazioneTurni/Index.cshtml", model);
         }
 
+        // Usato dal modale di conflitto per un turno GIÀ esistente e in crisi (ritardo
+        // o collisione): calcola la migliore alternativa a partire dal suo stato attuale.
         [HttpPost]
         public virtual async Task<IActionResult> CalcolaMigliorAlternativa([FromBody] CalcolaMigliorAlternativaQuery query)
         {
@@ -51,6 +53,9 @@ namespace Template.Web.Features.PianificazioneTurni
             return Json(result);
         }
 
+        // Usato dal backlog per un task NON ancora assegnato: crea un turno fittizio
+        // temporaneo dal task e lo fa passare per lo stesso solver di sopra, cosicché
+        // la logica dei 7 criteri resti unica indipendentemente da dove viene invocata.
         [HttpPost]
         public virtual async Task<IActionResult> CalcolaMigliorSoluzioneTask([FromBody] CalcolaMigliorSoluzioneTaskQuery query)
         {
@@ -68,6 +73,11 @@ namespace Template.Web.Features.PianificazioneTurni
             return Json(result);
         }
 
+        // Unico endpoint di scrittura reale: sposta un turno esistente sul DB (in
+        // memoria, quindi perso al riavvio) dopo la conferma della riassegnazione nel
+        // modale di conflitto. L'assegnazione di un task dal backlog, invece, resta
+        // solo lato client (localStorage) — vedi eseguiAssegnazioneTask in
+        // Index.Assegnazione.ts, che non chiama mai questo endpoint.
         [HttpPost]
         public virtual async Task<IActionResult> SpostaTurno([FromBody] SpostaTurnoCommand command)
         {
