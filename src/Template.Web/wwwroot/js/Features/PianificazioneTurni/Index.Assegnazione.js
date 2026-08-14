@@ -19,6 +19,40 @@ var PianificazioneTurni;
         const op = vm.operatori.find((o) => o.nome === operatoreNome);
         if (!op)
             return;
+        // Ultima verifica prima di scrivere: una soluzione suggerita può essere diventata
+        // obsoleta (un altro turno nel frattempo occupa lo stesso molo/operatore). Meglio
+        // rifiutare l'assegnazione che creare un turno in collisione.
+        const candStart = giorno * 24.0 + startOra;
+        const candEnd = candStart + task.durataOre;
+        const slotNonPiuLibero = vm.turni.some((other) => {
+            const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
+            const otherStart = other.giorno * 24.0 + oS;
+            const otherEnd = otherStart + other.durataOre;
+            const sovrapposizione = candStart < otherEnd && candEnd > otherStart;
+            if (other.banchina === banchina && sovrapposizione)
+                return true;
+            if (other.operatore === operatoreNome) {
+                if (sovrapposizione)
+                    return true;
+                if (candStart >= otherEnd && candStart - otherEnd < 11.0)
+                    return true;
+                if (candEnd <= otherStart && otherStart - candEnd < 11.0)
+                    return true;
+            }
+            return false;
+        });
+        if (slotNonPiuLibero) {
+            if (typeof Toastify !== 'undefined') {
+                Toastify({
+                    text: `Impossibile assegnare: ${banchina} o ${op.nome} non sono più liberi a quell'orario. Riprova con un'altra soluzione.`,
+                    duration: 5000,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "#d32f2f"
+                }).showToast();
+            }
+            return;
+        }
         const maxId = vm.turni.length > 0 ? Math.max(...vm.turni.map((t) => t.id).filter((id) => id < 1000000)) : 0;
         const nextId = (maxId < 0 ? 0 : maxId) + 1;
         const nuovoTurno = {
@@ -378,6 +412,58 @@ var PianificazioneTurni;
         });
         return { disponibili, occupati, reperibili };
     };
+    // Cerca un molo/orario davvero liberi per assegnare il task a questo operatore,
+    // nel giorno proprio del task (entro la sua finestra ETA/ETD). Usata dalle
+    // "Soluzioni B/C (Alternativa)" per evitare di suggerire un incastro che in
+    // realtà collide con un turno già presente sulla stessa banchina/operatore.
+    function trovaSlotLiberoPerTask(vm, task, op) {
+        const giorno = task.giorno;
+        const durata = task.durataOre;
+        const etaOra = typeof task.etaOra !== 'undefined' ? task.etaOra : 7.0;
+        const etdOra = typeof task.etdOra !== 'undefined' ? task.etdOra : 24.0;
+        const candidateBanchine = (op.abilitazioni && op.abilitazioni.length > 0)
+            ? op.abilitazioni
+            : vm.banchine;
+        const oraMax = Math.min(24.0, etdOra) - durata;
+        for (let ora = Math.max(7.0, etaOra); ora <= oraMax + 0.001; ora += 0.5) {
+            const candStart = giorno * 24.0 + ora;
+            const candEnd = candStart + durata;
+            let opConflict = false;
+            for (const other of vm.turni.filter((o) => o.operatore === op.nome)) {
+                const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
+                const otherStart = other.giorno * 24.0 + oS;
+                const otherEnd = otherStart + other.durataOre;
+                if (candStart < otherEnd && candEnd > otherStart) {
+                    opConflict = true;
+                    break;
+                }
+                if (candStart >= otherEnd && candStart - otherEnd < 11.0) {
+                    opConflict = true;
+                    break;
+                }
+                if (candEnd <= otherStart && otherStart - candEnd < 11.0) {
+                    opConflict = true;
+                    break;
+                }
+            }
+            if (opConflict)
+                continue;
+            for (const banchina of candidateBanchine) {
+                const dockOccupied = vm.turni.some((other) => {
+                    if (other.banchina !== banchina || other.giorno !== giorno)
+                        return false;
+                    const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
+                    const otherStart = giorno * 24.0 + oS;
+                    const otherEnd = otherStart + other.durataOre;
+                    return candStart < otherEnd && candEnd > otherStart;
+                });
+                if (!dockOccupied) {
+                    return { banchina, orario: ora };
+                }
+            }
+        }
+        return null;
+    }
     Object.defineProperty(IndexVueModel.prototype, 'soluzioniDSSTask', {
         enumerable: true,
         configurable: true,
@@ -436,6 +522,9 @@ var PianificazioneTurni;
                     break;
                 const op = item.op;
                 const score = item.score;
+                const slot = trovaSlotLiberoPerTask(this, t, op);
+                if (!slot)
+                    continue;
                 const isChiamata = !!op.reperibile;
                 const vantaggi = [];
                 const compromessi = [];
@@ -445,8 +534,7 @@ var PianificazioneTurni;
                 else {
                     compromessi.push("Costo maggiore (reperibile)");
                 }
-                const bSel = t.banchina || 'Molo Est';
-                if (op.abilitazioni && (op.abilitazioni.length === 0 || op.abilitazioni.includes(bSel))) {
+                if (op.abilitazioni && (op.abilitazioni.length === 0 || op.abilitazioni.includes(slot.banchina))) {
                     vantaggi.push("Molo abilitato");
                 }
                 else {
@@ -463,8 +551,8 @@ var PianificazioneTurni;
                 }
                 list.push({
                     titolo: `Soluzione ${String.fromCharCode(65 + list.length)} (Alternativa)`,
-                    molo: bSel,
-                    orario: t.etaOra || 7.0,
+                    molo: slot.banchina,
+                    orario: slot.orario,
                     operatore: op.nome,
                     giorno: t.giorno,
                     score: score,
