@@ -159,25 +159,23 @@ var PianificazioneTurni;
             this.soluzioneTaskSuggerita = null;
         }
     };
-    IndexVueModel.prototype.assegnaTask = function (op) {
-        if (!this.selectedTask || this.isOperatoreIncompatibile(op))
-            return;
-        const t = this.selectedTask;
-        const giorno = this.giornoSelezionato;
-        const durata = t.durataOre;
-        let startOra = -1;
-        let finalBanchina = '';
-        const etaGiorno = typeof t.etaGiorno !== 'undefined' ? t.etaGiorno : giorno;
-        const etaOra = typeof t.etaOra !== 'undefined' ? t.etaOra : 7.0;
-        const etdGiorno = typeof t.etdGiorno !== 'undefined' ? t.etdGiorno : giorno;
-        const etdOra = typeof t.etdOra !== 'undefined' ? t.etdOra : 24.0;
+    // Cerca un molo/orario liberi per assegnare il task all'operatore nel giorno che
+    // si sta visualizzando sul Gantt (a differenza di trovaSlotLiberoPerTask, che
+    // cerca nel giorno proprio del task per le alternative di backlog). Condivisa da
+    // assegnaTask() e dallo slot fantasma mostrato in hover.
+    function trovaSlotPerGiornoVisualizzato(vm, task, op, giorno) {
+        const durata = task.durataOre;
+        const etaGiorno = typeof task.etaGiorno !== 'undefined' ? task.etaGiorno : giorno;
+        const etaOra = typeof task.etaOra !== 'undefined' ? task.etaOra : 7.0;
+        const etdGiorno = typeof task.etdGiorno !== 'undefined' ? task.etdGiorno : giorno;
+        const etdOra = typeof task.etdOra !== 'undefined' ? task.etdOra : 24.0;
         const candidateBanchine = (op.abilitazioni && op.abilitazioni.length > 0)
             ? op.abilitazioni
-            : this.banchine;
+            : vm.banchine;
         for (let ora = 7.0; ora <= 24.0 - durata; ora += 0.5) {
             const candStart = giorno * 24.0 + ora;
             const candEnd = candStart + durata;
-            const dayOffset = giorno - t.giorno;
+            const dayOffset = giorno - task.giorno;
             if (dayOffset < 0 || dayOffset > 1)
                 continue;
             const shipEta = (etaGiorno + dayOffset) * 24.0 + etaOra;
@@ -185,7 +183,7 @@ var PianificazioneTurni;
             if (candStart < shipEta || candEnd > shipEtd)
                 continue;
             let opConflict = false;
-            for (const other of this.turni.filter((o) => o.operatore === op.nome)) {
+            for (const other of vm.turni.filter((o) => o.operatore === op.nome)) {
                 const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
                 const otherStart = other.giorno * 24.0 + oS;
                 const otherEnd = otherStart + other.durataOre;
@@ -206,7 +204,7 @@ var PianificazioneTurni;
                 continue;
             let foundBanchina = '';
             for (const banchina of candidateBanchine) {
-                const dockOccupied = this.turni.some((other) => {
+                const dockOccupied = vm.turni.some((other) => {
                     if (other.banchina !== banchina)
                         return false;
                     const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
@@ -220,12 +218,18 @@ var PianificazioneTurni;
                 }
             }
             if (foundBanchina) {
-                startOra = ora;
-                finalBanchina = foundBanchina;
-                break;
+                return { banchina: foundBanchina, orario: ora };
             }
         }
-        if (startOra === -1) {
+        return null;
+    }
+    IndexVueModel.prototype.assegnaTask = function (op) {
+        if (!this.selectedTask || this.isOperatoreIncompatibile(op))
+            return;
+        const t = this.selectedTask;
+        const giorno = this.giornoSelezionato;
+        const slot = trovaSlotPerGiornoVisualizzato(this, t, op, giorno);
+        if (!slot) {
             if (typeof Toastify !== 'undefined') {
                 Toastify({
                     text: `Nessuno slot valido trovato per ${op.nome} oggi nel rispetto di ETA/ETD, slittamento massimo e riposo obbligatorio.`,
@@ -237,7 +241,7 @@ var PianificazioneTurni;
             }
             return;
         }
-        eseguiAssegnazioneTask(this, op.nome, finalBanchina, startOra, giorno);
+        eseguiAssegnazioneTask(this, op.nome, slot.banchina, slot.orario, giorno);
     };
     IndexVueModel.prototype.isOperatoreIncompatibile = function (op) {
         if (!this.selectedTask)
@@ -589,5 +593,33 @@ var PianificazioneTurni;
         if (!t)
             return '0%';
         return this.blockWidth({ durataOre: t.etdOra - t.etaOra });
+    };
+    // Slot "fantasma": mentre si passa il mouse su un operatore compatibile con il
+    // task selezionato, calcola dove finirebbe il turno se lo si assegnasse ora
+    // (stessa ricerca di assegnaTask, senza scrivere nulla) per mostrare un blocco
+    // tratteggiato cliccabile sul Gantt del giorno visualizzato.
+    Object.defineProperty(IndexVueModel.prototype, 'slotFantasma', {
+        enumerable: true,
+        configurable: true,
+        get: function () {
+            if (!this.selectedTask || !this.hoveredOperatoreNome)
+                return null;
+            const op = this.operatori.find((o) => o.nome === this.hoveredOperatoreNome);
+            if (!op || this.isOperatoreIncompatibile(op))
+                return null;
+            const slot = trovaSlotPerGiornoVisualizzato(this, this.selectedTask, op, this.giornoSelezionato);
+            if (!slot)
+                return null;
+            return { banchina: slot.banchina, orario: slot.orario, operatoreNome: op.nome };
+        }
+    });
+    IndexVueModel.prototype.assegnaSlotFantasma = function () {
+        const slot = this.slotFantasma;
+        if (!slot)
+            return;
+        const op = this.operatori.find((o) => o.nome === slot.operatoreNome);
+        if (!op)
+            return;
+        this.assegnaTask(op);
     };
 })(PianificazioneTurni || (PianificazioneTurni = {}));

@@ -409,6 +409,26 @@
         z-index: 0;
     }
 
+    /* Slot libero suggerito in hover su un operatore compatibile: cliccabile per assegnare */
+    .gantt-block-fantasma {
+        background: rgba(59, 130, 246, 0.12);
+        border: 2px dashed var(--color-primary);
+        color: var(--color-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 8;
+        animation: fantasma-pulse 1.4s ease-in-out infinite;
+    }
+    .gantt-block-fantasma:hover {
+        background: rgba(59, 130, 246, 0.22);
+    }
+    @@keyframes fantasma-pulse {
+        0%, 100% { opacity: 0.75; }
+        50% { opacity: 1; }
+    }
+
     /* Modali */
     .modal-content {
         border-radius: var(--radius-lg);
@@ -875,6 +895,18 @@
                                          class="gantt-task-window"
                                          v-bind:style="{ left: getTaskWindowLeft(), width: getTaskWindowWidth() }"></div>
 
+                                    <!-- Slot libero suggerito in hover: passando il mouse su un operatore compatibile
+                                         compare qui dove finirebbe il turno; un clic lo assegna. -->
+                                    <div v-if="slotFantasma && slotFantasma.banchina === b"
+                                         class="gantt-block gantt-block-fantasma"
+                                         v-bind:style="{ left: blockLeft({ startOra: slotFantasma.orario, isDelayed: false, ritardoOre: 0 }), width: blockWidth({ durataOre: selectedTask.durataOre }) }"
+                                         v-on:click.stop="assegnaSlotFantasma()"
+                                         title="Slot libero — clic per assegnare">
+                                        <div class="gantt-block-title fw-bold" style="font-size: 0.66rem;">
+                                            <i class="fa-regular fa-hand-pointer me-1"></i>Slot libero
+                                        </div>
+                                    </div>
+
                                     <!-- Blocchi turni assegnati -->
                                     <div v-for="t in getTurniPerBanchina(b)" :key="t.id"
                                          class="gantt-block"
@@ -1325,7 +1357,8 @@
                     return (this.tasksDaAssegnare || []).filter(function (t) {
                         return Number(t.giorno) === g;
                     });
-                }
+                },
+                slotFantasma: function () { return appVueModel.slotFantasma; }
             },
             methods: {
                 fmtOra:     function (h)  { return appVueModel.fmtOra(h); },
@@ -1385,6 +1418,7 @@
                 isTaskSelezionatoVisibileOggi: function () { return appVueModel.isTaskSelezionatoVisibileOggi(); },
                 getTaskWindowLeft:           function ()    { return appVueModel.getTaskWindowLeft(); },
                 getTaskWindowWidth:          function ()    { return appVueModel.getTaskWindowWidth(); },
+                assegnaSlotFantasma:         function ()    { appVueModel.assegnaSlotFantasma(); },
                 getOperatoreCompatibilityScore: function (op, t) { return appVueModel.getOperatoreCompatibilityScore(op, t); },
                 getResourceStats:            function (r)   { return appVueModel.getResourceStats(r); },
                 applicaSoluzioneDSSSelezionata: function (sol) { appVueModel.applicaSoluzioneDSSSelezionata(sol); },
