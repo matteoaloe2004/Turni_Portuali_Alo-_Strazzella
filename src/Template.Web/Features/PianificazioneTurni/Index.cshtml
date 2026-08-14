@@ -1390,7 +1390,6 @@
                 appVueModel.inizializzaStato();
             },
             computed: {
-                alternative: function () { return this.soluzioniProposte; },
                 soluzioniDSSTask: function () {
                     if (!this.selectedTask) return [];
                     return appVueModel.soluzioniDSSTask;
@@ -1407,7 +1406,6 @@
                 fmtOra:     function (h)  { return appVueModel.fmtOra(h); },
                 fmtTick:    function (h)  { return appVueModel.fmtTick(h); },
                 fmtDurata:  function (d)  { return appVueModel.fmtDurata(d); },
-                getNuovoOrario: function () { return appVueModel.getNuovoOrario(); },
                 blockLeft:  function (t)  { return appVueModel.blockLeft(t); },
                 blockWidth: function (t)  { return appVueModel.blockWidth(t); },
                 tickLeft:   function (h)  { return appVueModel.tickLeft(h); },
@@ -1415,14 +1413,11 @@
                 getTurniPerOperatore: function (n) { return appVueModel.getTurniPerOperatore(n); },
                 getOpPercent:  function (op) { return appVueModel.getOpPercent(op); },
                 getOpStatus:   function (op) { return appVueModel.getOpStatus(op); },
-                getBanchineFiltrate:    function () { return appVueModel.getBanchineFiltrate(); },
                 getOperatoriFiltrati:   function () { return appVueModel.getOperatoriFiltrati(); },
                 apriModale:             function (t) { appVueModel.apriModale(t); },
-                aggiornaSoluzioniDSS: function () { appVueModel.aggiornaSoluzioniDSS(); },
                 confermaRiassegnazione: function ()  { appVueModel.confermaRiassegnazione(); },
                 applicaESalvaSoluzioneSuggerita: function () { appVueModel.applicaESalvaSoluzioneSuggerita(); },
                 annullaModale:          function ()  { appVueModel.annullaModale(); },
-                modificaParametriManualmente: function () { appVueModel.modificaParametriManualmente(); },
                 ripristinaStato:        function ()  { appVueModel.ripristinaStato(); },
                 selezionaGiorno:        function (idx) { appVueModel.selezionaGiorno(idx); },
                 getTurniDelGiorno:      function ()    { return appVueModel.getTurniDelGiorno(); },
@@ -1447,9 +1442,6 @@
                 getDettaglioConflittoOperatore: function (op) { return appVueModel.getDettaglioConflittoOperatore(op); },
                 formatDettaglioConflitto: function (conflitto) { return appVueModel.formatDettaglioConflitto(conflitto); },
                 svuotaNotifiche:             function ()    { appVueModel.svuotaNotifiche(); },
-                applicaSoluzioneProposta:    function (idx) { appVueModel.applicaSoluzioneProposta(idx); },
-                getDettaglioConflittoAttuale: function () { return appVueModel.getDettaglioConflittoAttuale(); },
-                getSenzaOperatoriStandardDisponibili: function () { return appVueModel.getSenzaOperatoriStandardDisponibili(); },
                 causaRitardoCasuale:         function ()    { appVueModel.causaRitardoCasuale(); },
                 selectTask:                  function (t)   { appVueModel.selectTask(t); },
                 assegnaTask:                 function (op)  { appVueModel.assegnaTask(op); },

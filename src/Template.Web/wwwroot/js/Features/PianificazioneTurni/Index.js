@@ -1,11 +1,7 @@
 var PianificazioneTurni;
 (function (PianificazioneTurni) {
     class IndexVueModel {
-        get alternative() {
-            return this.soluzioniProposte;
-        }
         constructor() {
-            this.alertConflittoForzatoChiuso = false;
             this.soluzioneOttimale = null;
             this.soluzioneTaskSuggerita = null;
             this.orarioInizio = 0;
@@ -45,11 +41,7 @@ var PianificazioneTurni;
             this.operatoreSelezionatoDettaglio = null;
             this.naveSelezionataDettaglio = '';
             this.notificheSimulate = [];
-            this.derogaVincoli = false;
             this.orarioSelezioneRiassegnazione = 0;
-            this.soluzioniProposte = [];
-            this.soluzioneSelezionataIndex = null;
-            this.attivaPersonaleAChiamata = false;
             this.tasksDaAssegnare = [];
             this.selectedTask = null;
             this.soluzioneDSSSelezionataIndex = null;
@@ -231,11 +223,6 @@ var PianificazioneTurni;
         }
         getTurniDelGiorno() {
             return this.turni.filter(t => t.giorno === this.giornoSelezionato);
-        }
-        getNuovoOrario() {
-            if (!this.turnoInRitardo)
-                return '';
-            return this.fmtOra(this.orarioSelezioneRiassegnazione);
         }
         getOperatoriFiltrati() {
             let list = this.operatori;

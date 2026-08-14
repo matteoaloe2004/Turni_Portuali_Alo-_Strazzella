@@ -11,7 +11,7 @@ declare namespace utilities {
 // (che TS unisce alla classe qui sotto per structural merging) e poi assegna
 // l'implementazione vera a `IndexVueModel.prototype.metodo = function (this: IndexVueModel, ...) {...}`.
 // Da qui la regola: un metodo privato/di supporto usato in un solo file resta una
-// funzione di namespace comune (es. totalH, isBanchinaOccupata), non un metodo
+// funzione di namespace comune (es. totalH in Index.Gantt.ts), non un metodo
 // `private` della classe — `private` non funzionerebbe comunque tra file diversi.
 namespace PianificazioneTurni {
 
@@ -48,16 +48,7 @@ namespace PianificazioneTurni {
         public operatoreSelezionatoDettaglio: any;
         public naveSelezionataDettaglio: string;
         public notificheSimulate: any[];
-        public derogaVincoli: boolean;
         public orarioSelezioneRiassegnazione: number;
-        public soluzioniProposte: any[];
-        public soluzioneSelezionataIndex: number | null;
-        public attivaPersonaleAChiamata: boolean;
-        public alertConflittoForzatoChiuso: boolean;
-
-        public get alternative(): any[] {
-            return this.soluzioniProposte;
-        }
 
         // Campi per progressive disclosure modale
         public veicolo: string;
@@ -81,7 +72,6 @@ namespace PianificazioneTurni {
         public activeTab: string;
 
         constructor() {
-            this.alertConflittoForzatoChiuso = false;
             this.soluzioneOttimale = null;
             this.soluzioneTaskSuggerita = null;
             this.orarioInizio = 0;
@@ -126,11 +116,7 @@ namespace PianificazioneTurni {
             this.operatoreSelezionatoDettaglio = null;
             this.naveSelezionataDettaglio = '';
             this.notificheSimulate = [];
-            this.derogaVincoli = false;
             this.orarioSelezioneRiassegnazione = 0;
-            this.soluzioniProposte = [];
-            this.soluzioneSelezionataIndex = null;
-            this.attivaPersonaleAChiamata = false;
             this.tasksDaAssegnare = [];
             this.selectedTask = null;
             this.soluzioneDSSSelezionataIndex = null;
@@ -315,11 +301,6 @@ namespace PianificazioneTurni {
 
         public getTurniDelGiorno(): any[] {
             return this.turni.filter(t => t.giorno === this.giornoSelezionato);
-        }
-
-        public getNuovoOrario(): string {
-            if (!this.turnoInRitardo) return '';
-            return this.fmtOra(this.orarioSelezioneRiassegnazione);
         }
 
         public getOperatoriFiltrati(): any[] {
