@@ -156,9 +156,8 @@
         background-color: rgba(16, 185, 129, 0.03) !important;
     }
     .operator-card.op-incompatible {
-        opacity: 0.65;
-        border-left: 4px solid var(--color-danger) !important;
-        background-color: rgba(239, 68, 68, 0.01) !important;
+        opacity: 0.5;
+        border-left: 4px solid var(--color-border) !important;
     }
     .operator-card.op-selected {
         border-color: var(--color-primary) !important;
@@ -795,9 +794,14 @@
                                      </div>
                                  </div>
                                  
-                                 <!-- Se c'è una task selezionata, mostra la compatibilità DSS e dettagli conflitti -->
-                                 <div v-if="selectedTask" class="p-2 rounded bg-light border border-light-subtle d-flex align-items-center justify-content-between" style="font-size: 0.72rem;">
-                                     <span class="badge" v-bind:class="getOperatoreCompatibilityScore(op, selectedTask) > 75 ? 'bg-success' : getOperatoreCompatibilityScore(op, selectedTask) > 0 ? 'bg-warning text-dark' : 'bg-danger'">
+                                 <!-- Se c'è una task selezionata e l'operatore non è idoneo, un motivo breve e discreto -->
+                                 <div v-if="selectedTask && isOperatoreIncompatibile(op)" class="text-secondary" style="font-size: 0.72rem;">
+                                     <i class="fa-regular fa-circle-question me-1"></i>Non disponibile: {{ getIncompatibilitaMotivo(op) }}
+                                 </div>
+
+                                 <!-- Se l'operatore è idoneo, la compatibilità DSS e i dettagli di supporto alla decisione -->
+                                 <div v-else-if="selectedTask" class="p-2 rounded bg-light border border-light-subtle d-flex align-items-center justify-content-between" style="font-size: 0.72rem;">
+                                     <span class="badge" v-bind:class="getOperatoreCompatibilityScore(op, selectedTask) > 75 ? 'bg-success' : 'bg-warning text-dark'">
                                          Compatibilità: {{ getOperatoreCompatibilityScore(op, selectedTask) }}%
                                      </span>
                                      <div class="text-secondary text-end font-monospace" style="font-size: 0.65rem; max-width: 60%; line-height: 1.2;">
