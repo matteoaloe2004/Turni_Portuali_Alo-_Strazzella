@@ -1274,8 +1274,7 @@
             el: '#app-turni',
             data: appVueModel,
             mounted: function () {
-                appVueModel.initEmergenza();
-                appVueModel.startDemoTimer();
+                appVueModel.inizializzaStato();
             },
             computed: {
                 alternative: function () { return this.soluzioniProposte; },

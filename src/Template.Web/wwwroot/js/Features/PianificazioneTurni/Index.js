@@ -106,17 +106,13 @@ var PianificazioneTurni;
             }
         }
         // ---- Lifecycle: chiamato da mounted() di Vue ----
-        initEmergenza() {
+        // Ripristina lo stato salvato se presente (incluso un'eventuale emergenza
+        // lasciata in sospeso), altrimenti parte pulito dai dati di seed: la pagina
+        // non inietta più un'emergenza finta di default al primo caricamento — la
+        // demo del DSS si attiva deliberatamente dal pulsante "Simula Ritardo Nave".
+        inizializzaStato() {
             if (this.loadState()) {
                 return;
-            }
-            const turno = this.turni.find(t => t.nome === 'MCL Zephyrus' && t.giorno === 0);
-            if (turno) {
-                turno.isDelayed = true;
-                turno.requiresResolution = true;
-                turno.ritardoOre = 2; // ritardo fisso per simulazione seria e stabile
-                this.turnoInRitardo = turno;
-                this.emergenzaAttiva = true;
             }
             this.saveState();
         }
