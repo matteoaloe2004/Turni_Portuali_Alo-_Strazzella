@@ -59,6 +59,10 @@ namespace PianificazioneTurni {
         public selectedTask: any;
         public soluzioneTaskSuggerita: any;
 
+        // Nome dell'operatore sotto il mouse in "Risorse & Idoneità": usato per
+        // evidenziare i suoi turni già assegnati sul Gantt durante l'incastro.
+        public hoveredOperatoreNome: string | null;
+
         // Navigazione tab (gestita da Vue, non da Bootstrap JS)
         public activeTab: string;
 
@@ -115,6 +119,7 @@ namespace PianificazioneTurni {
             this.attivaPersonaleAChiamata = false;
             this.tasksDaAssegnare = [];
             this.selectedTask = null;
+            this.hoveredOperatoreNome = null;
             this.activeTab = 'pianificazione';
             this.veicolo = '';
             this.identificativo = '';

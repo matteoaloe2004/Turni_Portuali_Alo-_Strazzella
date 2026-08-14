@@ -52,6 +52,7 @@ var PianificazioneTurni;
             this.attivaPersonaleAChiamata = false;
             this.tasksDaAssegnare = [];
             this.selectedTask = null;
+            this.hoveredOperatoreNome = null;
             this.activeTab = 'pianificazione';
             this.veicolo = '';
             this.identificativo = '';

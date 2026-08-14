@@ -388,6 +388,27 @@
         z-index: 10;
     }
 
+    /* Supporto visivo per l'incastro: turni dell'operatore sotto il mouse
+       nella lista Risorse, mentre si sta assegnando un task */
+    .gantt-block-evidenziato {
+        outline: 2px solid var(--color-primary) !important;
+        outline-offset: 1px;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18) !important;
+        z-index: 5;
+    }
+
+    /* Finestra ETA/ETD del task selezionato: dove deve avvenire l'incastro */
+    .gantt-task-window {
+        position: absolute;
+        top: 2px;
+        bottom: 2px;
+        background: rgba(59, 130, 246, 0.06);
+        border-left: 2px dashed rgba(59, 130, 246, 0.4);
+        border-right: 2px dashed rgba(59, 130, 246, 0.4);
+        pointer-events: none;
+        z-index: 0;
+    }
+
     /* Modali */
     .modal-content {
         border-radius: var(--radius-lg);
@@ -705,11 +726,13 @@
                         <div class="card-body p-3 custom-scrollbar" style="max-height: 460px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;">
                             <div v-for="op in getOperatoriFiltrati()" :key="op.nome"
                                  class="operator-card p-3 d-flex flex-column gap-2.5 transition-all"
-                                 v-bind:class="{ 
+                                 v-bind:class="{
                                      'op-compatible': selectedTask && getOperatoreCompatibilityScore(op, selectedTask) > 75,
                                      'op-incompatible': selectedTask && isOperatoreIncompatibile(op),
                                      'op-selected': selectedTask && !isOperatoreIncompatibile(op) && getOperatoreCompatibilityScore(op, selectedTask) > 0
-                                 }">
+                                 }"
+                                 v-on:mouseenter="hoveredOperatoreNome = op.nome"
+                                 v-on:mouseleave="hoveredOperatoreNome = null">
                                  
                                  <!-- In alto: Nome, Reperibilità e Badge del Ruolo -->
                                  <div class="d-flex justify-content-between align-items-start">
@@ -840,11 +863,16 @@
                                 
                                 <div class="gantt-row-track position-relative flex-grow-1" style="height: 100%;">
                                     <div v-for="h in oreTimeline" :key="'vl'+h" class="gantt-vline" v-bind:style="{ left: tickLeft(h) }"></div>
-    
+
+                                    <!-- Finestra ETA/ETD del task selezionato: dove deve avvenire l'incastro -->
+                                    <div v-if="isTaskSelezionatoVisibileOggi()"
+                                         class="gantt-task-window"
+                                         v-bind:style="{ left: getTaskWindowLeft(), width: getTaskWindowWidth() }"></div>
+
                                     <!-- Blocchi turni assegnati -->
                                     <div v-for="t in getTurniPerBanchina(b)" :key="t.id"
                                          class="gantt-block"
-                                         v-bind:class="getBlockClass(t)"
+                                         v-bind:class="[getBlockClass(t), { 'gantt-block-evidenziato': hoveredOperatoreNome && t.operatore === hoveredOperatoreNome }]"
                                          v-bind:style="{ 
                                              left: blockLeft(t), 
                                              width: blockWidth(t),
@@ -1352,6 +1380,9 @@
                 getTaskJobType:              function (t)   { return appVueModel.getTaskJobType(t); },
                 getTaskShipName:             function (t)   { return appVueModel.getTaskShipName(t); },
                 getTaskDock:                 function (t)   { return appVueModel.getTaskDock(t); },
+                isTaskSelezionatoVisibileOggi: function () { return appVueModel.isTaskSelezionatoVisibileOggi(); },
+                getTaskWindowLeft:           function ()    { return appVueModel.getTaskWindowLeft(); },
+                getTaskWindowWidth:          function ()    { return appVueModel.getTaskWindowWidth(); },
                 getOperatoreCompatibilityScore: function (op, t) { return appVueModel.getOperatoreCompatibilityScore(op, t); },
                 getResourceStats:            function (r)   { return appVueModel.getResourceStats(r); },
                 applicaSoluzioneDSSSelezionata: function (sol) { appVueModel.applicaSoluzioneDSSSelezionata(sol); },

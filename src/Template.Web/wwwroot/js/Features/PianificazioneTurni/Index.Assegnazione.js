@@ -528,4 +528,21 @@ var PianificazioneTurni;
             return 'Da assegnare';
         return task.banchina || 'Molo preferenziale';
     };
+    // Supporto visivo per l'incastro: la finestra ETA/ETD del task selezionato,
+    // disegnata come banda sul Gantt (solo se ricade nel giorno visualizzato).
+    IndexVueModel.prototype.isTaskSelezionatoVisibileOggi = function () {
+        return !!this.selectedTask && this.selectedTask.giorno === this.giornoSelezionato;
+    };
+    IndexVueModel.prototype.getTaskWindowLeft = function () {
+        const t = this.selectedTask;
+        if (!t)
+            return '0%';
+        return this.blockLeft({ startOra: t.etaOra, isDelayed: false, ritardoOre: 0 });
+    };
+    IndexVueModel.prototype.getTaskWindowWidth = function () {
+        const t = this.selectedTask;
+        if (!t)
+            return '0%';
+        return this.blockWidth({ durataOre: t.etdOra - t.etaOra });
+    };
 })(PianificazioneTurni || (PianificazioneTurni = {}));

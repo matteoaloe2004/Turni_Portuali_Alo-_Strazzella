@@ -33,6 +33,9 @@ namespace PianificazioneTurni {
         getTaskJobType(task: any): string;
         getTaskShipName(task: any): string;
         getTaskDock(task: any): string;
+        isTaskSelezionatoVisibileOggi(): boolean;
+        getTaskWindowLeft(): string;
+        getTaskWindowWidth(): string;
     }
 
     IndexVueModel.prototype.getPatenteStatus = function (this: IndexVueModel, op: any): 'expired' | 'warning' | 'valid' {
@@ -605,5 +608,24 @@ namespace PianificazioneTurni {
     IndexVueModel.prototype.getTaskDock = function (this: IndexVueModel, task: any): string {
         if (!task) return 'Da assegnare';
         return task.banchina || 'Molo preferenziale';
+    };
+
+    // Supporto visivo per l'incastro: la finestra ETA/ETD del task selezionato,
+    // disegnata come banda sul Gantt (solo se ricade nel giorno visualizzato).
+    IndexVueModel.prototype.isTaskSelezionatoVisibileOggi = function (this: IndexVueModel): boolean {
+        const self = this as any;
+        return !!self.selectedTask && self.selectedTask.giorno === self.giornoSelezionato;
+    };
+
+    IndexVueModel.prototype.getTaskWindowLeft = function (this: IndexVueModel): string {
+        const t = (this as any).selectedTask;
+        if (!t) return '0%';
+        return this.blockLeft({ startOra: t.etaOra, isDelayed: false, ritardoOre: 0 });
+    };
+
+    IndexVueModel.prototype.getTaskWindowWidth = function (this: IndexVueModel): string {
+        const t = (this as any).selectedTask;
+        if (!t) return '0%';
+        return this.blockWidth({ durataOre: t.etdOra - t.etaOra });
     };
 }
