@@ -839,6 +839,12 @@
                         </div>
                     </div>
 
+                    <!-- Chip task attivo: resta visibile durante l'incastro sul Gantt -->
+                    <div v-if="selectedTask" class="d-flex align-items-center gap-2 px-3 py-2 mb-2 rounded" style="background-color: var(--color-primary-subtle, #eef4ff); border: 1px solid var(--color-primary, #4a6fa5);">
+                        <i class="fa-solid fa-crosshairs" style="color: var(--color-primary, #4a6fa5);"></i>
+                        <span style="font-size: 0.8rem;"><strong>Task attivo:</strong> {{ selectedTask.nome }} · {{ selectedTask.competenzaRichiesta }}</span>
+                    </div>
+
                     <!-- GANTT GRID CONTAINER -->
                     <div class="gantt-container flex-grow-1 d-flex flex-column shadow-sm" style="border: 1px solid var(--color-border) !important; border-radius: var(--radius-lg); background-color: var(--color-surface);">
                         <!-- Header ore -->
