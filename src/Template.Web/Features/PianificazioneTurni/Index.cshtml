@@ -614,14 +614,14 @@
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div>
                                             <div class="fw-bold text-dark" style="font-size:.9rem;">
-                                                <i class="fa-solid fa-ship text-secondary me-1.5"></i> {{ getTaskShipName(task) }}
+                                                <i class="fa-solid fa-ship text-secondary me-1.5"></i> {{ task.nome }}
                                             </div>
                                             <div class="text-secondary small" style="font-size:0.8rem; margin-top: 2px;">
-                                                {{ getTaskJobType(task) }} &bull; {{ getTaskDock(task) }}
+                                                {{ getTaskDock(task) }}
                                             </div>
                                         </div>
-                                        <span class="badge" v-bind:class="getTaskPriorityClass(task)" style="font-size:.7rem; border-radius: var(--radius-sm); padding: 0.2rem 0.4rem;">
-                                            {{ getTaskPriority(task) }}
+                                        <span class="role-badge" v-bind:class="'role-' + task.competenzaRichiesta" style="font-size:.65rem; white-space: nowrap;">
+                                            Richiede: {{ task.competenzaRichiesta }}
                                         </span>
                                     </div>
                                     
@@ -1375,10 +1375,6 @@
                 getIncompatibilitaMotivo:    function (op)  { return appVueModel.getIncompatibilitaMotivo(op); },
                 getPatenteStatus:            function (op)  { return appVueModel.getPatenteStatus(op); },
                 getPatenteFormatted:         function (op)  { return appVueModel.getPatenteFormatted(op); },
-                getTaskPriority:             function (t)   { return appVueModel.getTaskPriority(t); },
-                getTaskPriorityClass:        function (t)   { return appVueModel.getTaskPriorityClass(t); },
-                getTaskJobType:              function (t)   { return appVueModel.getTaskJobType(t); },
-                getTaskShipName:             function (t)   { return appVueModel.getTaskShipName(t); },
                 getTaskDock:                 function (t)   { return appVueModel.getTaskDock(t); },
                 isTaskSelezionatoVisibileOggi: function () { return appVueModel.isTaskSelezionatoVisibileOggi(); },
                 getTaskWindowLeft:           function ()    { return appVueModel.getTaskWindowLeft(); },

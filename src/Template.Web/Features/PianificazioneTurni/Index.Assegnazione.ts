@@ -28,10 +28,6 @@ namespace PianificazioneTurni {
         getResourceStats(ruolo: string): any;
         readonly soluzioniDSSTask: any[];
         applicaSoluzioneDSSSelezionata(sol: any): void;
-        getTaskPriority(task: any): string;
-        getTaskPriorityClass(task: any): string;
-        getTaskJobType(task: any): string;
-        getTaskShipName(task: any): string;
         getTaskDock(task: any): string;
         isTaskSelezionatoVisibileOggi(): boolean;
         getTaskWindowLeft(): string;
@@ -648,43 +644,6 @@ namespace PianificazioneTurni {
     IndexVueModel.prototype.applicaSoluzioneDSSSelezionata = function (this: IndexVueModel, sol: any): void {
         if (!(this as any).selectedTask) return;
         eseguiAssegnazioneTask(this, sol.operatore, sol.molo, sol.orario, sol.giorno);
-    };
-
-    IndexVueModel.prototype.getTaskPriority = function (this: IndexVueModel, task: any): string {
-        if (!task) return 'Bassa';
-        const etaGiorno = typeof task.etaGiorno !== 'undefined' ? task.etaGiorno : task.giorno;
-        const etaOra = typeof task.etaOra !== 'undefined' ? task.etaOra : 7.0;
-        const etdGiorno = typeof task.etdGiorno !== 'undefined' ? task.etdGiorno : task.giorno;
-        const etdOra = typeof task.etdOra !== 'undefined' ? task.etdOra : 24.0;
-
-        const windowSize = (etdGiorno - etaGiorno) * 24.0 + (etdOra - etaOra);
-        if (windowSize <= task.durataOre) return 'Critica';
-        if (windowSize <= task.durataOre + 1.5) return 'Alta';
-        if (windowSize <= task.durataOre + 4) return 'Media';
-        return 'Bassa';
-    };
-
-    IndexVueModel.prototype.getTaskPriorityClass = function (this: IndexVueModel, task: any): string {
-        const p = this.getTaskPriority(task);
-        if (p === 'Critica') return 'bg-danger text-white border border-light font-weight-bold';
-        if (p === 'Alta') return 'bg-danger text-white';
-        if (p === 'Media') return 'bg-warning text-dark';
-        return 'bg-secondary text-white';
-    };
-
-    IndexVueModel.prototype.getTaskJobType = function (this: IndexVueModel, task: any): string {
-        if (!task || !task.nome) return 'Lavorazione Standard';
-        if (task.nome.toLowerCase().includes('scarico')) return 'Scarico merci';
-        if (task.nome.toLowerCase().includes('carico')) return 'Carico merci';
-        return 'Movimentazione';
-    };
-
-    IndexVueModel.prototype.getTaskShipName = function (this: IndexVueModel, task: any): string {
-        if (!task || !task.nome) return 'Nave N/D';
-        let name = task.nome;
-        name = name.replace(/^MCL\s+/i, '');
-        name = name.replace(/^(Scarico|Carico)\s+/i, '');
-        return name.trim() || task.nome;
     };
 
     IndexVueModel.prototype.getTaskDock = function (this: IndexVueModel, task: any): string {
