@@ -39,7 +39,16 @@ namespace Template.Infrastructure
                     NickName = "Dott.ssa Elena - sicurezza e personale",
                     IsAdmin = true
                 },
-
+                new User
+                {
+                    Id = Guid.Parse("1d0f9b2e-4c31-6f7a-9a55-2b6f0c8de001"),
+                    Email = "eliastrazzella@mail.it",
+                    Password = "uHS9vaUGE53NzdvnD7RGvx3ILRceB9nF8kAn+HEst9E=", // SHA-256 di "Portuale2026"
+                    FirstName = "Elia",
+                    LastName = "Strazzella",
+                    NickName = "Elia Amministratore",
+                    IsAdmin = true
+                },
                 new User
                 {
                     Id = Guid.Parse("3de6883f-9a0b-4667-aa53-0fbc52c4d300"), // Forced to specific Guid for tests
