@@ -9,16 +9,6 @@
     <link rel="stylesheet" href="~/css/pianificazione-turni.css" asp-append-version="true" />
 }
 
-@section pageTitle {
-    <nav class="navbar navbar-dark px-4 py-2 border-bottom onit-page-menu" aria-label="Titolo della pagina">
-        <div class="container-fluid d-flex justify-content-between align-items-center">
-            <h1 class="h6 mb-0 fw-bold text-white">
-                <i class="fa-solid fa-anchor text-primary me-2" aria-hidden="true"></i>@ViewData["Title"]
-            </h1>
-        </div>
-    </nav>
-}
-
 <div id="app-turni" class="container-fluid py-2 px-4" v-cloak>
 
     <script type="application/json" id="Seed_JSON">@Html.Raw(Model.ToJson())</script>
