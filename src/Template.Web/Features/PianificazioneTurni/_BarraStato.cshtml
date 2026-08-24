@@ -1,0 +1,39 @@
+@* Riga di stato: giorno attivo, quanti turni, se c'è qualcosa da risolvere. *@
+
+<div class="barra-stato mb-3 p-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="d-flex align-items-center gap-3">
+        <span class="text-secondary">
+            <i class="fa-solid fa-calendar me-1 text-primary" aria-hidden="true"></i>
+            Giorno attivo: <strong class="text-dark">{{ getNomeGiorno(giornoSelezionato) }}</strong>
+        </span>
+        <span class="text-secondary">
+            <i class="fa-solid fa-ship me-1 text-primary" aria-hidden="true"></i>
+            Turni in settimana: <strong class="text-dark">{{ turni.length }}</strong>
+        </span>
+    </div>
+
+    <div class="d-flex align-items-center gap-3">
+        @* Stato ridondato: pallino colorato e parola scritta, non solo il colore. *@
+        <span class="d-flex align-items-center gap-2 text-secondary">
+            <span class="pallino-stato" v-bind:class="emergenzaAttiva ? 'bg-danger' : 'bg-success'" aria-hidden="true"></span>
+            Stato:
+            <strong v-bind:class="emergenzaAttiva ? 'text-danger' : 'text-success'">
+                {{ emergenzaAttiva ? 'Da risolvere' : 'Operativo' }}
+            </strong>
+        </span>
+
+    </div>
+</div>
+
+@* Server irraggiungibile: quello a schermo può non essere lo stato reale. *@
+<div v-if="serverNonRaggiungibile" class="avviso-connessione mb-3 p-3 d-flex align-items-center gap-3" role="status">
+    <i class="fa-solid fa-plug-circle-exclamation fs-4" aria-hidden="true"></i>
+    <div class="flex-grow-1">
+        <strong>Non riesco a parlare con il server.</strong>
+        Quello che vedi potrebbe non essere aggiornato: un altro coordinatore potrebbe aver cambiato la pianificazione nel frattempo.
+    </div>
+    <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold flex-shrink-0"
+            v-on:click="ricaricaStato()">
+        <i class="fa-solid fa-rotate me-1" aria-hidden="true"></i>Riprova
+    </button>
+</div>

@@ -1,0 +1,171 @@
+@* Operatori e loro idoneità rispetto alla lavorazione selezionata. *@
+
+<section class="card border-0 shadow-sm d-flex flex-column" aria-labelledby="titolo-risorse">
+    <div class="card-header border-bottom py-3 px-3 d-flex align-items-center justify-content-between">
+        <h2 id="titolo-risorse" class="h6 mb-0 fw-bold text-dark">
+            <i class="fa-solid fa-users text-primary me-2" aria-hidden="true"></i>Risorse e idoneità
+        </h2>
+        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+            Gruisti liberi: {{ getResourceStats('Gruista').disponibili }} · a chiamata: {{ getResourceStats('Gruista').reperibili }}
+        </span>
+    </div>
+
+    <div class="p-3 border-bottom">
+        @* Label vera e non solo placeholder: il placeholder sparisce mentre si digita. *@
+        <label for="ricerca-operatore" class="form-label fw-semibold text-secondary">
+            Cerca fra il personale
+        </label>
+        <div class="input-group mb-3">
+            <span class="input-group-text" aria-hidden="true">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </span>
+            <input type="search" id="ricerca-operatore" class="form-control"
+                   placeholder="es. Gruista, oppure un nome"
+                   v-model="filtroRicerca">
+            <button v-if="filtroRicerca" type="button" class="btn btn-outline-secondary"
+                    v-on:click="filtroRicerca = ''">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                <span class="visually-hidden">Cancella la ricerca</span>
+            </button>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2" role="group" aria-label="Filtra per ruolo">
+            <button type="button" class="btn btn-sm fw-semibold"
+                    v-bind:class="!filtroRicerca ? 'btn-primary' : 'btn-outline-secondary'"
+                    v-bind:aria-pressed="!filtroRicerca ? 'true' : 'false'"
+                    v-on:click="filtroRicerca = ''">
+                Tutti i ruoli
+            </button>
+            <button v-for="ruolo in ['Gruista', 'Mulettista', 'Stivatore']" :key="ruolo"
+                    type="button" class="btn btn-sm fw-semibold"
+                    v-bind:class="filtroRicerca === ruolo ? 'btn-primary' : 'btn-outline-secondary'"
+                    v-bind:aria-pressed="filtroRicerca === ruolo ? 'true' : 'false'"
+                    v-on:click="filtroRicerca = ruolo">
+                {{ ruolo }}
+            </button>
+        </div>
+    </div>
+
+    <div class="card-body p-3 custom-scrollbar d-flex flex-column gap-3"
+         style="max-height: 460px; overflow-y: auto;">
+
+        @* Tre vie per la stessa anteprima: mouse, focus da tastiera e tap. Il touch non
+           ha né hover né focus, quindi senza il click l'anteprima non esisterebbe su tablet. *@
+        <article v-for="op in getOperatoriFiltrati()" :key="op.nome"
+                 class="operator-card p-3 d-flex flex-column gap-2"
+                 v-bind:class="{
+                     'op-compatible': selectedTask && !isOperatoreIncompatibile(op) && getOperatoreCompatibilityScore(op, selectedTask) > 75,
+                     'op-incompatible': selectedTask && isOperatoreIncompatibile(op),
+                     'op-selected': selectedTask && !isOperatoreIncompatibile(op),
+                     'op-ancorato': operatoreAncorato === op.nome
+                 }"
+                 v-on:mouseenter="hoveredOperatoreNome = op.nome"
+                 v-on:mouseleave="hoveredOperatoreNome = null"
+                 v-on:focusin="hoveredOperatoreNome = op.nome"
+                 v-on:focusout="hoveredOperatoreNome = null">
+
+            <div class="d-flex justify-content-between align-items-start gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="operator-avatar" aria-hidden="true">{{ op.nome.charAt(0) }}</span>
+                    <div>
+                        <div class="fw-bold text-dark">{{ op.nome }}</div>
+                        <span v-if="op.reperibile" class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                            A chiamata
+                        </span>
+                    </div>
+                </div>
+                <span class="role-badge" v-bind:class="'role-' + op.ruolo">{{ op.ruolo }}</span>
+            </div>
+
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 text-secondary">
+                <span>
+                    <i class="fa-solid fa-id-card me-1 text-muted" aria-hidden="true"></i>
+                    <span v-if="getPatenteStatus(op) === 'expired'" class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                        Patente scaduta
+                    </span>
+                    <span v-else-if="getPatenteStatus(op) === 'warning'" class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                        Patente in scadenza il {{ getPatenteFormatted(op) }}
+                    </span>
+                    <span v-else>Patente valida fino al {{ getPatenteFormatted(op) }}</span>
+                </span>
+
+                <span v-if="op.inRiposoObbligatorio" class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                    In riposo obbligatorio
+                </span>
+                <span v-else class="badge bg-success-subtle text-success border border-success-subtle">
+                    In servizio
+                </span>
+            </div>
+
+            @* Il motivo dell'incompatibilità sta accanto al pulsante disabilitato. *@
+            <p v-if="selectedTask && isOperatoreIncompatibile(op)" class="text-secondary mb-0">
+                <i class="fa-regular fa-circle-question me-1" aria-hidden="true"></i>
+                Non assegnabile a questa lavorazione: {{ getIncompatibilitaMotivo(op) }}.
+            </p>
+
+            <div v-else-if="selectedTask" class="p-2 rounded bg-light border border-light-subtle">
+                @* In colonna e non affiancati: la barra laterale è stretta e il
+                   dettaglio, allineato a destra, si spezzava su quattro righe. *@
+                <div class="d-flex flex-column align-items-start gap-1">
+                    <span class="badge"
+                          v-bind:class="getOperatoreCompatibilityScore(op, selectedTask) > 75 ? 'bg-success' : 'bg-warning text-dark'">
+                        Compatibilità {{ getOperatoreCompatibilityScore(op, selectedTask) }}%
+                    </span>
+                    @* La riga di dettaglio è decorativa: sotto c'è la versione per il lettore di schermo. *@
+                    <span class="text-secondary" aria-hidden="true">
+                        {{ formatDettaglioConflitto(getDettaglioConflittoOperatore(op)) }}
+                    </span>
+                    <span class="visually-hidden">{{ descriviConflittoPerLettoreSchermo(op) }}</span>
+                </div>
+            </div>
+
+            <div>
+                <div class="d-flex justify-content-between align-items-center mb-1 text-secondary">
+                    <span :id="'carico-' + op.nome">Carico settimanale</span>
+                    <strong class="text-dark">{{ op.oreSettimanali }} di {{ op.oreMassime }} ore</strong>
+                </div>
+                <div class="bar-track"
+                     role="progressbar"
+                     v-bind:aria-labelledby="'carico-' + op.nome"
+                     v-bind:aria-valuenow="op.oreSettimanali"
+                     aria-valuemin="0"
+                     v-bind:aria-valuemax="op.oreMassime">
+                    <span class="bar-fill" v-bind:class="'bar-' + getOpStatus(op)"
+                          v-bind:style="{ width: getOpPercent(op) + '%' }"></span>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-end gap-2 mt-1 pt-2 border-top border-light">
+                @* Equivalente esplicito del passaggio del mouse: fissa sul tabellone
+                   l'anteprima dello slot, e la lascia lì finché non la si toglie. *@
+                <button v-if="selectedTask && !isOperatoreIncompatibile(op)"
+                        type="button" class="btn btn-outline-secondary btn-sm fw-semibold me-auto"
+                        v-bind:aria-pressed="operatoreAncorato === op.nome ? 'true' : 'false'"
+                        v-on:click="anteprimaOperatore(op)">
+                    <i class="fa-solid fa-crosshairs me-1" aria-hidden="true"></i>
+                    {{ operatoreAncorato === op.nome ? 'Nascondi' : 'Dove finirebbe' }}
+                </button>
+
+                <button type="button" class="btn btn-outline-primary btn-sm fw-semibold"
+                        v-on:click="apriDettagliOperatore(op)">
+                    <i class="fa-solid fa-circle-info me-1" aria-hidden="true"></i>Scheda
+                    <span class="visually-hidden">di {{ op.nome }}</span>
+                </button>
+                @* Verde solo quando l'azione è davvero possibile: un pulsante invitante e
+                   disattivato è una situazione ambigua, non una segnalazione. *@
+                <button type="button" class="btn btn-sm fw-bold"
+                        v-bind:class="(selectedTask && !isOperatoreIncompatibile(op)) ? 'btn-success' : 'btn-outline-secondary'"
+                        v-bind:disabled="!selectedTask || isOperatoreIncompatibile(op) || operazioneInCorso"
+                        v-on:click="assegnaTask(op)">
+                    <i class="fa-solid fa-user-check me-1" aria-hidden="true"></i>Assegna
+                    <span class="visually-hidden">{{ selectedTask ? selectedTask.nome : 'una lavorazione' }} a {{ op.nome }}</span>
+                </button>
+            </div>
+        </article>
+
+        <p v-if="getOperatoriFiltrati().length === 0" class="text-muted text-center py-4 mb-0">
+            <i class="fa-solid fa-users-slash d-block mb-2 text-secondary fs-4" aria-hidden="true"></i>
+            Nessun operatore corrisponde alla ricerca.
+        </p>
+    </div>
+</section>

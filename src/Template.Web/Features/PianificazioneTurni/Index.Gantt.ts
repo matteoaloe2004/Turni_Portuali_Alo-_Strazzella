@@ -1,6 +1,5 @@
-// Rendering della timeline Gantt: formattazione ore, posizionamento dei blocchi,
-// collisioni/poka-yoke visivo e barre di carico lavoro. Va caricato dopo Index.ts
-// (che definisce la classe IndexVueModel) — vedi i tag <script> in Index.cshtml.
+// Rendering della timeline Gantt: formattazione delle ore, posizionamento dei blocchi,
+// collisioni e barre di carico. Va caricato dopo Index.Regole.ts e Index.ts.
 namespace PianificazioneTurni {
 
     export interface IndexVueModel {
@@ -11,140 +10,159 @@ namespace PianificazioneTurni {
         blockWidth(turno: any): string;
         tickLeft(h: number): string;
         getTurniPerBanchina(banchina: string): any[];
-        getTurniPerOperatore(nome: string): any[];
         isBloccoInCollisione(t: any): boolean;
+        statoTurno(t: any): 'collisione' | 'ritardo' | 'da-rivedere' | 'oltre-mezzanotte' | 'regolare';
+        etichettaStatoTurno(t: any): string;
+        descrizioneTurno(t: any): string;
         getBlockClass(t: any): any;
         handleBlockClick(t: any): void;
         getOpPercent(op: any): number;
         getOpStatus(op: any): string;
     }
 
-    // ---- Formattazione ----
+    // ---- Formattazione --------------------------------------------------------
+
     IndexVueModel.prototype.fmtOra = function (this: IndexVueModel, h: number): string {
         if (h < 0) h = 0;
-        const hh = Math.floor(h);
-        const mm = Math.round((h - hh) * 60);
-        if (hh >= 24) {
-            const hNext = hh - 24;
-            return `+1g ${hNext.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
+        const ore = Math.floor(h);
+        const minuti = Math.round((h - ore) * 60);
+
+        if (ore >= 24) {
+            return `+1g ${(ore - 24).toString().padStart(2, '0')}:${minuti.toString().padStart(2, '0')}`;
         }
-        return hh.toString().padStart(2, '0') + ':' + mm.toString().padStart(2, '0');
+        return `${ore.toString().padStart(2, '0')}:${minuti.toString().padStart(2, '0')}`;
     };
 
     IndexVueModel.prototype.fmtTick = function (this: IndexVueModel, h: number): string {
         if (h % 2 !== 0) return '';
-        const hh = h >= 24 ? h - 24 : h;
-        return hh.toString().padStart(2, '0') + ':00';
+        const ore = h >= 24 ? h - 24 : h;
+        return ore.toString().padStart(2, '0') + ':00';
     };
 
     IndexVueModel.prototype.fmtDurata = function (this: IndexVueModel, d: number): string {
-        const h = Math.floor(d);
-        const m = Math.round((d - h) * 60);
-        return m > 0 ? `${h}h ${m}min` : `${h}h`;
+        const ore = Math.floor(d);
+        const minuti = Math.round((d - ore) * 60);
+        return minuti > 0 ? `${ore}h ${minuti}min` : `${ore}h`;
     };
 
-    // ---- Gantt positioning ----
-    function totalH(vm: IndexVueModel): number {
+    // ---- Posizionamento sulla timeline ----------------------------------------
+
+    function oreVisibili(vm: IndexVueModel): number {
         return (vm as any).orarioFine - (vm as any).orarioInizio;
     }
 
     IndexVueModel.prototype.blockLeft = function (this: IndexVueModel, turno: any): string {
-        const s = turno.isDelayed ? turno.startOra + turno.ritardoOre : turno.startOra;
-        return (((s - (this as any).orarioInizio) / totalH(this)) * 100).toFixed(2) + '%';
+        const inizio = turno.isDelayed ? turno.startOra + turno.ritardoOre : turno.startOra;
+        return (((inizio - (this as any).orarioInizio) / oreVisibili(this)) * 100).toFixed(2) + '%';
     };
 
     IndexVueModel.prototype.blockWidth = function (this: IndexVueModel, turno: any): string {
-        const d = turno.durataOre;
-        return ((d / totalH(this)) * 100).toFixed(2) + '%';
+        return ((turno.durataOre / oreVisibili(this)) * 100).toFixed(2) + '%';
     };
 
     IndexVueModel.prototype.tickLeft = function (this: IndexVueModel, h: number): string {
-        return (((h - (this as any).orarioInizio) / totalH(this)) * 100).toFixed(2) + '%';
+        return (((h - (this as any).orarioInizio) / oreVisibili(this)) * 100).toFixed(2) + '%';
     };
 
     IndexVueModel.prototype.getTurniPerBanchina = function (this: IndexVueModel, banchina: string): any[] {
-        return (this as any).turni.filter((t: any) => t.banchina === banchina && t.giorno === (this as any).giornoSelezionato);
+        const self = this as any;
+        return self.turni.filter((t: any) => t.banchina === banchina && t.giorno === self.giornoSelezionato);
     };
 
-    IndexVueModel.prototype.getTurniPerOperatore = function (this: IndexVueModel, nome: string): any[] {
-        return (this as any).turni.filter((t: any) => t.operatore === nome && t.giorno === (this as any).giornoSelezionato);
-    };
+    // ---- Collisioni ------------------------------------------------------------
 
     IndexVueModel.prototype.isBloccoInCollisione = function (this: IndexVueModel, t: any): boolean {
         if (!t.operatore) return false;
 
-        const startT = t.isDelayed ? t.startOra + t.ritardoOre : t.startOra;
-        const candStart = t.giorno * 24.0 + startT;
-        const candEnd = candStart + t.durataOre;
+        const inizioCand = inizioAssoluto(t);
+        const fineCand = fineAssoluta(t);
+        const altri = (this as any).turni.filter((o: any) => o.id !== t.id);
 
-        return (this as any).turni.some((other: any) => {
-            if (other.id === t.id) return false;
-
-            const startO = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
-            const otherStart = other.giorno * 24.0 + startO;
-            const otherEnd = otherStart + other.durataOre;
-
-            // 1. Collisione molo (sovrapposizione stesso molo)
-            if (t.banchina === other.banchina) {
-                if (candStart < otherEnd && candEnd > otherStart) {
-                    return true;
-                }
-            }
-
-            // 2. Collisione operatore (sovrapposizione o riposo insufficiente < 11 ore)
-            if (t.operatore === other.operatore) {
-                // Sovrapposizione
-                if (candStart < otherEnd && candEnd > otherStart) {
-                    return true;
-                }
-                // Riposo di 11h
-                if (candStart >= otherEnd && candStart - otherEnd < 11.0) {
-                    return true;
-                }
-                if (candEnd <= otherStart && otherStart - candEnd < 11.0) {
-                    return true;
-                }
-            }
-
-            return false;
-        });
+        // Due navi sulla stessa banchina nello stesso momento, oppure lo stesso operatore
+        // su turni sovrapposti o troppo ravvicinati.
+        return banchinaOccupata(t.banchina, inizioCand, fineCand, altri)
+            || operatoreOccupato(t.operatore, inizioCand, fineCand, altri);
     };
 
-    // ---- Poka-Yoke: CSS class binding per blocco Gantt ----
+    /** Stato del turno in una parola: da qui derivano sia la classe CSS sia l'etichetta. */
+    IndexVueModel.prototype.statoTurno = function (this: IndexVueModel, t: any): 'collisione' | 'ritardo' | 'da-rivedere' | 'oltre-mezzanotte' | 'regolare' {
+        if (this.isBloccoInCollisione(t)) return 'collisione';
+        if (t.isDelayed) return 'ritardo';
+        if (t.requiresResolution) return 'da-rivedere';
+
+        const inizio = t.isDelayed ? t.startOra + t.ritardoOre : t.startOra;
+        if (inizio + t.durataOre > ORA_FINE_GIORNATA) return 'oltre-mezzanotte';
+
+        return 'regolare';
+    };
+
+    const ETICHETTE_STATO = {
+        'collisione': 'In conflitto',
+        'ritardo': 'In ritardo',
+        'da-rivedere': 'Da rivedere',
+        'oltre-mezzanotte': 'Oltre la mezzanotte',
+        'regolare': 'Regolare'
+    };
+
+    IndexVueModel.prototype.etichettaStatoTurno = function (this: IndexVueModel, t: any): string {
+        return ETICHETTE_STATO[this.statoTurno(t)];
+    };
+
+    /** Descrizione completa del blocco, usata come nome accessibile e come tooltip. */
+    IndexVueModel.prototype.descrizioneTurno = function (this: IndexVueModel, t: any): string {
+        const inizio = t.isDelayed ? t.startOra + t.ritardoOre : t.startOra;
+        const parti = [
+            `Nave ${t.nome}`,
+            `banchina ${t.banchina}`,
+            `operatore ${t.operatore}`,
+            `dalle ${this.fmtOra(inizio)} alle ${this.fmtOra(inizio + t.durataOre)}`
+        ];
+
+        const stato = this.statoTurno(t);
+        if (stato === 'ritardo') {
+            parti.push(`in ritardo di ${this.fmtDurata(t.ritardoOre)}`);
+        } else if (stato !== 'regolare') {
+            parti.push(ETICHETTE_STATO[stato].toLowerCase());
+        }
+
+        return parti.join(', ') + '.';
+    };
+
     IndexVueModel.prototype.getBlockClass = function (this: IndexVueModel, t: any): any {
-        const collision = this.isBloccoInCollisione(t);
-        const isLocked = collision && !t.isDelayed; // Nave originale in collisione = bloccata
-
-        const startOra = t.isDelayed ? t.startOra + t.ritardoOre : t.startOra;
-        const crossesMidnight = (startOra + t.durataOre) > 24.0 || startOra >= 23.0;
-
+        const stato = this.statoTurno(t);
         return {
-            'gantt-block-delayed': t.isDelayed && !crossesMidnight,
-            'gantt-block-normal': !t.isDelayed && !isLocked && !crossesMidnight && !collision,
-            'gantt-block-collision': collision,
-            'gantt-block-locked': isLocked && !crossesMidnight,
-            'gantt-block-midnight': crossesMidnight && !collision
+            'gantt-block-collision': stato === 'collisione',
+            'gantt-block-delayed': stato === 'ritardo',
+            'gantt-block-locked': stato === 'da-rivedere',
+            'gantt-block-midnight': stato === 'oltre-mezzanotte',
+            'gantt-block-normal': stato === 'regolare'
         };
     };
 
-    // ---- Poka-Yoke: Click handler ----
+    /** Un blocco in crisi (ritardo, collisione, da rivedere) apre il modale di
+     *  risoluzione; gli altri aprono la scheda della nave. */
     IndexVueModel.prototype.handleBlockClick = function (this: IndexVueModel, t: any): void {
-        if (t.isDelayed) {
-            this.apriModale(t);
-        } else {
+        if (this.statoTurno(t) === 'regolare' || this.statoTurno(t) === 'oltre-mezzanotte') {
             this.apriDettagliNave(t.nome);
+        } else {
+            this.apriModale(t);
         }
     };
 
-    // ---- Progress bar helpers ----
+    // ---- Barre di carico ---------------------------------------------------------
+
+    // oreMassime a 0 o assente darebbe NaN o Infinity: senza limite contrattuale noto la
+    // barra resta vuota.
     IndexVueModel.prototype.getOpPercent = function (this: IndexVueModel, op: any): number {
+        if (!op || !(op.oreMassime > 0)) return 0;
         return Math.min(100, (op.oreSettimanali / op.oreMassime) * 100);
     };
 
     IndexVueModel.prototype.getOpStatus = function (this: IndexVueModel, op: any): string {
-        const r = op.oreSettimanali / op.oreMassime;
-        if (r > 0.75) return 'danger';
-        if (r < 0.50) return 'secondary';
+        if (!op || !(op.oreMassime > 0)) return 'secondary';
+        const rapporto = op.oreSettimanali / op.oreMassime;
+        if (rapporto > 0.75) return 'danger';
+        if (rapporto < 0.50) return 'secondary';
         return 'warning';
     };
 }

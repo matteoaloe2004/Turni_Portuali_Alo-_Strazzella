@@ -1,0 +1,109 @@
+@model Template.Web.Features.PianificazioneTurni.IndexViewModel
+
+@* Scheda riservata all'amministrazione: vincoli di pianificazione e simulazioni.
+   L'asp-roles nella pagina che la include ne esclude il markup lato server. *@
+
+<section class="card border-0 shadow-sm p-4 mb-4" aria-labelledby="titolo-vincoli">
+    <h2 id="titolo-vincoli" class="h5 fw-bold text-dark mb-2">
+        <i class="fa-solid fa-shield-halved text-primary me-2" aria-hidden="true"></i>Regole e vincoli
+    </h2>
+    <p class="text-secondary mb-4">
+        Le condizioni che il sistema fa rispettare a ogni pianificazione, e che chi compone i turni non può aggirare.
+    </p>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <partial name="~/Features/PianificazioneTurni/_VincoliContrattuali.cshtml" model="Model.Vincoli" />
+        </div>
+        <div class="col-lg-6">
+            <div class="p-4 bg-light rounded border border-light-subtle h-100">
+                <h3 class="h6 fw-bold text-dark mb-2">
+                    <i class="fa-solid fa-list-check me-2 text-secondary" aria-hidden="true"></i>Vincoli sempre attivi
+                </h3>
+                <p class="text-secondary">Valgono per chiunque e non sono disattivabili dall'interfaccia.</p>
+                <ul class="text-secondary mb-0">
+                    <li>Riposo di almeno <strong>@Template.Services.PianificazioneTurni.RegolePianificazione.RiposoMinimoOre.ToString("0") ore</strong> fra due turni della stessa persona.</li>
+                    <li>Nessuna sovrapposizione sulla stessa banchina o sullo stesso operatore.</li>
+                    <li>Turni solo dentro la finestra di attracco della nave.</li>
+                    <li>Nessun turno a chi ha la patente scaduta o è in riposo obbligatorio.</li>
+                    <li>Tetto di legge a <strong>@Template.Services.PianificazioneTurni.RegolePianificazione.MassimoOreSettimanaliDiLegge.ToString("0") ore</strong> settimanali.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="card border-0 shadow-sm p-4" aria-labelledby="titolo-simulazioni">
+    <h2 id="titolo-simulazioni" class="h5 fw-bold text-dark mb-2">
+        <i class="fa-solid fa-sliders text-warning me-2" aria-hidden="true"></i>Simulazione ritardi ed emergenze
+    </h2>
+    <p class="text-secondary mb-4">
+        Da qui si può indurre un'anomalia nella pianificazione per vedere come il sistema di supporto alle decisioni propone di rimediare.
+        Il ritardo viene applicato sul server, quindi lo vedono tutti i coordinatori collegati.
+    </p>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="p-4 bg-light rounded border border-light-subtle h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <h3 class="h6 fw-bold text-dark mb-2">
+                        <i class="fa-solid fa-bolt me-2 text-danger" aria-hidden="true"></i>Ritardo di una nave
+                    </h3>
+                    <p class="text-secondary mb-0">
+                        Sceglie una nave fra quelle in orario e le assegna un ritardo di alcune ore.
+                        Il turno resta segnalato sul tabellone finché non lo sistemi.
+                    </p>
+                </div>
+                <button type="button" class="btn btn-danger w-100 fw-bold py-2 mt-3"
+                        v-bind:disabled="operazioneInCorso"
+                        v-on:click="simulaRitardoNave()">
+                    <i class="fa-solid" v-bind:class="operazioneInCorso ? 'fa-spinner fa-spin' : 'fa-clock-rotate-left'" aria-hidden="true"></i>
+                    Simula il ritardo di una nave
+                </button>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="p-4 bg-light rounded border border-light-subtle h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <h3 class="h6 fw-bold text-dark mb-2">
+                        <i class="fa-solid fa-rotate me-2 text-secondary" aria-hidden="true"></i>Riparti dai dati iniziali
+                    </h3>
+                    <p class="text-secondary mb-0">
+                        Riporta turni, operatori e backlog com'erano all'avvio.
+                    </p>
+                </div>
+
+                @* Conferma in due passi: la seconda schermata elenca cosa andrà perso. *@
+                <div v-if="!confermaRipristinoAperta">
+                    <button type="button" class="btn btn-outline-secondary w-100 fw-bold py-2 mt-3"
+                            v-on:click="chiediRipristinoPianificazione()">
+                        <i class="fa-solid fa-rotate me-1" aria-hidden="true"></i>Riparti dai dati iniziali
+                    </button>
+                </div>
+
+                <div v-else class="conferma-distruttiva p-3 mt-3" role="alertdialog"
+                     aria-labelledby="titolo-conferma-ripristino">
+                    <p id="titolo-conferma-ripristino" class="fw-bold mb-2">
+                        Verranno annullati tutti i {{ turni.length }} turni in pianificazione.
+                    </p>
+                    <p class="mb-3">
+                        Le lavorazioni torneranno nel backlog e il registro delle comunicazioni sarà svuotato.
+                        Non è un'operazione che si può annullare.
+                    </p>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm flex-grow-1"
+                                v-on:click="annullaRipristino()">
+                            No, lascia tutto com'è
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm flex-grow-1 fw-bold"
+                                v-bind:disabled="operazioneInCorso"
+                                v-on:click="ripristinaPianificazione()">
+                            Sì, riparti da capo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

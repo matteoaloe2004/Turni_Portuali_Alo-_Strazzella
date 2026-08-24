@@ -1,218 +1,251 @@
+// Apertura e chiusura dei modali (risoluzione conflitto, scheda operatore, scheda nave)
+// e richiesta di alternative per un turno già assegnato. Va caricato dopo Index.Regole.ts
+// e Index.ts.
 var PianificazioneTurni;
 (function (PianificazioneTurni) {
-    var IndexVueModel = PianificazioneTurni.IndexVueModel;
-    // Condivisa dai chiusori di modale: rimuove il backdrop Bootstrap orfano e
-    // ripristina le classi/stili su <body> lasciati dall'apertura del modale.
-    function closeModalBackdropAndBody() {
-        const bd = document.querySelector('.modal-backdrop');
-        if (bd && bd.parentNode)
-            bd.parentNode.removeChild(bd);
-        document.body.classList.remove('modal-open');
-        document.body.style.overflow = '';
-        document.body.style.paddingRight = '';
+    // ---- Gestione dei modali Bootstrap ---------------------------------------
+    function modale(idElemento) {
+        const el = document.getElementById(idElemento);
+        if (!el || typeof bootstrap === 'undefined')
+            return null;
+        return bootstrap.Modal.getOrCreateInstance(el);
     }
-    function closeModal(vm) {
-        if (vm.modalInstance) {
-            vm.modalInstance.hide();
-            vm.modalInstance = null;
-        }
-        closeModalBackdropAndBody();
+    function apriModaleBootstrap(idElemento) {
+        const istanza = modale(idElemento);
+        if (istanza)
+            istanza.show();
+        return istanza;
     }
-    // ---- Modale ----
-    IndexVueModel.prototype.apriModale = async function (turno) {
-        if (!turno.requiresResolution && !this.isBloccoInCollisione(turno) && !turno.isDelayed)
+    /** Ripulisce i dati solo a dissolvenza finita, agganciandosi a hidden.bs.modal invece
+     *  di indovinare la durata dell'animazione. */
+    function chiudiModaleBootstrap(idElemento, dopoLaChiusura) {
+        const el = document.getElementById(idElemento);
+        if (!el) {
+            if (dopoLaChiusura)
+                dopoLaChiusura();
             return;
-        this.banchinaSelezione = turno.banchina || '';
-        this.operatoreSelezione = '';
-        this.formError = '';
-        this.turnoInRitardo = turno;
-        this.orarioSelezioneRiassegnazione = turno.startOra + (turno.isDelayed ? turno.ritardoOre : 0);
-        const ruolo = turno.ruoloRichiesto || turno.competenzaRichiesta || 'Gruista';
-        if (ruolo === 'Gruista') {
-            this.veicolo = 'Gru Portacontainer';
         }
-        else if (ruolo === 'Mulettista') {
-            this.veicolo = 'Carrello Elevatore';
+        if (dopoLaChiusura) {
+            el.addEventListener('hidden.bs.modal', dopoLaChiusura, { once: true });
+        }
+        const istanza = typeof bootstrap !== 'undefined' ? bootstrap.Modal.getInstance(el) : null;
+        if (istanza) {
+            istanza.hide();
+        }
+        else if (dopoLaChiusura) {
+            // Il modale non era davvero aperto: l'evento non arriverà mai.
+            el.removeEventListener('hidden.bs.modal', dopoLaChiusura);
+            dopoLaChiusura();
+        }
+    }
+    const ID_MODALE_CONFLITTO = 'conflittoModal';
+    const ID_MODALE_OPERATORE = 'dettagliOperatoreModal';
+    const ID_MODALE_NAVE = 'dettagliNaveModal';
+    // ---- Modale di risoluzione conflitto --------------------------------------
+    PianificazioneTurni.IndexVueModel.prototype.apriModale = async function (turno) {
+        const self = this;
+        if (!turno.requiresResolution && !turno.isDelayed && !this.isBloccoInCollisione(turno))
+            return;
+        self.banchinaSelezione = turno.banchina || '';
+        self.operatoreSelezione = '';
+        self.formError = '';
+        self.turnoInRitardo = turno;
+        self.orarioSelezioneRiassegnazione = turno.startOra + (turno.isDelayed ? turno.ritardoOre : 0);
+        self.soluzioneOttimale = null;
+        self.nessunaAlternativa = false;
+        self.problemaDSS = false;
+        self.caricamentoDSSTask = true;
+        // Il modale si apre subito con lo spinner, senza attendere la risposta del DSS.
+        self.modalInstance = apriModaleBootstrap(ID_MODALE_CONFLITTO);
+        await this.caricaSoluzioneOttimale();
+    };
+    /** Orario a cui la nave attracca davvero, ritardo compreso. Sull'asse assoluto perché
+     *  un ritardo può spingere l'attracco oltre la mezzanotte. */
+    PianificazioneTurni.IndexVueModel.prototype.attraccoPrevisto = function (turno) {
+        if (!turno)
+            return '';
+        const assoluto = turno.giorno * 24 + turno.startOra + (turno.isDelayed ? turno.ritardoOre : 0);
+        const giorno = Math.floor(assoluto / 24);
+        const ora = assoluto - giorno * 24;
+        return giorno === turno.giorno
+            ? this.fmtOra(ora)
+            : `${this.getNomeGiorno(giorno)} alle ${this.fmtOra(ora)}`;
+    };
+    PianificazioneTurni.IndexVueModel.prototype.caricaSoluzioneOttimale = async function () {
+        const self = this;
+        if (!self.turnoInRitardo)
+            return;
+        const turno = self.turnoInRitardo;
+        self.caricamentoDSSTask = true;
+        const risposta = await PianificazioneTurni.inviaAlServer('/Turni/CalcolaMigliorAlternativa', {
+            TurnoId: turno.id,
+            RitardoOre: turno.isDelayed ? turno.ritardoOre : 0,
+            StartOra: turno.startOra,
+            Giorno: turno.giorno
+        });
+        // Il coordinatore può aver chiuso il modale nel frattempo.
+        if (!self.turnoInRitardo || self.turnoInRitardo.id !== turno.id)
+            return;
+        if (!risposta.ok || !risposta.dati) {
+            self.problemaDSS = true;
+            self.nessunaAlternativa = false;
+            self.soluzioneOttimale = null;
         }
         else {
-            this.veicolo = 'Ralla di Banchina';
+            self.problemaDSS = false;
+            self.nessunaAlternativa = !risposta.dati.trovata;
+            self.soluzioneOttimale = risposta.dati.trovata ? risposta.dati.alternativa : null;
         }
-        this.identificativo = `TRN-0${turno.id}-${ruolo.substring(0, 3).toUpperCase()}`;
-        this.hasConflict = true;
-        this.soluzioneOttimale = null;
-        await this.caricaSoluzioneOttimale();
-        const el = document.getElementById('conflittoModal');
-        if (el && typeof bootstrap !== 'undefined') {
-            this.modalInstance = new bootstrap.Modal(el);
-            this.modalInstance.show();
-        }
+        self.caricamentoDSSTask = false;
     };
-    IndexVueModel.prototype.caricaSoluzioneOttimale = async function () {
-        if (!this.turnoInRitardo)
+    PianificazioneTurni.IndexVueModel.prototype.applicaESalvaSoluzioneSuggerita = async function () {
+        const self = this;
+        if (!self.soluzioneOttimale || !self.turnoInRitardo)
             return;
-        try {
-            const ritardo = this.turnoInRitardo.isDelayed ? this.turnoInRitardo.ritardoOre : 0;
-            const startOra = this.turnoInRitardo.startOra;
-            const giorno = this.turnoInRitardo.giorno;
-            const payload = {
-                TurnoId: this.turnoInRitardo.id,
-                RitardoOre: ritardo,
-                StartOra: startOra,
-                Giorno: giorno,
-                CurrentTurni: this.turni
-            };
-            const response = await utilities.postJson('/Turni/CalcolaMigliorAlternativa', payload);
-            if (response.ok) {
-                this.soluzioneOttimale = await response.json();
-            }
-            else {
-                this.soluzioneOttimale = null;
-            }
-        }
-        catch (e) {
-            console.error("Errore nel caricamento della soluzione ottimale", e);
-            this.soluzioneOttimale = null;
-        }
-    };
-    IndexVueModel.prototype.applicaESalvaSoluzioneSuggerita = async function () {
-        if (!this.soluzioneOttimale || !this.turnoInRitardo)
-            return;
-        this.banchinaSelezione = this.soluzioneOttimale.moloSuggerito;
-        this.orarioSelezioneRiassegnazione = this.soluzioneOttimale.orarioSuggerito;
-        this.operatoreSelezione = this.soluzioneOttimale.operatoreSuggerito;
+        self.banchinaSelezione = self.soluzioneOttimale.moloSuggerito;
+        self.orarioSelezioneRiassegnazione = self.soluzioneOttimale.orarioSuggerito;
+        self.operatoreSelezione = self.soluzioneOttimale.operatoreSuggerito;
         await this.confermaRiassegnazione();
     };
-    IndexVueModel.prototype.confermaRiassegnazione = async function () {
-        if (!this.banchinaSelezione || !this.operatoreSelezione) {
-            this.formError = 'Seleziona sia il molo che l\'operatore prima di confermare.';
+    PianificazioneTurni.IndexVueModel.prototype.confermaRiassegnazione = async function () {
+        const self = this;
+        const turno = self.turnoInRitardo;
+        if (!turno)
+            return;
+        if (!self.banchinaSelezione || !self.operatoreSelezione) {
+            self.formError = 'Scegli il molo e l\'operatore prima di confermare.';
             return;
         }
-        const t = this.turnoInRitardo;
-        const targetGiorno = this.soluzioneOttimale &&
-            this.banchinaSelezione === this.soluzioneOttimale.moloSuggerito &&
-            this.orarioSelezioneRiassegnazione === this.soluzioneOttimale.orarioSuggerito &&
-            this.operatoreSelezione === this.soluzioneOttimale.operatoreSuggerito
-            ? this.soluzioneOttimale.giornoSuggerito : t.giorno;
-        if (t.isDelayed && targetGiorno === t.giorno && this.orarioSelezioneRiassegnazione < t.startOra + t.ritardoOre) {
-            this.formError = `Impossibile confermare: l'orario selezionato (${this.fmtOra(this.orarioSelezioneRiassegnazione)}) è precedente all'arrivo stimato della nave (${this.fmtOra(t.startOra + t.ritardoOre)}).`;
+        // Il giorno cambia solo se stiamo applicando esattamente la soluzione proposta
+        // dal DSS: una modifica manuale resta nel giorno del turno.
+        const sol = self.soluzioneOttimale;
+        const stiamoApplicandoLaProposta = sol
+            && self.banchinaSelezione === sol.moloSuggerito
+            && self.orarioSelezioneRiassegnazione === sol.orarioSuggerito
+            && self.operatoreSelezione === sol.operatoreSuggerito;
+        const giornoTarget = stiamoApplicandoLaProposta ? sol.giornoSuggerito : turno.giorno;
+        const vecchioOperatore = turno.operatore;
+        self.formError = '';
+        const esito = await self.inviaComando('/Turni/SpostaTurno', {
+            TurnoId: turno.id,
+            NuovaFasciaOraria: self.orarioSelezioneRiassegnazione,
+            NuovaBanchina: self.banchinaSelezione,
+            NuovoOperatore: self.operatoreSelezione,
+            Giorno: giornoTarget
+        });
+        if (!esito) {
+            // Il server non ha risposto: il modale resta aperto e non si perde la scelta fatta.
+            self.formError = PianificazioneTurni.MESSAGGIO_SERVER_NON_RAGGIUNGIBILE;
             return;
         }
-        const command = {
-            TurnoId: t.id,
-            NuovaFasciaOraria: this.orarioSelezioneRiassegnazione,
-            NuovaBanchina: this.banchinaSelezione,
-            NuovoOperatore: this.operatoreSelezione,
-            Giorno: targetGiorno
-        };
-        try {
-            const response = await utilities.postJson('/Turni/SpostaTurno', command);
-            if (!response.ok) {
-                throw new Error('Errore durante il salvataggio dello spostamento.');
-            }
-            const resData = await response.json();
-            if (resData && resData.success) {
-                const vecchioOperatore = t.operatore;
-                t.banchina = this.banchinaSelezione;
-                t.operatore = this.operatoreSelezione;
-                t.startOra = this.orarioSelezioneRiassegnazione;
-                t.giorno = targetGiorno;
-                t.isDelayed = false;
-                t.requiresResolution = false;
-                t.ritardoOre = 0;
-                this.ricalcolaOreSettimanaliOperatori();
-                this.emergenzaAttiva = false;
-                this.turnoInRitardo = null;
-                closeModal(this);
-                this.saveState();
-                this.selezionaGiorno(targetGiorno);
-                // Invio notifica
-                const msgSms = `NOTIFICA [Porto]: Ti è stato assegnato il turno del giorno ${this.getNomeGiorno(t.giorno)} al ${t.banchina} a partire dalle ${this.fmtOra(t.startOra)}.`;
-                this.inviaNotificaSimulata('SMS', t.operatore, msgSms);
-                const msgEmail = `Gentile ${t.operatore},\n\nTi informiamo che l'Ufficio Coordinamento ha modificato il piano turni.\n\nDettagli del turno assegnato:\n- Giorno: ${this.getNomeGiorno(t.giorno)}\n- Banchina: ${t.banchina}\n- Orario: ${this.fmtOra(t.startOra)} - ${this.fmtOra(t.startOra + t.durataOre)}\n- Durata: ${this.fmtDurata(t.durataOre)}\n\nSi prega di presentarsi puntualmente.\n\nCordiali saluti,\nUfficio Turni Portuali`;
-                this.inviaNotificaSimulata('EMAIL', t.operatore, msgEmail);
-                if (vecchioOperatore && vecchioOperatore !== t.operatore) {
-                    const msgAnnullamento = `NOTIFICA [Porto]: Il tuo turno del giorno ${this.getNomeGiorno(t.giorno)} per la nave ${t.nome} è stato cancellato/riassegnato.`;
-                    this.inviaNotificaSimulata('SMS', vecchioOperatore, msgAnnullamento);
-                }
-                if (typeof Toastify !== 'undefined') {
-                    Toastify({
-                        text: `Riassegnato: ${t.nome} → ${t.banchina} (${t.operatore})`,
-                        duration: 4000, gravity: 'top', position: 'right',
-                        style: { background: "#198754" }
-                    }).showToast();
-                }
-            }
-            else {
-                this.formError = resData.message || 'Errore durante la riassegnazione.';
-            }
+        if (!esito.riuscita) {
+            // Il server ha risposto di no: il motivo va dentro al modale, non solo in un toast.
+            self.formError = esito.messaggio;
+            return;
         }
-        catch (err) {
-            this.formError = err.message || 'Si è verificato un errore di rete o di server.';
+        const nomeNave = turno.nome;
+        const nuovoOperatore = self.operatoreSelezione;
+        const banchina = self.banchinaSelezione;
+        const orario = self.orarioSelezioneRiassegnazione;
+        chiudiModaleBootstrap(ID_MODALE_CONFLITTO, () => {
+            self.turnoInRitardo = null;
+            self.soluzioneOttimale = null;
+            self.modalInstance = null;
+            self.formError = '';
+        });
+        self.selezionaGiorno(giornoTarget);
+        this.inviaNotificaSimulata('SMS', nuovoOperatore, `Turno assegnato: nave ${nomeNave}, ${banchina}, ${self.getNomeGiorno(giornoTarget)} dalle ${self.fmtOra(orario)}.`);
+        if (vecchioOperatore && vecchioOperatore !== nuovoOperatore) {
+            this.inviaNotificaSimulata('SMS', vecchioOperatore, `Il tuo turno del ${self.getNomeGiorno(giornoTarget)} per la nave ${nomeNave} è stato riassegnato.`);
         }
     };
-    IndexVueModel.prototype.annullaModale = function () { closeModal(this); };
-    IndexVueModel.prototype.apriDettagliOperatore = function (op) {
+    PianificazioneTurni.IndexVueModel.prototype.annullaTurnoCorrente = async function () {
+        const self = this;
+        const turno = self.turnoInRitardo;
+        if (!turno)
+            return;
+        const esito = await self.inviaComando('/Turni/AnnullaTurno', { TurnoId: turno.id });
+        if (!esito || !esito.riuscita)
+            return;
+        chiudiModaleBootstrap(ID_MODALE_CONFLITTO, () => {
+            self.turnoInRitardo = null;
+            self.soluzioneOttimale = null;
+            self.modalInstance = null;
+            self.formError = '';
+        });
+    };
+    /** Chiude il modale quando il DSS non trova nulla, lasciando il turno segnalato sul
+     *  Gantt per riprenderlo a mano. */
+    PianificazioneTurni.IndexVueModel.prototype.rinunciaAllaSoluzioneAutomatica = function () {
+        const self = this;
+        const nomeNave = self.turnoInRitardo ? self.turnoInRitardo.nome : 'Il turno';
+        chiudiModaleBootstrap(ID_MODALE_CONFLITTO, () => {
+            self.turnoInRitardo = null;
+            self.soluzioneOttimale = null;
+            self.modalInstance = null;
+            self.formError = '';
+        });
+        PianificazioneTurni.mostraMessaggio('attenzione', `${nomeNave} resta segnalata sul Gantt: la gestisci a mano quando vuoi, cliccando di nuovo il suo blocco.`);
+    };
+    PianificazioneTurni.IndexVueModel.prototype.annullaModale = function () {
+        const self = this;
+        chiudiModaleBootstrap(ID_MODALE_CONFLITTO, () => {
+            self.turnoInRitardo = null;
+            self.soluzioneOttimale = null;
+            self.modalInstance = null;
+            self.formError = '';
+        });
+    };
+    // ---- Scheda operatore ------------------------------------------------------
+    PianificazioneTurni.IndexVueModel.prototype.apriDettagliOperatore = function (op) {
         this.operatoreSelezionatoDettaglio = op;
-        const el = document.getElementById('dettagliOperatoreModal');
-        if (el && typeof bootstrap !== 'undefined') {
-            const modal = new bootstrap.Modal(el);
-            modal.show();
-        }
+        apriModaleBootstrap(ID_MODALE_OPERATORE);
     };
-    IndexVueModel.prototype.apriDettagliOperatoreDaNome = function (nome) {
-        this.chiudiDettagliNave();
-        const op = this.operatori.find((o) => o.nome === nome);
-        if (op) {
-            setTimeout(() => {
-                this.apriDettagliOperatore(op);
-            }, 200);
-        }
+    /** Salto dalla scheda nave a quella di un operatore: il secondo modale si apre solo
+     *  quando il primo ha finito di chiudersi. */
+    PianificazioneTurni.IndexVueModel.prototype.apriDettagliOperatoreDaNome = function (nome) {
+        const self = this;
+        const op = self.operatori.find((o) => o.nome === nome);
+        if (!op)
+            return;
+        chiudiModaleBootstrap(ID_MODALE_NAVE, () => {
+            self.naveSelezionataDettaglio = '';
+            this.apriDettagliOperatore(op);
+        });
     };
-    IndexVueModel.prototype.chiudiDettagliOperatore = function () {
-        this.operatoreSelezionatoDettaglio = null;
-        const el = document.getElementById('dettagliOperatoreModal');
-        if (el) {
-            const modal = bootstrap.Modal.getInstance(el);
-            if (modal)
-                modal.hide();
-        }
-        closeModalBackdropAndBody();
+    PianificazioneTurni.IndexVueModel.prototype.chiudiDettagliOperatore = function () {
+        const self = this;
+        chiudiModaleBootstrap(ID_MODALE_OPERATORE, () => {
+            self.operatoreSelezionatoDettaglio = null;
+        });
     };
-    IndexVueModel.prototype.getTurniOperatoreSettimana = function (nome) {
-        return this.turni.filter((t) => t.operatore === nome);
+    PianificazioneTurni.IndexVueModel.prototype.getTurniOperatoreSettimana = function (nome) {
+        return this.turni
+            .filter((t) => t.operatore === nome)
+            .sort((a, b) => PianificazioneTurni.inizioAssoluto(a) - PianificazioneTurni.inizioAssoluto(b));
     };
-    IndexVueModel.prototype.getOreTotaliPianificateOperatore = function (nome) {
-        let total = 0;
-        const opShifts = this.getTurniOperatoreSettimana(nome);
-        for (const t of opShifts) {
-            total += t.durataOre;
-        }
-        return total;
+    PianificazioneTurni.IndexVueModel.prototype.getOreTotaliPianificateOperatore = function (nome) {
+        return this.getTurniOperatoreSettimana(nome).reduce((totale, t) => totale + t.durataOre, 0);
     };
-    IndexVueModel.prototype.apriDettagliNave = function (naveNome) {
+    // ---- Scheda nave -------------------------------------------------------------
+    PianificazioneTurni.IndexVueModel.prototype.apriDettagliNave = function (naveNome) {
         this.naveSelezionataDettaglio = naveNome;
-        const el = document.getElementById('dettagliNaveModal');
-        if (el && typeof bootstrap !== 'undefined') {
-            const modal = new bootstrap.Modal(el);
-            modal.show();
-        }
+        apriModaleBootstrap(ID_MODALE_NAVE);
     };
-    IndexVueModel.prototype.chiudiDettagliNave = function () {
-        this.naveSelezionataDettaglio = '';
-        const el = document.getElementById('dettagliNaveModal');
-        if (el) {
-            const modal = bootstrap.Modal.getInstance(el);
-            if (modal)
-                modal.hide();
-        }
-        closeModalBackdropAndBody();
+    PianificazioneTurni.IndexVueModel.prototype.chiudiDettagliNave = function () {
+        const self = this;
+        chiudiModaleBootstrap(ID_MODALE_NAVE, () => {
+            self.naveSelezionataDettaglio = '';
+        });
     };
-    IndexVueModel.prototype.getTurniNaveSettimana = function (naveNome) {
-        return this.turni.filter((t) => t.nome === naveNome);
+    PianificazioneTurni.IndexVueModel.prototype.getTurniNaveSettimana = function (naveNome) {
+        return this.turni
+            .filter((t) => t.nome === naveNome)
+            .sort((a, b) => PianificazioneTurni.inizioAssoluto(a) - PianificazioneTurni.inizioAssoluto(b));
     };
-    IndexVueModel.prototype.getMoliUtilizzatiNave = function (naveNome) {
-        const turniNave = this.getTurniNaveSettimana(naveNome);
-        const moli = Array.from(new Set(turniNave.map((t) => t.banchina)));
+    PianificazioneTurni.IndexVueModel.prototype.getMoliUtilizzatiNave = function (naveNome) {
+        const moli = Array.from(new Set(this.getTurniNaveSettimana(naveNome).map(t => t.banchina)));
         return moli.join(', ');
     };
 })(PianificazioneTurni || (PianificazioneTurni = {}));
+//# sourceMappingURL=Index.Modali.js.map

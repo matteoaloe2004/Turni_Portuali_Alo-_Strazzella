@@ -1,0 +1,18 @@
+@* Maschera di lavoro. L'ordine segue il compito: si sceglie una lavorazione, si
+   guarda chi è idoneo, si incastra sul tabellone. Risorse e tabellone restano
+   affiancati perché l'anteprima dello slot va vista mentre si sceglie l'operatore. *@
+
+<div class="row g-4 mb-4">
+    <div class="col-12 d-flex flex-column">
+        <partial name="~/Features/PianificazioneTurni/_Backlog.cshtml" />
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-lg-4 col-12 d-flex flex-column">
+        <partial name="~/Features/PianificazioneTurni/_Risorse.cshtml" />
+    </div>
+    <div class="col-xl-9 col-lg-8 col-12 d-flex flex-column">
+        <partial name="~/Features/PianificazioneTurni/_Gantt.cshtml" />
+    </div>
+</div>

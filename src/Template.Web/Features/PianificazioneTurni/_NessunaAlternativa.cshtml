@@ -1,0 +1,54 @@
+@* Il DSS non ha trovato nulla. Non è un errore ed è la risposta onesta, ma da sola
+   sarebbe una strada senza uscita: qui si dice il perché persona per persona e si
+   lascia da dove ripartire. *@
+
+<div class="p-3 rounded border-start border-4 border-warning"
+     style="background-color: var(--color-warning-light);" role="status">
+
+    <h4 class="h6 fw-bold text-dark mb-2">
+        <i class="fa-regular fa-face-frown me-2 text-warning" aria-hidden="true"></i>
+        Per questa nave oggi non trovo un incastro.
+    </h4>
+
+    <p class="mb-2 text-secondary">
+        La finestra di attracco va dalle
+        <strong>{{ fmtOra(selectedTask.etaOra) }}</strong> di {{ getNomeGiorno(selectedTask.etaGiorno) }}
+        alle <strong>{{ fmtOra(selectedTask.etdOra) }}</strong> di {{ getNomeGiorno(selectedTask.etdGiorno) }},
+        e la lavorazione dura <strong>{{ fmtDurata(selectedTask.durataOre) }}</strong>.
+        Dentro quello spazio nessuno con la qualifica di
+        <strong>{{ selectedTask.competenzaRichiesta }}</strong> è utilizzabile:
+    </p>
+
+    @* Il motivo di ciascuno, non un "nessuno è libero" che non si può verificare. *@
+    <ul class="list-unstyled mb-3 ps-1">
+        <li v-for="d in diagnosiIndisponibilita" :key="d.nome" class="py-1">
+            <i class="fa-solid fa-circle-minus text-warning me-2" style="font-size: var(--fs-xs);" aria-hidden="true"></i>
+            <strong class="text-dark">{{ d.nome }}</strong> {{ d.motivo }}
+        </li>
+        <li v-if="diagnosiIndisponibilita.length === 0" class="py-1 text-secondary">
+            In organico non c'è nessuno con questa qualifica.
+        </li>
+    </ul>
+
+    @* Due vie d'uscita e non cinque: oltre un certo numero la scelta rallenta invece
+       di aiutare. *@
+    <div class="d-flex flex-wrap gap-2">
+        <button v-if="turniCheBloccano.length > 0" type="button"
+                class="btn btn-warning btn-sm fw-bold"
+                v-bind:aria-pressed="mostraBloccanti ? 'true' : 'false'"
+                v-on:click="evidenziaBloccanti()">
+            <i class="fa-solid fa-location-crosshairs me-1" aria-hidden="true"></i>
+            {{ mostraBloccanti ? 'Nascondi i turni che occupano' : 'Vedi chi occupa la finestra' }}
+        </button>
+
+        <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold"
+                v-on:click="selectTask(selectedTask)">
+            La lascio in elenco
+        </button>
+    </div>
+
+    <p class="mb-0 mt-2 text-secondary" style="font-size: var(--fs-sm);">
+        La lavorazione resta qui: ci torni quando avrai liberato uno slot, e nel frattempo
+        nessuno la assegna per sbaglio.
+    </p>
+</div>

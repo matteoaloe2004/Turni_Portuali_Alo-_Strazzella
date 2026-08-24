@@ -1,0 +1,29 @@
+@* Compare solo quando c'è qualcosa fuori posto, e in quel caso è l'elemento che
+   domina la pagina: chi pianifica deve sapere subito dove intervenire. *@
+
+<div v-if="turniDaRisolvere.length > 0" class="pannello-focus mb-3 p-3 d-flex flex-wrap align-items-center gap-3"
+     role="alert">
+    <i class="fa-solid fa-triangle-exclamation fs-3 flex-shrink-0" aria-hidden="true"></i>
+
+    <div class="flex-grow-1">
+        <p class="fw-bold mb-1 fs-5">
+            {{ turniDaRisolvere.length === 1
+                ? turniDaRisolvere[0].nome + ' richiede una decisione'
+                : turniDaRisolvere.length + ' turni richiedono una decisione' }}
+        </p>
+        <p class="mb-0">
+            <span v-if="turniDaRisolvere[0].isDelayed">
+                Arriva con <strong>{{ fmtDurata(turniDaRisolvere[0].ritardoOre) }}</strong> di ritardo
+            </span>
+            <span v-else>Il turno è in conflitto</span>
+            al <strong>{{ turniDaRisolvere[0].banchina }}</strong>,
+            <strong>{{ getNomeGiorno(turniDaRisolvere[0].giorno) }}</strong>,
+            con <strong>{{ turniDaRisolvere[0].operatore }}</strong>.
+        </p>
+    </div>
+
+    <button type="button" class="btn btn-light fw-bold flex-shrink-0"
+            v-on:click="risolviEmergenza()">
+        <i class="fa-solid fa-wand-magic-sparkles me-1" aria-hidden="true"></i>Vedi le alternative
+    </button>
+</div>

@@ -1,0 +1,146 @@
+@* Risoluzione di un turno in crisi: ritardo, conflitto o revisione manuale. *@
+
+<div class="modal fade" id="conflittoModal" tabindex="-1"
+     data-bs-backdrop="static" data-bs-keyboard="false"
+     aria-labelledby="titolo-modale-conflitto" aria-hidden="true">
+    @* Backdrop statico e keyboard disattivata: Esc scavalcherebbe annullaModale(). *@
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" v-if="turnoInRitardo">
+            <div class="modal-header border-0 bg-light py-3">
+                <h2 id="titolo-modale-conflitto" class="modal-title h5 fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="fa-solid"
+                       v-bind:class="turnoInRitardo.isDelayed ? 'fa-triangle-exclamation text-warning' : 'fa-circle-exclamation text-danger'"
+                       aria-hidden="true"></i>
+                    <span v-if="turnoInRitardo.isDelayed">Ritardo di {{ turnoInRitardo.nome }}</span>
+                    <span v-else>Conflitto su {{ turnoInRitardo.nome }}</span>
+                </h2>
+                <button type="button" class="btn-close" aria-label="Chiudi senza modificare"
+                        v-on:click="annullaModale()"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <dl class="row g-2 mb-3 bg-light p-3 rounded border border-light-subtle mb-0">
+                    <div class="col-md-3">
+                        <dt class="text-muted text-uppercase fw-semibold" style="font-size: var(--fs-xs);">Nave</dt>
+                        <dd class="fw-bold text-dark mb-0">{{ turnoInRitardo.nome }}</dd>
+                    </div>
+                    <div class="col-md-3">
+                        <dt class="text-muted text-uppercase fw-semibold" style="font-size: var(--fs-xs);">Molo attuale</dt>
+                        <dd class="fw-bold text-dark mb-0">{{ turnoInRitardo.banchina }}</dd>
+                    </div>
+                    <div class="col-md-3">
+                        <dt class="text-muted text-uppercase fw-semibold" style="font-size: var(--fs-xs);">Operatore attuale</dt>
+                        <dd class="fw-bold text-dark mb-0">{{ turnoInRitardo.operatore }}</dd>
+                    </div>
+                    <div class="col-md-3">
+                        <dt class="text-muted text-uppercase fw-semibold" style="font-size: var(--fs-xs);">Qualifica richiesta</dt>
+                        <dd class="mb-0">
+                            <span class="role-badge" v-bind:class="'role-' + turnoInRitardo.ruoloRichiesto">
+                                {{ turnoInRitardo.ruoloRichiesto }}
+                            </span>
+                        </dd>
+                    </div>
+                </dl>
+
+                @* Senza il confronto fra l'orario previsto e quello nuovo, l'orario
+                   proposto sotto è un numero che non si può giudicare. *@
+                <p v-if="turnoInRitardo.isDelayed" class="mt-3 mb-3 p-3 rounded border-start border-4 border-warning"
+                   style="background-color: var(--color-warning-light);">
+                    <i class="fa-regular fa-clock me-2 text-warning" aria-hidden="true"></i>
+                    Era prevista alle <strong>{{ fmtOra(turnoInRitardo.startOra) }}</strong>:
+                    con <strong>{{ fmtDurata(turnoInRitardo.ritardoOre) }}</strong> di ritardo
+                    attracca <strong>alle {{ attraccoPrevisto(turnoInRitardo) }}</strong>,
+                    quindi lo scarico non può cominciare prima.
+                </p>
+
+                @* Quattro stati distinti: caricamento, soluzione trovata, problema di
+                   rete, nessuna soluzione applicabile. *@
+                <p v-if="caricamentoDSSTask" class="text-center text-secondary py-4 mb-0" role="status">
+                    <i class="fa-solid fa-spinner fa-spin text-primary me-2" aria-hidden="true"></i>
+                    Sto cercando la soluzione migliore…
+                </p>
+
+                <div v-else-if="soluzioneOttimale" class="p-3 rounded d-flex gap-3 align-items-start"
+                     style="background-color: var(--color-success-light); border-left: 4px solid var(--color-success);">
+                    <i class="fa-solid fa-circle-check fs-4 text-success" aria-hidden="true"></i>
+                    <div>
+                        <h3 class="h6 fw-bold text-success mb-1">Ho trovato una soluzione</h3>
+                        <p v-if="soluzioneOttimale.motivoScelta" class="mb-2">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                <i class="fa-solid fa-layer-group me-1" aria-hidden="true"></i>{{ soluzioneOttimale.motivoScelta }}
+                            </span>
+                        </p>
+                        <p class="mb-0 text-secondary">
+                            Sposta il turno al <strong>{{ soluzioneOttimale.moloSuggerito }}</strong>
+                            <span v-if="soluzioneOttimale.giornoSuggerito !== turnoInRitardo.giorno">
+                                di <strong>{{ getNomeGiorno(soluzioneOttimale.giornoSuggerito) }}</strong>
+                            </span>
+                            alle <strong>{{ fmtOra(soluzioneOttimale.orarioSuggerito) }}</strong>,
+                            assegnandolo a <strong>{{ soluzioneOttimale.operatoreSuggerito }}</strong>,
+                            che arriverebbe a {{ soluzioneOttimale.oreSettimanaliOperatore }} ore
+                            sulle {{ soluzioneOttimale.oreMassimeOperatore }} previste dal contratto.
+                        </p>
+                    </div>
+                </div>
+
+                @* Server muto: caso distinto da "nessuna soluzione applicabile". *@
+                <div v-else-if="problemaDSS" class="avviso-connessione p-3 d-flex gap-3 align-items-start" role="alert">
+                    <i class="fa-solid fa-plug-circle-exclamation fs-4" aria-hidden="true"></i>
+                    <div>
+                        <h3 class="h6 fw-bold mb-1">Non ho potuto calcolare le alternative</h3>
+                        <p class="mb-2">Il server non ha risposto, quindi non so dirti se una soluzione esista.</p>
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                v-on:click="caricaSoluzioneOttimale()">
+                            <i class="fa-solid fa-rotate me-1" aria-hidden="true"></i>Riprova
+                        </button>
+                    </div>
+                </div>
+
+                <div v-else class="p-3 rounded d-flex gap-3 align-items-start"
+                     style="background-color: var(--color-warning-light); border-left: 4px solid var(--color-warning);">
+                    <i class="fa-solid fa-triangle-exclamation fs-4 text-warning" aria-hidden="true"></i>
+                    <div>
+                        <h3 class="h6 fw-bold text-warning mb-1">Nessuna soluzione automatica</h3>
+                        <p class="mb-0 text-secondary">
+                            Nessuna banchina è libera dentro la finestra di attracco della nave, e nessun operatore
+                            è utilizzabile entro il proprio limite di ore. Puoi prenderlo in carico a mano:
+                            il turno resta segnalato sul tabellone e ci torni con un clic quando vuoi.
+                        </p>
+                    </div>
+                </div>
+
+                @* L'errore del server resta qui, non solo nel toast che sparisce. *@
+                <div v-if="formError" class="conferma-distruttiva p-3 mt-3" role="alert">
+                    <i class="fa-solid fa-circle-info me-1" aria-hidden="true"></i>{{ formError }}
+                </div>
+            </div>
+
+            <div class="modal-footer border-0 bg-light py-3 d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-danger fw-semibold me-auto"
+                        v-bind:disabled="operazioneInCorso"
+                        v-on:click="annullaTurnoCorrente()">
+                    <i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Annulla questo turno
+                </button>
+
+                <button type="button" class="btn btn-outline-secondary px-4 fw-semibold"
+                        v-on:click="annullaModale()">
+                    Chiudi
+                </button>
+
+                <button v-if="soluzioneOttimale" type="button"
+                        class="btn btn-primary px-4 fw-bold"
+                        v-bind:disabled="operazioneInCorso"
+                        v-on:click="applicaESalvaSoluzioneSuggerita()">
+                    <i class="fa-solid" v-bind:class="operazioneInCorso ? 'fa-spinner fa-spin' : 'fa-check'" aria-hidden="true"></i>
+                    Applica la soluzione
+                </button>
+
+                <button v-else-if="!caricamentoDSSTask && !problemaDSS" type="button"
+                        class="btn btn-warning px-4 fw-bold"
+                        v-on:click="rinunciaAllaSoluzioneAutomatica()">
+                    Lo gestisco a mano
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

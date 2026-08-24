@@ -1,56 +1,139 @@
-# Port Scheduling - Decision Support System (DSS)
+# Console di pianificazione turni portuali
 
-Questo progetto è un **Decision Support System (DSS)** per la pianificazione dei turni dei lavoratori portuali e la risoluzione dei conflitti derivanti da ritardi nell'arrivo delle navi. Il sistema è progettato per ottimizzare l'allocazione delle risorse in tempo reale, garantendo la conformità con le norme contrattuali e di sicurezza.
+Sistema di supporto alle decisioni (DSS) per la pianificazione dei turni dei
+lavoratori portuali e la risoluzione dei conflitti generati dai ritardi delle navi.
 
----
+Elaborato per il corso di **Laboratorio di Interfaccia Uomo-Macchina**, traccia 3
+(*Pianificazione turni*) — Aloè, Strazzella.
 
-## 🚀 Architettura e Stack Tecnologico
-
-Il sistema è strutturato come un'applicazione web moderna e reattiva:
-- **Backend**: .NET 8 con C# ed Entity Framework Core per la gestione del database e il calcolo euristico delle alternative di pianificazione.
-- **Frontend**: Vue.js, TypeScript e Vanilla CSS per un'interfaccia utente dinamica, premium e accessibile.
-- **Interfaccia Gantt**: Una timeline occupazione operatori interattiva che mostra la distribuzione dei turni nell'arco delle 24 ore per ciascun lavoratore.
+> Per far partire il progetto: **[AVVIA-QUI.md](AVVIA-QUI.md)**
 
 ---
 
-## 🎯 Criteri di Risoluzione dei Conflitti (Motore DSS)
+## Il problema, come lo abbiamo inquadrato
 
-Quando una nave accumula ritardo o si genera una collisione oraria, il motore decisionale propone la migliore alternativa di riassegnazione scansionando la timeline su una finestra di 7 giorni. Il sistema segue rigorosamente questa **gerarchia di criteri ordinati** (dal meno invasivo all'emergenza estrema):
+La traccia chiede di comporre la turnazione degli addetti alla ricezione merci.
+Osservando il lavoro reale abbiamo spostato il centro del problema: comporre il
+piano non è la parte difficile, **ricomporlo quando salta lo è**. Una nave arriva
+in ritardo e il coordinatore deve rifare gli incastri di corsa, rispettando
+contratti, abilitazioni di banchina e riposi obbligatori.
 
-### 1. Riassegnazione Standard (Stesso giorno, operatore di linea)
-* **Descrizione**: Si cerca di mantenere la nave nello stesso giorno. Viene assegnata a un operatore standard (non reperibile) che ha il ruolo richiesto, l'abilitazione specifica per il molo e ore settimanali $\le$ 40h.
-* **Slittamento orario**: Se l'orario stimato di arrivo è occupato, il sistema tenta di far slittare il turno in avanti nella stessa giornata (fino al limite delle 21:00/mezzanotte).
+Da qui le due persone del progetto: **Marco**, che compone i turni sotto pressione,
+ed **Elena**, che presidia le regole entro cui Marco lavora.
 
-### 2. Attivazione Reperibile (Stesso giorno, operatore a chiamata)
-* **Descrizione**: Se nessun operatore di linea è disponibile nello stesso giorno, il sistema propone di attivare un operatore **reperibile** (a chiamata) per la stessa giornata, rispettando ruolo, abilitazioni e limite delle 40h.
+## Le due interfacce
 
-### 3. Slittamento Temporale (Giorni successivi, <40h)
-* **Descrizione**: Se l'arrivo della nave è troppo tardi (es. dopo le 21:00) o non ci sono operatori disponibili, la pianificazione viene fatta slittare nei **giorni successivi** (dal giorno $+1$ al giorno $+6$) a partire dalle ore 07:00.
-* Viene data priorità prima agli operatori di linea e poi a quelli a chiamata, sempre nel rispetto di abilitazioni e limite orario.
+Il ruolo non cambia solo i permessi, cambia cosa la console mostra.
 
-### 4. Deroga Straordinari (Sforamento limite 40h)
-* **Descrizione**: Se non si trovano soluzioni pulite nei 7 giorni, il sistema consente lo sforamento del tetto orario contrattuale degli operatori idonei (prima fino a 60h, poi fino a 80h).
+- **Coordinatore di turno** — tabellone, backlog, risorse, registro comunicazioni.
+- **Amministrazione** — in più la scheda *Simulazioni ed emergenze*, con i vincoli
+  contrattuali e gli strumenti di prova.
 
-### 5. Deroga Qualifica Banchina
-* **Descrizione**: Se necessario, il turno viene assegnato a un operatore con il ruolo corretto ma **senza la specifica abilitazione per quella banchina/molo** (con limite fino a 80h).
+La separazione è fatta con il tag helper `asp-roles="Admin"`, che non emette
+nemmeno il markup riservato, ed è **verificata anche sul server** con
+`[Authorize(Roles = "Admin")]`: nascondere un comando nella pagina non lo protegge.
 
-### 6. Emergenza Estrema (Qualsiasi operatore)
-* **Descrizione**: Come ultima risorsa per garantire che l'utente abbia sempre una soluzione proposta, il sistema assegna il turno a **qualunque operatore disponibile**, ignorando ruolo, abilitazione del molo e limite orario.
+## I sette criteri del motore decisionale
 
-### 7. Ultima Risorsa (Nessun vincolo)
-* **Descrizione**: Se anche il Criterio 6 non trova una soluzione, il sistema cerca il primo slot libero ignorando ogni vincolo residuo: non solo ruolo, abilitazione e limite orario, ma anche la finestra ETA/ETD della nave, la validità della patente e il riposo obbligatorio. Garantisce che una proposta venga sempre restituita, al prezzo di una soluzione potenzialmente non conforme che il coordinatore deve validare manualmente.
+Quando una nave accumula ritardo o si crea una collisione, il motore cerca la
+soluzione **meno invasiva possibile**, scorrendo i criteri in ordine e fermandosi
+al primo che funziona. Non cerca l'ottimo assoluto: cerca il minimo scostamento
+dal piano già concordato.
 
----
+1. **Riassegnazione standard** — stesso giorno, operatore di linea, ruolo e
+   abilitazione corretti, entro le ore contrattuali.
+2. **Attivazione reperibile** — stesso giorno, operatore a chiamata.
+3. **Slittamento temporale** — giorno successivo, prima gli operatori di linea poi
+   i reperibili.
+4. **Deroga straordinari** — ore in più rispetto al contratto del singolo
+   (+20, poi +40), non un tetto fisso uguale per tutti.
+5. **Deroga qualifica banchina** — ruolo corretto ma senza l'abilitazione a quel molo.
+6. **Emergenza estrema** — qualsiasi operatore, ignorando ruolo e abilitazioni.
+7. **Ultima risorsa** — solo il vincolo fisico di non sovrapporre due turni.
+   La proposta può non essere conforme, e il sistema lo scrive.
 
-## 🔒 Vincoli Logici e Poka-Yoke (Prevenzione Errori)
+Ogni proposta arriva accompagnata dal criterio che l'ha generata, così il
+coordinatore sa sempre *quanto* sta derogando e perché.
 
-Il sistema integra controlli rigidi a livello di interfaccia e logica per evitare errori di pianificazione da parte del coordinatore:
-- **Limite 40 Ore Settimanali**: Calcolato dinamicamente sulla somma reale dei turni assegnati. In caso di tentativo di sforamento manuale oltre le 40h, il sistema disabilita i pulsanti di assegnazione mostrando il messaggio di errore *"Ore massime superate"*.
-- **Poka-Yoke Visivo**:
-  - I turni che causano collisioni orarie sono evidenziati con bordi rossi.
-  - I turni bloccati o non modificabili sono resi non interattivi per evitare modifiche accidentali.
-  - Le righe degli operatori compatibili con il ruolo richiesto lampeggiano delicatamente durante la pianificazione di un task per guidare la scelta del coordinatore.
+## Vincoli sempre attivi
 
----
+Valgono per chiunque e non sono disattivabili dall'interfaccia:
 
+- riposo di almeno **11 ore** fra due turni della stessa persona
+- nessuna sovrapposizione sulla stessa banchina o sullo stesso operatore
+- turni solo dentro la finestra di attracco della nave (ETA/ETD)
+- nessun turno a chi ha la patente scaduta o è in riposo obbligatorio
+- tetto di legge a **40 ore** settimanali
 
+Stanno tutti in un posto solo, `RegolePianificazione.cs`, condiviso fra il motore
+decisionale e la validazione dei comandi.
+
+## Scelte di interazione
+
+- **Prevenzione dell'errore con la spiegazione.** I pulsanti non assegnabili sono
+  disabilitati *e* accompagnati dal motivo: "In riposo obbligatorio", "Patente
+  scaduta". Disabilitare senza dire perché lascia l'utente a indovinare.
+- **L'effetto prima dell'azione.** Prima di confermare, una frase in italiano dice
+  cosa succederà: *"La lavorazione sarà assegnata a Elena al Molo Est, oggi alle
+  10:30."*
+- **Supporto visivo all'incastro.** Passando su un operatore compatibile (col mouse
+  o col tabulatore) compare sul tabellone lo slot dove finirebbe il turno.
+- **Sempre una via d'uscita.** Se il motore non trova nulla, il turno resta
+  segnalato sul tabellone e si può riprendere quando si vuole.
+- **Niente informazioni affidate al solo colore.** Ritardi e conflitti hanno
+  un'etichetta scritta accanto al colore.
+- **Tutto raggiungibile da tastiera**, tabellone compreso, con un nome parlato per
+  ogni turno e le conferme annunciate in una regione `aria-live`.
+- **Le azioni distruttive chiedono conferma**, e la conferma dice cosa andrà perso
+  invece di limitarsi a "sei sicuro?".
+- **I messaggi non usano la parola errore**, non mostrano codici e propongono
+  sempre come uscirne.
+
+## Lavoro condiviso
+
+La turnazione si compone su più siti in parallelo, quindi più coordinatori possono
+essere collegati insieme. Ogni modifica viene propagata agli altri via **SignalR**:
+l'evento porta solo l'avviso, non i dati, e chi lo riceve rilegge lo stato dal
+server. Se la connessione cade la console lo dice, e continua a funzionare — le
+modifiche passano comunque dal server.
+
+## Come è fatto
+
+**Backend** — ASP.NET Core MVC su .NET 8, Entity Framework Core con database in
+memoria, SignalR. I comandi di scrittura passano tutti da handler sul
+`SharedService` (`Handle(comando)`), come nell'esempio del template del corso; il
+controller riceve, delega e risponde. Il server è l'unica fonte di verità: rilegge
+dal database e rivalida prima di scrivere, senza fidarsi di ciò che il client
+crede libero.
+
+**Frontend** — Vue 2 con TypeScript, Bootstrap 5 e CSS personalizzato. La view è
+divisa in una partial per sezione; il foglio di stile della feature sta in
+`wwwroot/css/pianificazione-turni.css`. Le regole di dominio lato client
+(`Index.Regole.ts`) rispecchiano le costanti del server.
+
+**Form Razor** — la sezione dei vincoli contrattuali usa tag helper, model binding,
+DataAnnotations, antiforgery e il pattern Post-Redirect-Get: è l'unico punto in cui
+serve un'operazione ponderata invece di una chiamata reattiva.
+
+```
+src/
+  Template/                                 dominio e servizi
+    Services/PianificazioneTurni/
+      RegolePianificazione.cs               le regole, in un posto solo
+      PianificazioneTurni.Commands.cs       i comandi di scrittura
+      PianificazioneTurni.Queries.cs        lo stato della pianificazione
+    Services/Shared/
+      CalcolaMigliorAlternativaQuery.cs     il motore a sette criteri
+  Template.Web/
+    Features/PianificazioneTurni/           controller, view, partial, TypeScript
+    SignalR/                                hub ed eventi
+    wwwroot/css/pianificazione-turni.css
+```
+
+## Dati di prova
+
+Il database è in memoria: si ricrea a ogni avvio e non lascia nulla sul disco.
+Il seed contiene 10 operatori, 8 turni e 6 lavorazioni da assegnare — pochi di
+proposito, ma scelti in modo che ogni regola abbia il suo caso: un reperibile, un
+operatore in riposo obbligatorio, una patente scaduta, una in scadenza, un jolly
+abilitato a tutte le banchine e uno vicino al limite orario.

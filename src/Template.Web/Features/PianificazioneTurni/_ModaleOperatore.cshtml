@@ -1,0 +1,141 @@
+@* Scheda di un operatore: contratto, abilitazioni e turni della settimana. *@
+
+<div class="modal fade" id="dettagliOperatoreModal" tabindex="-1"
+     aria-labelledby="titolo-modale-operatore" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" v-if="operatoreSelezionatoDettaglio">
+            <div class="modal-header border-0 bg-light py-3">
+                <h2 id="titolo-modale-operatore" class="modal-title h5 fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-circle-user text-primary fs-4" aria-hidden="true"></i>
+                    {{ operatoreSelezionatoDettaglio.nome }}
+                    <span v-if="operatoreSelezionatoDettaglio.reperibile" class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                        A chiamata
+                    </span>
+                </h2>
+                <button type="button" class="btn-close" aria-label="Chiudi la scheda"
+                        v-on:click="chiudiDettagliOperatore()"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6 border-end">
+                        <h3 class="h6 text-secondary text-uppercase fw-bold mb-3">
+                            <i class="fa-solid fa-id-card me-1" aria-hidden="true"></i>Inquadramento
+                        </h3>
+                        <dl class="row mb-0">
+                            <dt class="col-5 text-muted fw-normal">Ruolo</dt>
+                            <dd class="col-7">
+                                <span class="role-badge" v-bind:class="'role-' + operatoreSelezionatoDettaglio.ruolo">
+                                    {{ operatoreSelezionatoDettaglio.ruolo }}
+                                </span>
+                            </dd>
+
+                            <dt class="col-5 text-muted fw-normal">Contratto</dt>
+                            <dd class="col-7 fw-semibold">
+                                {{ operatoreSelezionatoDettaglio.reperibile ? 'Reperibile, a chiamata' : 'Organico fisso' }}
+                            </dd>
+
+                            <dt class="col-5 text-muted fw-normal">Ore contrattuali</dt>
+                            <dd class="col-7 fw-semibold">
+                                {{ operatoreSelezionatoDettaglio.oreSettimanali }} di {{ operatoreSelezionatoDettaglio.oreMassime }} ore
+                            </dd>
+
+                            <dt class="col-5 text-muted fw-normal">Patente</dt>
+                            <dd class="col-7 fw-semibold">
+                                <span v-if="getPatenteStatus(operatoreSelezionatoDettaglio) === 'expired'" class="text-danger">
+                                    Scaduta il {{ getPatenteFormatted(operatoreSelezionatoDettaglio) }}
+                                </span>
+                                <span v-else>Valida fino al {{ getPatenteFormatted(operatoreSelezionatoDettaglio) }}</span>
+                            </dd>
+
+                            <dt class="col-5 text-muted fw-normal">Banchine abilitate</dt>
+                            <dd class="col-7">
+                                <span v-if="operatoreSelezionatoDettaglio.abilitazioni && operatoreSelezionatoDettaglio.abilitazioni.length > 0"
+                                      class="d-flex flex-wrap gap-1">
+                                    <span v-for="ab in operatoreSelezionatoDettaglio.abilitazioni" :key="ab"
+                                          class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ ab }}</span>
+                                </span>
+                                <span v-else class="text-success fw-semibold">
+                                    <i class="fa-solid fa-circle-check me-1" aria-hidden="true"></i>Tutte le banchine
+                                </span>
+                            </dd>
+                        </dl>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h3 class="h6 text-secondary text-uppercase fw-bold mb-3">
+                            <i class="fa-solid fa-chart-simple me-1" aria-hidden="true"></i>Carico della settimana
+                        </h3>
+                        <div class="p-3 bg-light rounded-3 d-flex flex-column gap-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Turni programmati</span>
+                                <strong>{{ getTurniOperatoreSettimana(operatoreSelezionatoDettaglio.nome).length }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span id="ore-pianificate-label" class="text-muted">Ore pianificate</span>
+                                <strong>{{ getOreTotaliPianificateOperatore(operatoreSelezionatoDettaglio.nome) }} ore</strong>
+                            </div>
+                            <div class="bar-track mt-1"
+                                 role="progressbar"
+                                 aria-labelledby="ore-pianificate-label"
+                                 v-bind:aria-valuenow="operatoreSelezionatoDettaglio.oreSettimanali"
+                                 aria-valuemin="0"
+                                 v-bind:aria-valuemax="operatoreSelezionatoDettaglio.oreMassime">
+                                <span class="bar-fill" v-bind:class="'bar-' + getOpStatus(operatoreSelezionatoDettaglio)"
+                                      v-bind:style="{ width: getOpPercent(operatoreSelezionatoDettaglio) + '%' }"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="h6 text-secondary text-uppercase fw-bold mb-3">
+                    <i class="fa-solid fa-calendar-check me-1" aria-hidden="true"></i>Turni della settimana
+                </h3>
+                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                    <table class="table table-striped table-hover align-middle mb-0">
+                        <caption class="visually-hidden">
+                            Turni assegnati a {{ operatoreSelezionatoDettaglio.nome }} nella settimana
+                        </caption>
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th scope="col">Giorno</th>
+                                <th scope="col">Banchina</th>
+                                <th scope="col">Nave</th>
+                                <th scope="col">Orario</th>
+                                <th scope="col">Durata</th>
+                                <th scope="col" class="text-end">Stato</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="t in getTurniOperatoreSettimana(operatoreSelezionatoDettaglio.nome)" :key="t.id"
+                                v-bind:class="t.giorno === giornoSelezionato ? 'table-primary' : ''">
+                                <td class="fw-semibold">{{ getNomeGiorno(t.giorno) }}</td>
+                                <td>{{ t.banchina }}</td>
+                                <td class="fw-bold">{{ t.nome }}</td>
+                                <td>{{ fmtOra(t.startOra) }} – {{ fmtOra(t.startOra + t.durataOre) }}</td>
+                                <td>{{ fmtDurata(t.durataOre) }}</td>
+                                <td class="text-end">
+                                    <span class="badge"
+                                          v-bind:class="statoTurno(t) === 'regolare' ? 'bg-success' : 'bg-danger'">
+                                        {{ etichettaStatoTurno(t) }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr v-if="getTurniOperatoreSettimana(operatoreSelezionatoDettaglio.nome).length === 0">
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    Nessun turno assegnato in questa settimana.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="modal-footer border-0 bg-light py-3">
+                <button type="button" class="btn btn-secondary px-4" v-on:click="chiudiDettagliOperatore()">
+                    Chiudi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

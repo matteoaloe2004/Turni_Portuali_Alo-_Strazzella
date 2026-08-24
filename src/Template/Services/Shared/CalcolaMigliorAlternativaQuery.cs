@@ -3,30 +3,25 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Template.Services.PianificazioneTurni;
 
 namespace Template.Services.Shared
 {
-    // Il vero "motore" del DSS: prova 7 criteri in ordine di preferenza crescente
-    // (dal meno invasivo al più forzato) e restituisce la prima soluzione trovata,
-    // mai la migliore in assoluto — è così che il sistema preferisce sempre la
-    // riassegnazione più semplice possibile prima di violare vincoli (straordinari,
-    // qualifiche, ruolo). Chiamato sia per un turno già assegnato in crisi
-    // (CalcolaMigliorAlternativaQuery) sia per un task ancora da assegnare, che viene
-    // temporaneamente impacchettato in un Turno fittizio per riusare lo stesso solver
-    // (CalcolaMigliorSoluzioneTaskQuery, sotto).
+    // Motore del DSS: prova sette criteri in ordine di invasività crescente e restituisce
+    // la prima soluzione trovata, non la migliore in assoluto, così da violare un vincolo
+    // solo quando i criteri meno invasivi hanno già fallito. La pianificazione su cui
+    // ragiona è sempre quella letta dal database.
     public class CalcolaMigliorAlternativaQuery
     {
         public int TurnoId { get; set; }
         public double RitardoOre { get; set; }
         public double? StartOra { get; set; }
         public int? Giorno { get; set; }
-        public List<Turno> CurrentTurni { get; set; }
     }
 
     public class CalcolaMigliorSoluzioneTaskQuery
     {
         public int TaskId { get; set; }
-        public List<Turno> CurrentTurni { get; set; }
     }
 
     public class MigliorAlternativaDTO
@@ -35,6 +30,11 @@ namespace Template.Services.Shared
         public double OrarioSuggerito { get; set; }
         public string OperatoreSuggerito { get; set; }
         public double OreSettimanaliOperatore { get; set; }
+
+        // Limite contrattuale dell'operatore suggerito (Operatore.OreMassime): il client
+        // mostra "Xh/Yh" sul limite vero della persona, non su un 40h uguale per tutti.
+        public double OreMassimeOperatore { get; set; }
+
         public int GiornoSuggerito { get; set; }
         public string MotivoScelta { get; set; }
     }
@@ -43,16 +43,17 @@ namespace Template.Services.Shared
     {
         public async Task<MigliorAlternativaDTO> Query(CalcolaMigliorSoluzioneTaskQuery qry)
         {
-            var task = await _dbContext.TasksDaAssegnare.FirstOrDefaultAsync(t => t.Id == qry.TaskId);
-            if (task == null)
+            var task = await _dbContext.TasksDaAssegnare.AsNoTracking().FirstOrDefaultAsync(t => t.Id == qry.TaskId);
+            if (task == null || task.Assegnato)
             {
                 return null;
             }
 
-            // Create a mock Turno representing the task
-            var tempTurno = new Turno
+            // Turno fittizio per far girare lo stesso solver sul task: id negativo per non
+            // collidere con quelli dei turni reali.
+            var turnoFittizio = new Turno
             {
-                Id = -task.Id, // Negative ID to avoid overlap with existing turni
+                Id = -task.Id,
                 Nome = task.Nome,
                 StartOra = task.EtaOra,
                 DurataOre = task.DurataOre,
@@ -67,348 +68,300 @@ namespace Template.Services.Shared
                 EtdOra = task.EtdOra
             };
 
-            // Call the same solver!
-            var calcolaQuery = new CalcolaMigliorAlternativaQuery
-            {
-                TurnoId = tempTurno.Id,
-                RitardoOre = 0,
-                StartOra = tempTurno.StartOra,
-                Giorno = tempTurno.Giorno,
-                CurrentTurni = qry.CurrentTurni != null ? qry.CurrentTurni.Concat(new[] { tempTurno }).ToList() : new List<Turno> { tempTurno }
-            };
+            var turniEsistenti = await _dbContext.Turni.AsNoTracking().ToListAsync();
 
-            return await Query(calcolaQuery);
+            // Niente deroga di ruolo qui: assegnare una lavorazione nuova a chi non ha la
+            // competenza è proprio quello che il comando rifiuta, e proporlo sarebbe un invito
+            // a un errore. La deroga resta per il ricollocamento d'emergenza di un turno già in corso.
+            return await RisolviAsync(turnoFittizio, turniEsistenti, task.EtaOra, task.Giorno,
+                ritardoOre: 0, derogaRuoloAmmessa: false);
         }
 
         public async Task<MigliorAlternativaDTO> Query(CalcolaMigliorAlternativaQuery qry)
         {
-            Turno targetShift = null;
-            if (qry.CurrentTurni != null && qry.CurrentTurni.Count > 0)
-            {
-                targetShift = qry.CurrentTurni.FirstOrDefault(t => t.Id == qry.TurnoId);
-            }
-            if (targetShift == null)
-            {
-                targetShift = await _dbContext.Turni.FirstOrDefaultAsync(t => t.Id == qry.TurnoId);
-            }
-
-            if (targetShift == null)
+            var turno = await _dbContext.Turni.AsNoTracking().FirstOrDefaultAsync(t => t.Id == qry.TurnoId);
+            if (turno == null)
             {
                 return null;
             }
 
-            double currentStartOra = qry.StartOra ?? targetShift.StartOra;
-            int currentGiorno = qry.Giorno ?? targetShift.Giorno;
+            var altriTurni = await _dbContext.Turni.AsNoTracking().Where(t => t.Id != turno.Id).ToListAsync();
 
-            double arrivalTime = currentStartOra + qry.RitardoOre;
-            int targetGiorno = currentGiorno;
+            return await RisolviAsync(
+                turno,
+                altriTurni,
+                qry.StartOra ?? turno.StartOra,
+                qry.Giorno ?? turno.Giorno,
+                qry.RitardoOre,
+                derogaRuoloAmmessa: true);
+        }
 
-            var banchine = new[] { "Molo Est", "Molo Nord", "Banchina Ovest", "Banchina Sud" };
+        /// <summary>
+        /// Cascata dei sette criteri. `altriTurni` non contiene il turno da ricollocare.
+        /// Con <paramref name="derogaRuoloAmmessa"/> a false la cascata si ferma al criterio 5.
+        /// </summary>
+        private async Task<MigliorAlternativaDTO> RisolviAsync(
+            Turno turno, List<Turno> altriTurni, double startOra, int giorno, double ritardoOre,
+            bool derogaRuoloAmmessa)
+        {
+            var orarioArrivo = startOra + ritardoOre;
+            var banchine = RegolePianificazione.Banchine;
 
-            // Fetch all operators matching the required role
-            var allOperators = await _dbContext.Operatori
-                .Where(o => o.Ruolo == targetShift.RuoloRichiesto)
-                .ToListAsync();
+            // Ore ricalcolate su altriTurni: il turno da ricollocare va escluso, altrimenti
+            // l'operatore che lo copre adesso risulta più carico di quanto sarà.
+            var operatoriDelRuolo = await CaricaOperatoriConOreAsync(altriTurni, o => o.Ruolo == turno.RuoloRichiesto);
 
-            // Recalculate weekly hours dynamically based on current state to keep in sync
-            Action<List<Operatore>, int> recalculateHoursForDay = (opsList, day) =>
+            // Slittamento massimo di un giorno e mai oltre la fine della timeline: sull'ultimo
+            // giorno pianificabile i criteri sul giorno +1 vanno saltati.
+            var giornoSuccessivo = giorno + 1;
+            var possibileDomani = giornoSuccessivo <= RegolePianificazione.UltimoGiornoPianificabile;
+            var possibileOggi = orarioArrivo < RegolePianificazione.UltimaOraAvvioTurno
+                             && orarioArrivo + turno.DurataOre <= RegolePianificazione.OraFineGiornata;
+
+            var oraMinimaOggi = Math.Max(RegolePianificazione.OraInizioGiornata, orarioArrivo);
+            MigliorAlternativaDTO soluzione;
+
+            // --- CRITERIO 1: stesso giorno, operatore di linea -------------------
+            if (possibileOggi)
             {
-                foreach (var op in opsList)
+                soluzione = CercaSlot(turno, oraMinimaOggi, giorno, banchine, altriTurni,
+                    operatoriDelRuolo.Where(o => !o.Reperibile).ToList(), derogaOre: 0.0);
+                if (soluzione != null)
                 {
-                    if (qry.CurrentTurni != null && qry.CurrentTurni.Count > 0)
+                    soluzione.MotivoScelta = "Riassegnazione Standard (Stesso giorno, operatore di linea)";
+                    return soluzione;
+                }
+            }
+
+            // --- CRITERIO 2: stesso giorno, operatore reperibile ------------------
+            if (possibileOggi)
+            {
+                soluzione = CercaSlot(turno, oraMinimaOggi, giorno, banchine, altriTurni,
+                    operatoriDelRuolo.Where(o => o.Reperibile).ToList(), derogaOre: 0.0);
+                if (soluzione != null)
+                {
+                    soluzione.MotivoScelta = "Attivazione Reperibilità (Stesso giorno, operatore a chiamata)";
+                    return soluzione;
+                }
+            }
+
+            // --- CRITERIO 3: giorno successivo, entro il limite contrattuale ------
+            if (possibileDomani)
+            {
+                soluzione = CercaSlot(turno, RegolePianificazione.OraInizioGiornata, giornoSuccessivo, banchine, altriTurni,
+                    operatoriDelRuolo.Where(o => !o.Reperibile).ToList(), derogaOre: 0.0);
+                if (soluzione != null)
+                {
+                    soluzione.MotivoScelta = "Slittamento Temporale (Giorno +1, operatore di linea)";
+                    return soluzione;
+                }
+
+                soluzione = CercaSlot(turno, RegolePianificazione.OraInizioGiornata, giornoSuccessivo, banchine, altriTurni,
+                    operatoriDelRuolo.Where(o => o.Reperibile).ToList(), derogaOre: 0.0);
+                if (soluzione != null)
+                {
+                    soluzione.MotivoScelta = "Slittamento Temporale (Giorno +1, operatore a chiamata)";
+                    return soluzione;
+                }
+            }
+
+            // --- CRITERIO 4: deroga straordinari ----------------------------------
+            // La deroga è un monte ore IN PIÙ rispetto a Operatore.OreMassime, non un tetto
+            // fisso: con +20 un operatore a 35h contrattuali arriva a 55h, uno a 40h a 60h.
+            foreach (var deroga in new[] { 20.0, 40.0 })
+            {
+                soluzione = CercaNeiDueGiorni(turno, giorno, orarioArrivo, possibileOggi, possibileDomani,
+                    banchine, altriTurni, operatoriDelRuolo, deroga, ignoraAbilitazioni: false,
+                    motivo: offset => $"Deroga Straordinari (+{deroga:0}h oltre il limite contrattuale, Giorno +{offset})");
+                if (soluzione != null) return soluzione;
+            }
+
+            // --- CRITERIO 5: deroga qualifica banchina -----------------------------
+            soluzione = CercaNeiDueGiorni(turno, giorno, orarioArrivo, possibileOggi, possibileDomani,
+                banchine, altriTurni, operatoriDelRuolo, derogaOre: 40.0, ignoraAbilitazioni: true,
+                motivo: offset => $"Deroga Qualifica (Operatore non abilitato al molo, Giorno +{offset})");
+            if (soluzione != null) return soluzione;
+
+            if (!derogaRuoloAmmessa) return null;
+
+            // --- CRITERIO 6: emergenza estrema, qualsiasi operatore ----------------
+            var tuttiGliOperatori = await CaricaOperatoriConOreAsync(altriTurni, o => true);
+            soluzione = CercaNeiDueGiorni(turno, giorno, orarioArrivo, possibileOggi, possibileDomani,
+                banchine, altriTurni, tuttiGliOperatori, derogaOre: 128.0, ignoraAbilitazioni: true,
+                motivo: offset => $"Emergenza Estrema (Deroga ruolo e qualifiche, Giorno +{offset})");
+            if (soluzione != null) return soluzione;
+
+            // --- CRITERIO 7: ultima risorsa, solo niente sovrapposizioni fisiche ---
+            return CercaUltimaRisorsa(turno, giorno, orarioArrivo, altriTurni, tuttiGliOperatori, possibileDomani);
+        }
+
+        private async Task<List<Operatore>> CaricaOperatoriConOreAsync(List<Turno> turniDiRiferimento, Func<Operatore, bool> filtro)
+        {
+            var operatori = (await _dbContext.Operatori.AsNoTracking().ToListAsync()).Where(filtro).ToList();
+            foreach (var op in operatori)
+            {
+                op.OreSettimanali = RegolePianificazione.OrePianificate(op.Nome, turniDiRiferimento);
+            }
+            return operatori;
+        }
+
+        /// <summary>
+        /// Ripete il tentativo sul giorno corrente e sul successivo: è il ciclo condiviso
+        /// dai criteri 4, 5 e 6.
+        /// </summary>
+        private MigliorAlternativaDTO CercaNeiDueGiorni(
+            Turno turno, int giorno, double orarioArrivo, bool possibileOggi, bool possibileDomani,
+            string[] banchine, List<Turno> altriTurni, List<Operatore> operatori,
+            double derogaOre, bool ignoraAbilitazioni, Func<int, string> motivo)
+        {
+            for (var offset = 0; offset <= 1; offset++)
+            {
+                if (offset == 0 && !possibileOggi) continue;
+                if (offset == 1 && !possibileDomani) continue;
+
+                var oraDiPartenza = offset == 0
+                    ? Math.Max(RegolePianificazione.OraInizioGiornata, orarioArrivo)
+                    : RegolePianificazione.OraInizioGiornata;
+
+                var soluzione = CercaSlot(turno, oraDiPartenza, giorno + offset, banchine, altriTurni,
+                    operatori, derogaOre, ignoraAbilitazioni);
+
+                if (soluzione != null)
+                {
+                    soluzione.MotivoScelta = motivo(offset);
+                    return soluzione;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Scandisce la giornata a passi di mezz'ora e, al primo orario utile, sceglie
+        /// l'operatore meno carico fra quelli ammissibili.
+        /// </summary>
+        private MigliorAlternativaDTO CercaSlot(
+            Turno turno, double oraMinima, int giornoTarget,
+            string[] banchine, List<Turno> altriTurni, List<Operatore> operatori,
+            double derogaOre, bool ignoraAbilitazioni = false)
+        {
+            // Slittamento massimo: un giorno oltre il giorno di arrivo originale.
+            var scartoGiorni = giornoTarget - turno.Giorno;
+            if (scartoGiorni < 0 || scartoGiorni > 1) return null;
+
+            // Finestra di attracco sull'asse assoluto: non viene spostata col giorno che si
+            // sta provando, quindi lo slittamento al giorno +1 passa solo se la finestra
+            // arriva fin là. Il ritardo sposta l'arrivo, non la partenza.
+            var etaNave = turno.EtaGiorno * 24.0 + turno.EtaOra + turno.RitardoOre;
+            var etdNave = turno.EtdGiorno * 24.0 + turno.EtdOra;
+
+            for (var ora = oraMinima;
+                 ora <= RegolePianificazione.OraFineGiornata - turno.DurataOre;
+                 ora += RegolePianificazione.PassoRicercaOre)
+            {
+                var inizioCand = giornoTarget * 24.0 + ora;
+                var fineCand = inizioCand + turno.DurataOre;
+
+                if (inizioCand < etaNave || fineCand > etdNave) continue;
+
+                var candidati = new List<MigliorAlternativaDTO>();
+
+                foreach (var banchina in banchine)
+                {
+                    if (RegolePianificazione.BanchinaOccupata(banchina, inizioCand, fineCand, altriTurni)) continue;
+
+                    foreach (var op in operatori)
                     {
-                        op.OreSettimanali = qry.CurrentTurni
-                            .Where(t => t.Operatore == op.Nome && t.Id != targetShift.Id)
-                            .Sum(t => t.DurataOre);
-                    }
-                    else
-                    {
-                        op.OreSettimanali = _dbContext.Turni
-                            .Where(t => t.Operatore == op.Nome && t.Id != targetShift.Id)
-                            .Sum(t => t.DurataOre);
-                    }
-                }
-            };
+                        if (RegolePianificazione.PatenteScaduta(op)) continue;
+                        if (op.InRiposoObbligatorio) continue;
+                        if (!ignoraAbilitazioni && !RegolePianificazione.AbilitatoAllaBanchina(op, banchina)) continue;
 
-            // Recalculate once for initial setup
-            recalculateHoursForDay(allOperators, currentGiorno);
+                        // Limite ore: contrattuale dell'operatore più la deroga concessa dal
+                        // criterio chiamante (0 = nessuna deroga).
+                        if (op.OreSettimanali + turno.DurataOre > op.OreMassime + derogaOre) continue;
 
-            MigliorAlternativaDTO result = null;
+                        if (RegolePianificazione.OperatoreOccupato(op.Nome, inizioCand, fineCand, altriTurni)) continue;
 
-            // Fetch all other shifts for constraint evaluation
-            List<Turno> allShifts = null;
-            if (qry.CurrentTurni != null && qry.CurrentTurni.Count > 0)
-            {
-                allShifts = qry.CurrentTurni.Where(t => t.Id != targetShift.Id).ToList();
-            }
-            else
-            {
-                allShifts = await _dbContext.Turni.Where(t => t.Id != targetShift.Id).ToListAsync();
-            }
-
-            // ==========================================
-            // CRITERIO 1: Riassegnazione Standard (Stesso Giorno, Operatore di linea)
-            // ==========================================
-            bool sameDayPossible = arrivalTime < 21.0 && (arrivalTime + targetShift.DurataOre <= 24.0);
-            if (sameDayPossible)
-            {
-                double sameDayMinOra = Math.Max(7.0, arrivalTime);
-                
-                result = FindSolution(targetShift, sameDayMinOra, currentGiorno, banchine, allShifts, allOperators.Where(o => !o.Reperibile).ToList(), 40.0);
-                if (result != null)
-                {
-                    result.MotivoScelta = "Riassegnazione Standard (Stesso giorno, operatore di linea)";
-                    return result;
-                }
-            }
-
-            // ==========================================
-            // CRITERIO 2: Attivazione Reperibile (Stesso Giorno, Operatore reperibile)
-            // ==========================================
-            if (sameDayPossible)
-            {
-                double sameDayMinOra = Math.Max(7.0, arrivalTime);
-
-                result = FindSolution(targetShift, sameDayMinOra, currentGiorno, banchine, allShifts, allOperators.Where(o => o.Reperibile).ToList(), 40.0);
-                if (result != null)
-                {
-                    result.MotivoScelta = "Attivazione Reperibilità (Stesso giorno, operatore a chiamata)";
-                    return result;
-                }
-            }
-
-            // ==========================================
-            // CRITERIO 3: Slittamento Temporale (Giorni Successivi, Operatore idoneo, <40h)
-            // ==========================================
-            for (int offset = 1; offset <= 1; offset++)
-            {
-                int futureDay = (currentGiorno + offset) % 7;
-                recalculateHoursForDay(allOperators, futureDay);
-
-                // Prima proviamo operatore di linea (non reperibile)
-                result = FindSolution(targetShift, 7.0, futureDay, banchine, allShifts, allOperators.Where(o => !o.Reperibile).ToList(), 40.0);
-                if (result != null)
-                {
-                    result.MotivoScelta = $"Slittamento Temporale (Giorno +{offset}, operatore di linea)";
-                    return result;
-                }
-
-                // Poi proviamo operatore reperibile
-                result = FindSolution(targetShift, 7.0, futureDay, banchine, allShifts, allOperators.Where(o => o.Reperibile).ToList(), 40.0);
-                if (result != null)
-                {
-                    result.MotivoScelta = $"Slittamento Temporale (Giorno +{offset}, operatore a chiamata)";
-                    return result;
-                }
-            }
-
-            // ==========================================
-            // CRITERIO 4: Deroga Straordinari (Sforamento limite ore contratto > 40h)
-            // ==========================================
-            var overtimeLimits = new[] { 60.0, 80.0 };
-            foreach (var maxOre in overtimeLimits)
-            {
-                for (int offset = 0; offset <= 1; offset++)
-                {
-                    int day = (currentGiorno + offset) % 7;
-                    double startSearch = (offset == 0) ? Math.Max(7.0, arrivalTime) : 7.0;
-                    if (offset == 0 && !sameDayPossible) continue;
-
-                    recalculateHoursForDay(allOperators, day);
-
-                    result = FindSolution(targetShift, startSearch, day, banchine, allShifts, allOperators, maxOre);
-                    if (result != null)
-                    {
-                        result.MotivoScelta = $"Deroga Straordinari (Sforamento a {maxOre}h, Giorno +{offset})";
-                        return result;
-                    }
-                }
-            }
-
-            // ==========================================
-            // CRITERIO 5: Deroga Qualifica (Operatore non abilitato per la banchina)
-            // ==========================================
-            for (int offset = 0; offset <= 1; offset++)
-            {
-                int day = (currentGiorno + offset) % 7;
-                double startSearch = (offset == 0) ? Math.Max(7.0, arrivalTime) : 7.0;
-                if (offset == 0 && !sameDayPossible) continue;
-
-                recalculateHoursForDay(allOperators, day);
-
-                result = FindSolution(targetShift, startSearch, day, banchine, allShifts, allOperators, 80.0, ignoreAbilitazioni: true);
-                if (result != null)
-                {
-                    result.MotivoScelta = $"Deroga Qualifica (Operatore non abilitato al molo, Giorno +{offset})";
-                    return result;
-                }
-            }
-
-            // ==========================================
-            // CRITERIO 6: Emergenza Estrema (Qualsiasi operatore, ignorando ruolo e ore)
-            // ==========================================
-            var absoluteAllOperators = await _dbContext.Operatori.ToListAsync();
-            for (int offset = 0; offset <= 1; offset++)
-            {
-                int day = (currentGiorno + offset) % 7;
-                double startSearch = (offset == 0) ? Math.Max(7.0, arrivalTime) : 7.0;
-                if (offset == 0 && !sameDayPossible) continue;
-
-                recalculateHoursForDay(absoluteAllOperators, day);
-
-                result = FindSolution(targetShift, startSearch, day, banchine, allShifts, absoluteAllOperators, 168.0, ignoreAbilitazioni: true);
-                if (result != null)
-                {
-                    result.MotivoScelta = $"Emergenza Estrema (Deroga ruolo e qualifiche, Giorno +{offset})";
-                    return result;
-                }
-            }
-
-            // ==========================================
-            // CRITERIO 7: Ultima Risorsa (Nessun vincolo, garantisce sempre una soluzione)
-            // ==========================================
-            if (result == null)
-            {
-                var backupOperators = await _dbContext.Operatori.ToListAsync();
-                for (int offset = 0; offset <= 1; offset++)
-                {
-                    int day = (currentGiorno + offset) % 7;
-                    double startSearch = 7.0; // Ricomincia dall'inizio della giornata lavorativa
-                    
-                    // Cerca uno slot senza controllare ETA/ETD, patente, riposo obbligatorio o ore settimanali
-                    for (double ora = startSearch; ora <= 24.0 - targetShift.DurataOre; ora += 0.5)
-                    {
-                        foreach (var b in banchine)
+                        candidati.Add(new MigliorAlternativaDTO
                         {
-                            foreach (var op in backupOperators)
-                            {
-                                // Controlla solo la sovrapposizione oraria rigida sul Gantt per evitare blocchi sovrapposti sullo stesso operatore/molo
-                                bool overlap = allShifts.Any(o => 
-                                    (o.Banchina == b || o.Operatore == op.Nome) && o.Giorno == day &&
-                                    !(ora + targetShift.DurataOre <= o.StartOra + (o.IsDelayed ? o.RitardoOre : 0) ||
-                                      ora >= o.StartOra + (o.IsDelayed ? o.RitardoOre : 0) + o.DurataOre));
-                                
-                                if (!overlap)
-                                {
-                                    return new MigliorAlternativaDTO
-                                    {
-                                        MoloSuggerito = b,
-                                        OrarioSuggerito = ora,
-                                        OperatoreSuggerito = op.Nome,
-                                        OreSettimanaliOperatore = op.OreSettimanali + targetShift.DurataOre,
-                                        GiornoSuggerito = day,
-                                        MotivoScelta = $"Risoluzione di Emergenza (Assegnazione forzata di ultima risorsa, Giorno +{offset})"
-                                    };
-                                }
-                            }
-                        }
+                            MoloSuggerito = banchina,
+                            OrarioSuggerito = ora,
+                            OperatoreSuggerito = op.Nome,
+                            OreSettimanaliOperatore = op.OreSettimanali + turno.DurataOre,
+                            OreMassimeOperatore = op.OreMassime,
+                            GiornoSuggerito = giornoTarget
+                        });
                     }
+                }
+
+                if (candidati.Count > 0)
+                {
+                    return candidati.OrderBy(c => c.OreSettimanaliOperatore).First();
                 }
             }
 
             return null;
         }
 
-        private MigliorAlternativaDTO FindSolution(
-            Turno targetShift, 
-            double minOra, 
-            int targetGiorno,
-            string[] banchine, 
-            List<Turno> otherShifts, 
-            List<Operatore> operators,
-            double maxOre,
-            bool ignoreAbilitazioni = false)
+        /// <summary>
+        /// Criterio 7: ignora ogni vincolo tranne la sovrapposizione fisica su molo e
+        /// operatore. La proposta può non essere conforme, e il motivo lo dichiara.
+        /// </summary>
+        private MigliorAlternativaDTO CercaUltimaRisorsa(
+            Turno turno, int giorno, double orarioArrivo,
+            List<Turno> altriTurni, List<Operatore> operatori, bool possibileDomani)
         {
-            double maxScanOra = 24.0;
+            // Anche l'ultima risorsa resta dentro la finestra di attracco: qui cadono i
+            // vincoli contrattuali (ore, riposo, qualifica, ruolo), non quelli fisici.
+            // Una nave non si scarica prima di essere arrivata né dopo essere ripartita.
+            var etaNave = turno.EtaGiorno * 24.0 + turno.EtaOra + turno.RitardoOre;
+            var etdNave = turno.EtdGiorno * 24.0 + turno.EtdOra;
 
-            for (double ora = minOra; ora <= maxScanOra - targetShift.DurataOre; ora += 0.5)
+            for (var offset = 0; offset <= 1; offset++)
             {
-                var candidates = new List<MigliorAlternativaDTO>();
+                if (offset == 1 && !possibileDomani) continue;
+                var giornoTarget = giorno + offset;
 
-                double candStart = targetGiorno * 24.0 + ora;
-                double candEnd = candStart + targetShift.DurataOre;
+                // Il ritardo sposta in avanti la prima ora utile del giorno di arrivo.
+                var oraMinima = offset == 0
+                    ? Math.Max(RegolePianificazione.OraInizioGiornata, orarioArrivo)
+                    : RegolePianificazione.OraInizioGiornata;
 
-                // Check day offset constraint (max 1 day from original arrival day)
-                int dayOffset = targetGiorno - targetShift.Giorno;
-                if (dayOffset < 0 || dayOffset > 1) continue;
-
-                // Check ship's ETA/ETD window (adjusting for day offset)
-                double shipEta = (targetShift.EtaGiorno + dayOffset) * 24.0 + targetShift.EtaOra + targetShift.RitardoOre;
-                double shipEtd = (targetShift.EtdGiorno + dayOffset) * 24.0 + targetShift.EtdOra + targetShift.RitardoOre;
-                if (candStart < shipEta || candEnd > shipEtd) continue;
-
-                foreach (var b in banchine)
+                for (var ora = oraMinima;
+                     ora <= RegolePianificazione.OraFineGiornata - turno.DurataOre;
+                     ora += RegolePianificazione.PassoRicercaOre)
                 {
-                    // Check if dock is occupied at [candStart, candEnd]
-                    bool dockOccupied = otherShifts.Any(o => o.Banchina == b &&
-                        !(candEnd <= o.Giorno * 24.0 + (o.StartOra + (o.IsDelayed ? o.RitardoOre : 0)) ||
-                          candStart >= o.Giorno * 24.0 + (o.StartOra + (o.IsDelayed ? o.RitardoOre : 0)) + o.DurataOre));
+                    var inizioCand = giornoTarget * 24.0 + ora;
+                    var fineCand = inizioCand + turno.DurataOre;
 
-                    if (dockOccupied) continue;
+                    if (inizioCand < etaNave || fineCand > etdNave) continue;
 
-                    foreach (var op in operators)
+                    foreach (var banchina in RegolePianificazione.Banchine)
                     {
-                        // Check if license is expired
-                        if (op.PatenteValidaFinoAl < System.DateTime.Today) continue;
+                        if (RegolePianificazione.BanchinaOccupata(banchina, inizioCand, fineCand, altriTurni)) continue;
 
-                        // Check if in mandatory rest
-                        if (op.InRiposoObbligatorio) continue;
-
-                        // Check dock qualification
-                        if (!ignoreAbilitazioni && !string.IsNullOrEmpty(op.Abilitazioni))
+                        foreach (var op in operatori)
                         {
-                            var abList = op.Abilitazioni.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                                .Select(x => x.Trim());
-                            if (!abList.Contains(b)) continue;
+                            var occupato = altriTurni
+                                .Where(o => o.Operatore == op.Nome)
+                                .Any(o => RegolePianificazione.SiSovrappongono(
+                                    inizioCand, fineCand,
+                                    RegolePianificazione.InizioAssoluto(o),
+                                    RegolePianificazione.FineAssoluta(o)));
+
+                            if (occupato) continue;
+
+                            return new MigliorAlternativaDTO
+                            {
+                                MoloSuggerito = banchina,
+                                OrarioSuggerito = ora,
+                                OperatoreSuggerito = op.Nome,
+                                OreSettimanaliOperatore = op.OreSettimanali + turno.DurataOre,
+                                OreMassimeOperatore = op.OreMassime,
+                                GiornoSuggerito = giornoTarget,
+                                MotivoScelta = $"Risoluzione di Emergenza (Assegnazione forzata di ultima risorsa, Giorno +{offset})"
+                            };
                         }
-
-                        // Check weekly hours limit
-                        if (op.OreSettimanali + targetShift.DurataOre > maxOre) continue;
-
-                        // Check operator overlap and 11-hour consecutive rest time
-                        bool hasOperatorConflict = false;
-                        foreach (var other in otherShifts.Where(o => o.Operatore == op.Nome))
-                        {
-                            double otherStart = other.Giorno * 24.0 + (other.StartOra + (other.IsDelayed ? other.RitardoOre : 0));
-                            double otherEnd = otherStart + other.DurataOre;
-
-                            // Overlap
-                            if (candStart < otherEnd && candEnd > otherStart)
-                            {
-                                hasOperatorConflict = true;
-                                break;
-                            }
-
-                            // 11h Rest Period
-                            if (candStart >= otherEnd && candStart - otherEnd < 11.0)
-                            {
-                                hasOperatorConflict = true;
-                                break;
-                            }
-                            if (candEnd <= otherStart && otherStart - candEnd < 11.0)
-                            {
-                                hasOperatorConflict = true;
-                                break;
-                            }
-                        }
-
-                        if (hasOperatorConflict) continue;
-
-                        candidates.Add(new MigliorAlternativaDTO
-                        {
-                            MoloSuggerito = b,
-                            OrarioSuggerito = ora,
-                            OperatoreSuggerito = op.Nome,
-                            OreSettimanaliOperatore = op.OreSettimanali + targetShift.DurataOre,
-                            GiornoSuggerito = targetGiorno
-                        });
                     }
-                }
-
-                // If candidates found at this earliest hour slot, return the optimal one (min weekly hours)
-                if (candidates.Any())
-                {
-                    return candidates.OrderBy(c => c.OreSettimanaliOperatore).First();
                 }
             }
 

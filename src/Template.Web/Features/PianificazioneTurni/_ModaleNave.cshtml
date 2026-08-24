@@ -1,0 +1,84 @@
+@* Scheda di una nave: i suoi scali nella settimana. *@
+
+<div class="modal fade" id="dettagliNaveModal" tabindex="-1"
+     aria-labelledby="titolo-modale-nave" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" v-if="naveSelezionataDettaglio">
+            <div class="modal-header border-0 bg-light py-3">
+                <h2 id="titolo-modale-nave" class="modal-title h5 fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-ship text-primary fs-4" aria-hidden="true"></i>
+                    {{ naveSelezionataDettaglio }}
+                </h2>
+                <button type="button" class="btn-close" aria-label="Chiudi la scheda"
+                        v-on:click="chiudiDettagliNave()"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <div class="p-3 bg-light rounded-3 d-flex flex-wrap gap-4 mb-4">
+                    <div>
+                        <span class="d-block text-muted">Scali nella settimana</span>
+                        <strong class="fs-5">{{ getTurniNaveSettimana(naveSelezionataDettaglio).length }}</strong>
+                    </div>
+                    <div>
+                        <span class="d-block text-muted">Banchine utilizzate</span>
+                        <strong>{{ getMoliUtilizzatiNave(naveSelezionataDettaglio) || 'nessuna' }}</strong>
+                    </div>
+                </div>
+
+                <h3 class="h6 text-secondary text-uppercase fw-bold mb-3">
+                    <i class="fa-solid fa-calendar-check me-1" aria-hidden="true"></i>Programmazione settimanale
+                </h3>
+                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                    <table class="table table-striped table-hover align-middle mb-0">
+                        <caption class="visually-hidden">
+                            Scali di {{ naveSelezionataDettaglio }} nella settimana
+                        </caption>
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th scope="col">Giorno</th>
+                                <th scope="col">Banchina</th>
+                                <th scope="col">Operatore</th>
+                                <th scope="col">Orario</th>
+                                <th scope="col">Durata</th>
+                                <th scope="col" class="text-end">Stato</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="t in getTurniNaveSettimana(naveSelezionataDettaglio)" :key="t.id"
+                                v-bind:class="t.giorno === giornoSelezionato ? 'table-primary' : ''">
+                                <td class="fw-semibold">{{ getNomeGiorno(t.giorno) }}</td>
+                                <td>{{ t.banchina }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-link btn-sm p-0 fw-semibold"
+                                            v-on:click="apriDettagliOperatoreDaNome(t.operatore)">
+                                        <i class="fa-solid fa-user me-1" aria-hidden="true"></i>{{ t.operatore }}
+                                        <span class="visually-hidden">— apri la scheda</span>
+                                    </button>
+                                </td>
+                                <td>{{ fmtOra(t.startOra) }} – {{ fmtOra(t.startOra + t.durataOre) }}</td>
+                                <td>{{ fmtDurata(t.durataOre) }}</td>
+                                <td class="text-end">
+                                    <span class="badge"
+                                          v-bind:class="statoTurno(t) === 'regolare' ? 'bg-success' : 'bg-danger'">
+                                        {{ etichettaStatoTurno(t) }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr v-if="getTurniNaveSettimana(naveSelezionataDettaglio).length === 0">
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    Nessuno scalo programmato in questa settimana.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="modal-footer border-0 bg-light py-3">
+                <button type="button" class="btn btn-secondary px-4" v-on:click="chiudiDettagliNave()">
+                    Chiudi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

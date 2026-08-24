@@ -1,1464 +1,186 @@
 @model Template.Web.Features.PianificazioneTurni.IndexViewModel
-@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Env
 @{
-    ViewData["Title"] = "Console Operativa di Pianificazione Turni Portuali";
+    ViewData["Title"] = "Console di pianificazione turni portuali";
 }
 
-<style>
-    @@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap');
+@* Scheletro della pagina: una partial per ogni sezione. *@
 
-    :root {
-        --font-heading: 'Outfit', -apple-system, sans-serif;
-        --font-body: 'Inter', -apple-system, sans-serif;
-        
-        /* Palette colori Light Mode - Chiara, pulita, moderna */
-        --color-bg: #f8f9fa;          /* Grigio chiarissimo */
-        --color-surface: #ffffff;     /* Card bianche */
-        --color-border: #e2e8f0;      /* Slate 200 (bordi sottili e chiari) */
-        --color-border-focus: #3b82f6; /* Blue 500 */
-        
-        --color-text-primary: #0f172a;   /* Slate 900 */
-        --color-text-secondary: #475569; /* Slate 600 */
-        --color-text-muted: #64748b;     /* Slate 500 */
-        
-        /* Colori semaforici e di stato */
-        --color-primary: #3b82f6;        /* Blue 500 */
-        --color-primary-hover: #2563eb;  /* Blue 600 */
-        --color-primary-light: rgba(59, 130, 246, 0.08);
-        
-        --color-success: #10b981;        /* Emerald 500 */
-        --color-success-light: rgba(16, 185, 129, 0.08);
-        
-        --color-warning: #f59e0b;        /* Amber 500 */
-        --color-warning-light: rgba(245, 158, 11, 0.08);
-        
-        --color-danger: #ef4444;         /* Red 500 */
-        --color-danger-light: rgba(239, 68, 68, 0.08);
-        
-        --color-info: #06b6d4;           /* Cyan 500 */
-        --color-info-light: rgba(6, 182, 212, 0.08);
-        
-        /* Layout e ombre super leggere */
-        --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
-        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-        
-        --radius-sm: 6px;
-        --radius-md: 8px;
-        --radius-lg: 12px;
-    }
-
-    ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-    ::-webkit-scrollbar-track {
-        background: #f1f5f9;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 10px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-    }
-
-    body, .onit-page {
-        font-family: var(--font-body);
-        background-color: var(--color-bg) !important;
-        color: var(--color-text-primary) !important;
-    }
-
-    h1, h2, h3, h4, h5, h6, .navbar-brand, .modal-title, .gantt-block-title {
-        font-family: var(--font-heading);
-        color: var(--color-text-primary) !important;
-    }
-
-    /* Override stili Bootstrap per Tema Chiaro */
-    .card {
-        background-color: var(--color-surface) !important;
-        border: 1px solid var(--color-border) !important;
-        color: var(--color-text-primary) !important;
-    }
-    .card-header {
-        background-color: #f8fafc !important; /* Slate 50 */
-        border-bottom: 1px solid var(--color-border) !important;
-    }
-    .bg-white {
-        background-color: var(--color-surface) !important;
-    }
-    .bg-light {
-        background-color: #f1f5f9 !important; /* Slate 100 */
-    }
-    .bg-light-subtle {
-        background-color: #f8fafc !important; /* Slate 50 */
-    }
-    .text-dark {
-        color: var(--color-text-primary) !important;
-    }
-    .text-secondary {
-        color: var(--color-text-secondary) !important;
-    }
-    .text-muted {
-        color: var(--color-text-muted) !important;
-    }
-    .border-light, .border-light-subtle {
-        border-color: var(--color-border) !important;
-    }
-    
-    .table {
-        color: var(--color-text-primary) !important;
-        background-color: transparent !important;
-        --bs-table-bg: transparent !important;
-        --bs-table-color: var(--color-text-secondary) !important;
-    }
-    .table th, .table td {
-        border-color: var(--color-border) !important;
-        color: var(--color-text-secondary) !important;
-        background-color: transparent !important;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f1f5f9 !important;
-        color: var(--color-text-primary) !important;
-    }
-    /* Form e input Light */
-    .form-control, .form-select {
-        background-color: #ffffff !important;
-        border: 1px solid #cbd5e1 !important;
-        color: #0f172a !important;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: var(--color-primary) !important;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
-    }
-    .input-group-text {
-        background-color: #f1f5f9 !important;
-        border: 1px solid #cbd5e1 !important;
-        color: var(--color-text-muted) !important;
-    }
-
-    /* Card Operatore */
-    .operator-card {
-        background-color: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-sm);
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-    }
-    .operator-card:hover {
-        border-color: var(--color-primary);
-        box-shadow: var(--shadow-md);
-        transform: translateY(-1.5px);
-    }
-    .operator-card.op-compatible {
-        border-left: 4px solid var(--color-success) !important;
-        background-color: rgba(16, 185, 129, 0.03) !important;
-    }
-    .operator-card.op-incompatible {
-        opacity: 0.5;
-        border-left: 4px solid var(--color-border) !important;
-    }
-    .operator-card.op-selected {
-        border-color: var(--color-primary) !important;
-        background-color: rgba(59, 130, 246, 0.03) !important;
-    }
-
-    /* Poka-Yoke visivo: le card compatibili con il task selezionato pulsano
-       delicatamente per guidare la scelta del coordinatore (vedi README). */
-    @@media (prefers-reduced-motion: no-preference) {
-        .operator-card.op-compatible {
-            animation: pulse-compatible 2.4s ease-in-out infinite;
-        }
-    }
-    @@keyframes pulse-compatible {
-        0%, 100% { box-shadow: var(--shadow-sm), 0 0 0 0 rgba(16, 185, 129, 0.28); }
-        50% { box-shadow: var(--shadow-sm), 0 0 0 6px rgba(16, 185, 129, 0); }
-    }
-
-    /* Scrollbar personalizzata per le risorse */
-    .custom-scrollbar::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-        background: #f1f5f9;
-        border-radius: 4px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-    }
-
-    .text-decoration-hover-underline:hover {
-        text-decoration: underline !important;
-        cursor: pointer;
-    }
-
-    html, body {
-        min-height: 100vh !important;
-        overflow-y: auto !important;
-        margin: 0;
-        padding: 0;
-    }
-    .onit-page {
-        min-height: 100vh !important;
-        display: flex !important;
-        flex-direction: column !important;
-        overflow-y: auto !important;
-    }
-    #app-turni {
-        flex: 1 !important;
-        display: flex !important;
-        flex-direction: column !important;
-        min-height: 0 !important;
-        padding-top: 0.5rem !important;
-        padding-bottom: 2rem !important;
-    }
-
-    /* Pulsanti Calendario Settimana */
-    .calendar-btn {
-        background: var(--color-surface) !important;
-        border: 1px solid var(--color-border) !important;
-        color: var(--color-text-secondary) !important;
-        font-weight: 600 !important;
-        padding: 0.5rem 1rem !important;
-        min-width: 145px !important;
-        font-size: 0.8rem !important;
-        display: inline-flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        border-radius: var(--radius-md) !important;
-        box-shadow: var(--shadow-sm) !important;
-        transition: all 0.2s ease !important;
-    }
-    .calendar-btn .calendar-day {
-        font-size: 0.8rem;
-        font-weight: 700;
-    }
-    .calendar-btn .calendar-date {
-        font-size: 0.68rem;
-        opacity: 0.8;
-    }
-    .calendar-btn:hover {
-        border-color: var(--color-primary) !important;
-        color: var(--color-primary) !important;
-        box-shadow: var(--shadow-md) !important;
-    }
-    .calendar-btn.active {
-        background: var(--color-primary) !important;
-        border-color: transparent !important;
-        color: #ffffff !important;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25) !important;
-    }
-    .calendar-btn:focus-visible {
-        outline: 2px solid var(--color-border-focus);
-        outline-offset: 2px;
-    }
-
-    .min-height-0 {
-        min-height: 0 !important;
-    }
-
-    /* Avatars degli Operatori */
-    .operator-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: var(--color-primary-light);
-        color: var(--color-primary);
-        font-weight: 600;
-        font-size: 0.8rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1.5px solid rgba(59, 130, 246, 0.15);
-    }
-
-    /* Tab Layout & Navigation */
-    .nav-tabs {
-        border-bottom: 1px solid var(--color-border) !important;
-    }
-    .nav-tabs .nav-link {
-        color: var(--color-text-muted) !important;
-        border-radius: 0 !important;
-        transition: all 0.2s ease !important;
-        font-size: 0.85rem;
-    }
-    .nav-tabs .nav-link:hover {
-        color: var(--color-text-primary) !important;
-        background: transparent !important;
-        border-bottom-color: var(--color-border) !important;
-    }
-    .nav-tabs .nav-link.active {
-        color: var(--color-primary) !important;
-        border-bottom-color: var(--color-primary) !important;
-        background: transparent !important;
-    }
-    .nav-tabs .nav-link:focus-visible {
-        outline: 2px solid var(--color-border-focus);
-        outline-offset: -2px;
-    }
-
-    /* Backlog Cards */
-    .backlog-card {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        box-shadow: var(--shadow-sm);
-    }
-    .backlog-card:hover {
-        border-color: var(--color-primary);
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-md);
-    }
-    .backlog-card.selected-task {
-        border-color: var(--color-primary) !important;
-        background: var(--color-primary-light) !important;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-    }
-
-    /* Tabella Operatori */
-    .table-dense {
-        font-size: 0.8rem;
-    }
-    .table-dense th {
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 0.68rem;
-        letter-spacing: 0.05em;
-        color: var(--color-text-muted);
-        background: rgba(15, 23, 42, 0.2);
-        border-bottom: 2px solid var(--color-border) !important;
-        padding: 0.6rem 0.75rem;
-    }
-    .table-dense td {
-        padding: 0.6rem 0.75rem;
-        border-bottom: 1px solid var(--color-border);
-        vertical-align: middle;
-    }
-
-    /* Gantt Timeline */
-    .gantt-container {
-        background: var(--color-surface);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-sm);
-        overflow: hidden;
-    }
-    .gantt-hour-row {
-        height: 32px;
-        background: rgba(15, 23, 42, 0.2);
-        border-bottom: 1px solid var(--color-border);
-    }
-    .gantt-body {
-        display: flex;
-        flex-direction: column;
-        flex-grow: 1;
-        min-height: 0;
-    }
-    .gantt-row {
-        border-bottom: 1px solid var(--color-border);
-        display: flex;
-        align-items: center;
-        flex-grow: 1;
-    }
-    .gantt-row:last-child {
-        border-bottom: none;
-    }
-    .gantt-block {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        margin: auto 0;
-        height: 32px;
-        border-radius: var(--radius-sm);
-        box-shadow: var(--shadow-sm);
-        transition: all 0.2s ease;
-        border: 1px solid rgba(255, 255, 255, 0.25);
-    }
-    .gantt-block:hover {
-        transform: scale(1.02);
-        box-shadow: var(--shadow-md);
-        z-index: 10;
-    }
-
-    /* Supporto visivo per l'incastro: turni dell'operatore sotto il mouse
-       nella lista Risorse, mentre si sta assegnando un task */
-    .gantt-block-evidenziato {
-        outline: 2px solid var(--color-primary) !important;
-        outline-offset: 1px;
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18) !important;
-        z-index: 5;
-    }
-
-    /* Finestra ETA/ETD del task selezionato: dove deve avvenire l'incastro */
-    .gantt-task-window {
-        position: absolute;
-        top: 2px;
-        bottom: 2px;
-        background: rgba(59, 130, 246, 0.06);
-        border-left: 2px dashed rgba(59, 130, 246, 0.4);
-        border-right: 2px dashed rgba(59, 130, 246, 0.4);
-        pointer-events: none;
-        z-index: 0;
-    }
-
-    /* Lista radio delle soluzioni DSS per il task selezionato */
-    .dss-option {
-        background-color: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        cursor: pointer;
-        transition: all 0.15s ease;
-    }
-    .dss-option:hover {
-        border-color: var(--color-primary);
-    }
-    .dss-option.dss-option-selected {
-        border-color: var(--color-primary) !important;
-        background-color: rgba(59, 130, 246, 0.04) !important;
-        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
-    }
-
-    /* Slot libero suggerito in hover su un operatore compatibile: cliccabile per assegnare */
-    .gantt-block-fantasma {
-        background: rgba(59, 130, 246, 0.12);
-        border: 2px dashed var(--color-primary);
-        color: var(--color-primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: 8;
-        animation: fantasma-pulse 1.4s ease-in-out infinite;
-    }
-    .gantt-block-fantasma:hover {
-        background: rgba(59, 130, 246, 0.22);
-    }
-    @@keyframes fantasma-pulse {
-        0%, 100% { opacity: 0.75; }
-        50% { opacity: 1; }
-    }
-
-    /* Modali */
-    .modal-content {
-        border-radius: var(--radius-lg);
-        overflow: hidden;
-        border: 1px solid var(--color-border);
-    }
-
-    /* Badge dei Ruoli */
-    .role-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.25rem 0.5rem;
-        border-radius: var(--radius-sm);
-        font-size: 0.68rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.02em;
-    }
-    .role-Gruista {
-        background-color: var(--color-primary-light);
-        color: var(--color-primary);
-        border: 1px solid rgba(59, 130, 246, 0.15);
-    }
-    .role-Mulettista {
-        background-color: var(--color-info-light);
-        color: var(--color-info);
-        border: 1px solid rgba(6, 182, 212, 0.15);
-    }
-    .role-Stivatore {
-        background-color: var(--color-success-light);
-        color: var(--color-success);
-        border: 1px solid rgba(16, 185, 129, 0.15);
-    }
-    .role-Coordinatore {
-        background-color: var(--color-warning-light);
-        color: var(--color-warning);
-        border: 1px solid rgba(245, 158, 11, 0.15);
-    }
-
-    /* Barre Carico Ore */
-    .bar-wrap {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        min-width: 130px;
-    }
-    .bar-track {
-        flex: 1;
-        height: 8px;
-        background-color: var(--color-border);
-        border-radius: 999px;
-        overflow: hidden;
-        display: block;
-    }
-    .bar-fill {
-        height: 100%;
-        border-radius: 999px;
-        display: block;
-    }
-    .bar-success, .bar-secondary { background-color: var(--color-success); }
-    .bar-warning { background-color: var(--color-warning); }
-    .bar-danger { background-color: var(--color-danger); }
-    
-    .bar-label {
-        font-family: monospace;
-        font-size: 0.68rem;
-        color: var(--color-text-muted);
-        font-weight: 600;
-    }
-
-    .tab-panel-flex {
-        display: flex;
-        flex-direction: column;
-    }
-    [v-cloak] { display: none; }
-</style>
+@section styles {
+    <link rel="stylesheet" href="~/css/pianificazione-turni.css" asp-append-version="true" />
+}
 
 @section pageTitle {
-    <nav class="navbar navbar-dark px-4 py-2 border-bottom onit-page-menu">
+    <nav class="navbar navbar-dark px-4 py-2 border-bottom onit-page-menu" aria-label="Titolo della pagina">
         <div class="container-fluid d-flex justify-content-between align-items-center">
-            <h6 class="mb-0 fw-bold text-white">
-                <i class="fa-solid fa-anchor text-primary me-2"></i>@ViewData["Title"]
-            </h6>
+            <h1 class="h6 mb-0 fw-bold text-white">
+                <i class="fa-solid fa-anchor text-primary me-2" aria-hidden="true"></i>@ViewData["Title"]
+            </h1>
         </div>
     </nav>
 }
 
 <div id="app-turni" class="container-fluid py-2 px-4" v-cloak>
 
-    <!-- DEMO TOAST CONTAINER (non-intrusive notification) -->
-    <div id="demo-toast-container" style="position:fixed;top:16px;right:16px;z-index:9999;"></div>
-
-    <!-- SEED JSON FOR VUE -->
     <script type="application/json" id="Seed_JSON">@Html.Raw(Model.ToJson())</script>
 
-    <!-- COMPACT STATUS BAR -->
-    <div class="card border-0 mb-3 shadow-sm" style="border: 1px solid var(--color-border) !important; border-radius: var(--radius-md); background-color: var(--color-surface);">
-        <div class="card-body p-2.5 d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-3">
-                <span class="small text-secondary"><i class="fa-solid fa-calendar me-1 text-primary"></i> Giorno Attivo: <strong class="text-dark">{{ getNomeGiorno(giornoSelezionato) }}</strong></span>
-                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="border-radius: var(--radius-sm);"><i class="fa-solid fa-ship me-1 text-primary"></i> Turni totali: {{ turni.length }}</span>
-            </div>
-            <div class="d-flex align-items-center gap-3">
-                <span class="d-flex align-items-center gap-1.5 small text-secondary">
-                    <span class="d-inline-block rounded-circle" v-bind:class="emergenzaAttiva ? 'bg-danger' : 'bg-success'" style="width:8px;height:8px;"></span>
-                    Stato: <strong v-bind:class="emergenzaAttiva ? 'text-danger' : 'text-success'">{{ emergenzaAttiva ? 'EMERGENZA ATTIVA' : 'OPERATIVO' }}</strong>
-                </span>
-                <button v-if="emergenzaAttiva" class="btn btn-danger btn-xs py-1 px-2.5 fw-bold text-uppercase border-0 shadow-sm" style="font-size: 0.65rem; border-radius: var(--radius-sm);" v-on:click="risolviEmergenza">
-                    <i class="fa-solid fa-bolt me-1"></i> Risolvi
-                </button>
-            </div>
-        </div>
-    </div>
+    @* Conferme ed errori passano di qui oltre che dal toast, che è solo visivo. *@
+    <div id="annunci-live" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 
-    <!-- TABS -->
-    <ul class="nav nav-tabs mb-3 border-0 border-bottom gap-2" id="consoleTabs" role="tablist">
+    <partial name="~/Features/PianificazioneTurni/_BarraStato.cshtml" />
+    <partial name="~/Features/PianificazioneTurni/_TurnoDaRisolvere.cshtml" />
+
+    <ul class="nav nav-tabs mb-3 border-0 border-bottom gap-2" role="tablist"
+        v-on:keydown.left.prevent="tabPrecedente()"
+        v-on:keydown.right.prevent="tabSuccessivo()">
         <li class="nav-item" role="presentation">
-            <button class="nav-link border-0 border-bottom border-3 fw-bold px-3 py-2"
-                    v-bind:class="activeTab === 'pianificazione' ? 'active' : ''"
-                    v-on:click="setActiveTab('pianificazione')" type="button">
-                <i class="fa-solid fa-desktop me-1"></i>Pianificazione
+            <button type="button" id="tab-pianificazione" role="tab"
+                    class="nav-link border-0 border-bottom border-3 fw-bold px-3 py-2"
+                    v-bind:class="{ active: activeTab === 'pianificazione' }"
+                    v-bind:aria-selected="activeTab === 'pianificazione' ? 'true' : 'false'"
+                    v-bind:tabindex="activeTab === 'pianificazione' ? 0 : -1"
+                    aria-controls="pannello-pianificazione"
+                    v-on:click="setActiveTab('pianificazione')">
+                <i class="fa-solid fa-desktop me-1" aria-hidden="true"></i>Pianificazione
+            </button>
+        </li>
+        @* asp-roles non emette il markup lato server: senza il ruolo, la scheda non esiste. *@
+        <li class="nav-item" role="presentation" asp-roles="Admin">
+            <button type="button" id="tab-simulazioni" role="tab"
+                    class="nav-link border-0 border-bottom border-3 fw-bold px-3 py-2"
+                    v-bind:class="{ active: activeTab === 'simulazioni' }"
+                    v-bind:aria-selected="activeTab === 'simulazioni' ? 'true' : 'false'"
+                    v-bind:tabindex="activeTab === 'simulazioni' ? 0 : -1"
+                    aria-controls="pannello-simulazioni"
+                    v-on:click="setActiveTab('simulazioni')">
+                <i class="fa-solid fa-sliders me-1" aria-hidden="true"></i>Simulazioni ed emergenze
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link border-0 border-bottom border-3 fw-bold px-3 py-2"
-                    v-bind:class="activeTab === 'simulazioni' ? 'active' : ''"
-                    v-on:click="setActiveTab('simulazioni')" type="button">
-                <i class="fa-solid fa-sliders me-1"></i>Simulazioni &amp; Emergenze
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link border-0 border-bottom border-3 fw-bold px-3 py-2"
-                    v-bind:class="activeTab === 'eventi' ? 'active' : ''"
-                    v-on:click="setActiveTab('eventi')" type="button">
-                <i class="fa-solid fa-list-ul me-1"></i>Registro Eventi
-                <span v-if="notificheSimulate.length > 0" class="badge bg-danger ms-1 small rounded-pill">{{ notificheSimulate.length }}</span>
+            <button type="button" id="tab-eventi" role="tab"
+                    class="nav-link border-0 border-bottom border-3 fw-bold px-3 py-2"
+                    v-bind:class="{ active: activeTab === 'eventi' }"
+                    v-bind:aria-selected="activeTab === 'eventi' ? 'true' : 'false'"
+                    v-bind:tabindex="activeTab === 'eventi' ? 0 : -1"
+                    aria-controls="pannello-eventi"
+                    v-on:click="setActiveTab('eventi')">
+                <i class="fa-solid fa-list-ul me-1" aria-hidden="true"></i>Registro comunicazioni
+                <span v-if="notificheSimulate.length > 0" class="badge bg-secondary ms-1 rounded-pill">
+                    {{ notificheSimulate.length }}
+                    <span class="visually-hidden">comunicazioni registrate</span>
+                </span>
             </button>
         </li>
     </ul>
 
-
-    <!-- TABS CONTENT -->
     <div class="tab-content-vue flex-grow-1">
-        <!-- TAB 1: PIANIFICAZIONE -->
-        <div v-show="activeTab === 'pianificazione'" class="tab-panel-flex">
-            
-            <!-- RIGA 2: INFORMAZIONI DI CONTESTO (Navi e Backlog) -->
-            <div class="row g-4 mb-4">
-                <!-- Navi Previste -->
-                <div class="col-lg-4 col-12 d-flex flex-column">
-                    <div class="card border-0 shadow-sm d-flex flex-column h-100" style="border: 1px solid var(--color-border) !important; border-radius: var(--radius-lg);">
-                        <div class="card-header border-bottom py-3 px-3 d-flex align-items-center justify-content-between">
-                            <h6 class="mb-0 fw-bold text-dark" style="font-size: .95rem;">
-                                <i class="fa-solid fa-ship text-primary me-2"></i>Navi Previste
-                            </h6>
-                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: .72rem; border-radius: var(--radius-sm);">{{ getTurniDelGiorno().length }} navi</span>
-                        </div>
-                        <div class="card-body p-3">
-                            <div v-if="getTurniDelGiorno().length === 0" class="text-muted text-center py-4" style="font-size:.8rem;">
-                                <i class="fa-solid fa-anchor me-1"></i>Nessuna nave programmata per questo giorno
-                            </div>
-                            <div v-for="t in getTurniDelGiorno()" :key="t.id"
-                                 class="d-flex align-items-center gap-3 py-2.5 border-bottom border-light"
-                                 style="font-size:.8rem;">
-                                <div class="flex-grow-1 min-width-0">
-                                    <div class="fw-bold text-dark text-truncate">{{ t.nome }}</div>
-                                    <div class="text-secondary small">Molo: <strong>{{ t.banchina }}</strong></div>
-                                </div>
-                                <div class="text-end flex-shrink-0" style="font-size:0.75rem;">
-                                    <div class="text-secondary">
-                                        ETA <strong v-bind:class="{ 'text-decoration-line-through': t.isDelayed }">{{ fmtOra(t.startOra) }}</strong>
-                                        <strong v-if="t.isDelayed" class="text-danger">→ {{ fmtOra(t.startOra + t.ritardoOre) }}</strong>
-                                    </div>
-                                    <span class="badge" v-bind:class="t.isDelayed ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-success-subtle text-success border border-success-subtle'" style="font-size:.65rem; border-radius: var(--radius-sm); padding:0.2rem 0.4rem;">
-                                        {{ t.isDelayed ? ('RITARDO +' + fmtDurata(t.ritardoOre)) : 'IN ORARIO' }}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Backlog Task -->
-                <div class="col-lg-8 col-12 d-flex flex-column">
-                    <div class="card border-0 shadow-sm d-flex flex-column h-100" style="border: 1px solid var(--color-border) !important; border-radius: var(--radius-lg);">
-                        <div class="card-header border-bottom py-3 px-3 d-flex align-items-center justify-content-between">
-                            <h6 class="mb-0 fw-bold text-dark" style="font-size: .95rem;">
-                                <i class="fa-solid fa-list-check text-primary me-2"></i>Backlog Task
-                            </h6>
-                            <span v-if="tasksDaAssegnareGiorno.length > 0" class="badge bg-primary px-2.5 py-1.5" style="border-radius: var(--radius-sm); font-size: 0.75rem;">
-                                {{ tasksDaAssegnareGiorno.length }} task
-                            </span>
-                        </div>
-                        
-                        <div class="card-body p-3 d-flex flex-column">
-                            <div class="mb-3">
-                                <div v-for="task in tasksDaAssegnareGiorno" :key="task.id" 
-                                      class="backlog-card p-3 mb-2.5 transition-all"
-                                      v-bind:class="{ 'selected-task': selectedTask && selectedTask.id === task.id }"
-                                      v-on:click="selectTask(task)"
-                                      style="cursor: pointer;">
-                                    
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <div>
-                                            <div class="fw-bold text-dark" style="font-size:.9rem;">
-                                                <i class="fa-solid fa-ship text-secondary me-1.5"></i> {{ task.nome }}
-                                            </div>
-                                            <div class="text-secondary small" style="font-size:0.8rem; margin-top: 2px;">
-                                                {{ getTaskDock(task) }}
-                                            </div>
-                                        </div>
-                                        <span class="role-badge" v-bind:class="'role-' + task.competenzaRichiesta" style="font-size:.65rem; white-space: nowrap;">
-                                            Richiede: {{ task.competenzaRichiesta }}
-                                        </span>
-                                    </div>
-                                    
-                                    <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top border-light text-secondary" style="font-size:0.78rem;">
-                                        <span>
-                                            <i class="fa-regular fa-clock me-1 text-primary"></i>Durata: <strong>{{ task.durataOre }}h</strong>
-                                        </span>
-                                        <span>
-                                            ETA: <strong>{{ getNomeGiorno(task.etaGiorno) }} {{ fmtOra(task.etaOra) }}</strong> &bull; ETD: <strong>{{ getNomeGiorno(task.etdGiorno) }} {{ fmtOra(task.etdOra) }}</strong>
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <div v-if="tasksDaAssegnareGiorno.length === 0" class="text-muted text-center py-4" style="font-size: 0.85rem;">
-                                    <i class="fa-solid fa-circle-check d-block mb-2 text-success fs-4"></i>
-                                    Nessun backlog task per oggi
-                                </div>
-                            </div>
-
-                            <!-- DSS Multi-Alternative: lista di soluzioni radio-selezionabili, la prima
-                                 (sempre la più adatta secondo il DSS) è marcata "CONSIGLIATA" -->
-                            <div v-if="selectedTask" class="mt-3 pt-3 border-top">
-                                <h6 class="text-primary fw-bold mb-3" style="font-size: 0.85rem;">
-                                    <i class="fa-solid fa-wand-magic-sparkles text-warning me-1.5"></i> Come vuoi assegnare "{{ selectedTask.nome }}"?
-                                </h6>
-
-                                <div v-if="soluzioniDSSTask.length === 0" class="text-center text-secondary small py-3">
-                                    <i class="fa-solid fa-spinner fa-spin text-primary me-1.5"></i> Calcolo alternative DSS...
-                                </div>
-
-                                <div v-else class="d-flex flex-column gap-2">
-                                    <label v-for="(sol, index) in soluzioniDSSTask" :key="index"
-                                           class="dss-option p-3 d-flex align-items-start gap-2"
-                                           v-bind:class="{ 'dss-option-selected': (soluzioneDSSSelezionataIndex === null ? index === 0 : soluzioneDSSSelezionataIndex === index) }">
-                                        <input type="radio" name="dssSolTask" class="form-check-input mt-1"
-                                               v-bind:checked="(soluzioneDSSSelezionataIndex === null ? index === 0 : soluzioneDSSSelezionataIndex === index)"
-                                               v-on:change="soluzioneDSSSelezionataIndex = index">
-                                        <div class="flex-grow-1">
-                                            <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
-                                                <strong class="text-dark" style="font-size: 0.82rem;">{{ sol.molo }} · {{ fmtOra(sol.orario) }} · {{ sol.operatore }}</strong>
-                                                <span v-if="index === 0" class="badge bg-success" style="font-size: 0.6rem;">CONSIGLIATA</span>
-                                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size: 0.6rem;">{{ sol.score }}%</span>
-                                            </div>
-                                            <div class="text-secondary" style="font-size: 0.72rem;">
-                                                {{ sol.vantaggi.join(' · ') }}<span v-if="sol.compromessi[0] !== 'Nessuno'"> — {{ sol.compromessi.join(', ') }}</span>
-                                            </div>
-                                        </div>
-                                    </label>
-
-                                    <!-- Riepilogo in linguaggio naturale della soluzione selezionata -->
-                                    <div class="p-2 rounded bg-light border border-light-subtle text-secondary mt-1" style="font-size: 0.78rem;">
-                                        <i class="fa-regular fa-comment-dots me-1"></i>
-                                        Il task sarà assegnato a
-                                        <strong>{{ soluzioniDSSTask[soluzioneDSSSelezionataIndex === null ? 0 : soluzioneDSSSelezionataIndex].operatore }}</strong>
-                                        al <strong>{{ soluzioniDSSTask[soluzioneDSSSelezionataIndex === null ? 0 : soluzioneDSSSelezionataIndex].molo }}</strong>
-                                        alle ore <strong>{{ fmtOra(soluzioniDSSTask[soluzioneDSSSelezionataIndex === null ? 0 : soluzioneDSSSelezionataIndex].orario) }}</strong>.
-                                    </div>
-
-                                    <div class="d-flex gap-2 mt-2">
-                                        <button type="button" class="btn btn-outline-secondary btn-sm px-3" v-on:click="selectTask(selectedTask)">
-                                            Annulla
-                                        </button>
-                                        <button type="button" class="btn btn-primary btn-sm flex-grow-1 fw-bold"
-                                                v-on:click="applicaSoluzioneDSSSelezionata(soluzioniDSSTask[soluzioneDSSSelezionataIndex === null ? 0 : soluzioneDSSSelezionataIndex])">
-                                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Applica soluzione
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- RIGA 3: AREA OPERATIVA DI ASSEGNAZIONE -->
-            <div class="row g-4 mb-4">
-                <!-- Sinistra: Risorse (col-xl-3 col-lg-4 col-12) -->
-                <div class="col-xl-3 col-lg-4 col-12 d-flex flex-column">
-                    <div class="card border-0 shadow-sm d-flex flex-column" style="border: 1px solid var(--color-border) !important; border-radius: var(--radius-lg);">
-                        <div class="card-header border-bottom py-3 px-3 d-flex align-items-center justify-content-between">
-                            <h6 class="mb-0 fw-bold text-dark" style="font-size: .95rem;">
-                                <i class="fa-solid fa-users text-primary me-2"></i>Risorse &amp; Idoneità
-                            </h6>
-                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size: 0.72rem; border-radius: var(--radius-sm);">
-                                Gruisti: Disp {{ getResourceStats('Gruista').disponibili }} | Rep {{ getResourceStats('Gruista').reperibili }}
-                            </span>
-                        </div>
-
-                        <!-- Barra di Ricerca e Filtri Rapidi -->
-                        <div class="p-3 border-bottom" style="background-color: rgba(0,0,0,0.01);">
-                            <!-- Input Ricerca -->
-                            <div class="input-group mb-3">
-                                <span class="input-group-text bg-light border-end-0 text-muted" style="border-color: var(--color-border);">
-                                    <i class="fa-solid fa-magnifying-glass"></i>
-                                </span>
-                                <input type="text" class="form-control border-start-0 text-dark" 
-                                       placeholder="Cerca dipendente o ruolo (es. Gruista)..." 
-                                       v-model="filtroRicerca"
-                                       style="border-color: var(--color-border); font-size: 0.85rem;">
-                                <button class="btn btn-outline-secondary btn-sm py-0 px-3" type="button" v-if="filtroRicerca" v-on:click="filtroRicerca = ''" style="border-color: var(--color-border);">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </button>
-                            </div>
-                            <!-- Filtri Rapidi -->
-                            <div class="d-flex flex-wrap gap-2 pt-1">
-                                <button class="btn btn-sm py-1.5 px-3 fw-semibold" 
-                                        v-bind:class="!filtroRicerca ? 'btn-primary' : 'btn-outline-secondary'"
-                                        v-on:click="filtroRicerca = ''" 
-                                        style="font-size: 0.72rem; border-radius: var(--radius-sm);">
-                                    Tutti i Ruoli
-                                </button>
-                                <button v-for="r in ['Gruista', 'Mulettista', 'Stivatore']" 
-                                        :key="r"
-                                        class="btn btn-sm py-1.5 px-3 fw-semibold"
-                                        v-bind:class="filtroRicerca === r ? 'btn-primary' : 'btn-outline-secondary'"
-                                        v-on:click="filtroRicerca = r"
-                                        style="font-size: 0.72rem; border-radius: var(--radius-sm);">
-                                    {{ r }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Card Operatori List con Scroll Interno ed Elegante -->
-                        <div class="card-body p-3 custom-scrollbar" style="max-height: 460px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;">
-                            <div v-for="op in getOperatoriFiltrati()" :key="op.nome"
-                                 class="operator-card p-3 d-flex flex-column gap-2.5 transition-all"
-                                 v-bind:class="{
-                                     'op-compatible': selectedTask && getOperatoreCompatibilityScore(op, selectedTask) > 75,
-                                     'op-incompatible': selectedTask && isOperatoreIncompatibile(op),
-                                     'op-selected': selectedTask && !isOperatoreIncompatibile(op) && getOperatoreCompatibilityScore(op, selectedTask) > 0
-                                 }"
-                                 v-on:mouseenter="hoveredOperatoreNome = op.nome"
-                                 v-on:mouseleave="hoveredOperatoreNome = null">
-                                 
-                                 <!-- In alto: Nome, Reperibilità e Badge del Ruolo -->
-                                 <div class="d-flex justify-content-between align-items-start">
-                                     <div class="d-flex align-items-center gap-2">
-                                         <div class="operator-avatar" style="width: 32px; height: 32px; font-size: 0.75rem; border-radius: 50%; background-color: var(--color-primary-light); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-weight: bold;">
-                                             {{ op.nome.charAt(0) }}
-                                         </div>
-                                         <div>
-                                             <div class="fw-bold text-dark" style="font-size: 0.88rem; line-height: 1.2;">{{ op.nome }}</div>
-                                             <span v-if="op.reperibile" class="badge bg-warning text-dark border border-warning-subtle mt-0.5" style="font-size: 0.6rem; font-weight: 700; padding: 0.15rem 0.4rem;">Reperibile</span>
-                                         </div>
-                                     </div>
-                                     <span class="role-badge" v-bind:class="'role-' + op.ruolo" style="font-size: 0.65rem; padding: 0.2rem 0.45rem;">
-                                         {{ op.ruolo }}
-                                     </span>
-                                 </div>
-                                 
-                                 <!-- Al centro: Licenza di guida e Stato Riposo (inline in Flex) -->
-                                 <div class="d-flex justify-content-between align-items-center text-secondary" style="font-size: 0.75rem;">
-                                     <div>
-                                         <i class="fa-solid fa-id-card me-1 text-muted"></i>
-                                         <span v-if="getPatenteStatus(op) === 'expired'" class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 0.65rem; padding: 0.15rem 0.35rem;">
-                                             Scaduta
-                                         </span>
-                                         <span v-else-if="getPatenteStatus(op) === 'warning'" class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size: 0.65rem; padding: 0.15rem 0.35rem;">
-                                             Scadenza: {{ getPatenteFormatted(op) }}
-                                         </span>
-                                         <span v-else class="text-secondary font-monospace" style="font-size: 0.72rem;">
-                                             Licenza: {{ getPatenteFormatted(op) }}
-                                         </span>
-                                     </div>
-                                     
-                                     <div>
-                                         <span v-if="op.inRiposoObbligatorio" class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 0.65rem; padding: 0.15rem 0.35rem;">
-                                             Riposo
-                                         </span>
-                                         <span v-else class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.65rem; padding: 0.15rem 0.35rem;">
-                                             Disponibile
-                                         </span>
-                                     </div>
-                                 </div>
-                                 
-                                 <!-- Se c'è una task selezionata e l'operatore non è idoneo, un motivo breve e discreto -->
-                                 <div v-if="selectedTask && isOperatoreIncompatibile(op)" class="text-secondary" style="font-size: 0.72rem;">
-                                     <i class="fa-regular fa-circle-question me-1"></i>Non disponibile: {{ getIncompatibilitaMotivo(op) }}
-                                 </div>
-
-                                 <!-- Se l'operatore è idoneo, la compatibilità DSS e i dettagli di supporto alla decisione -->
-                                 <div v-else-if="selectedTask" class="p-2 rounded bg-light border border-light-subtle d-flex align-items-center justify-content-between" style="font-size: 0.72rem;">
-                                     <span class="badge" v-bind:class="getOperatoreCompatibilityScore(op, selectedTask) > 75 ? 'bg-success' : 'bg-warning text-dark'">
-                                         Compatibilità: {{ getOperatoreCompatibilityScore(op, selectedTask) }}%
-                                     </span>
-                                     <div class="text-secondary text-end font-monospace" style="font-size: 0.65rem; max-width: 60%; line-height: 1.2;">
-                                         {{ formatDettaglioConflitto(getDettaglioConflittoOperatore(op)) }}
-                                     </div>
-                                 </div>
-                                 
-                                 <!-- In basso: Progress Bar del Carico Ore largo -->
-                                 <div class="mt-1">
-                                     <div class="d-flex justify-content-between align-items-center mb-1 text-secondary" style="font-size: 0.72rem;">
-                                         <span>Carico lavoro settimanale:</span>
-                                         <strong class="text-dark">{{ op.oreSettimanali }}/{{ op.oreMassime }}h</strong>
-                                     </div>
-                                     <div class="bar-track" style="height: 10px; background-color: var(--color-border);">
-                                         <div class="bar-fill" v-bind:class="'bar-' + getOpStatus(op)" v-bind:style="{ width: getOpPercent(op) + '%' }"></div>
-                                     </div>
-                                 </div>
-
-                                 <!-- Azioni: Dettagli e Assegna (Flexbox) -->
-                                 <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top border-light">
-                                     <span class="text-muted small" style="font-size: 0.72rem;">
-                                         <i class="fa-solid fa-hand-pointer me-1"></i> Usa il pulsante per assegnare
-                                     </span>
-                                     <div class="d-flex gap-1.5">
-                                         <button class="btn btn-outline-primary btn-xs py-1 px-2 fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 0.7rem; border-radius: var(--radius-sm);" v-on:click="apriDettagliOperatore(op)">
-                                             <i class="fa-solid fa-circle-info"></i> Dettagli
-                                         </button>
-                                         <button class="btn btn-success btn-xs py-1 px-2.5 fw-bold d-inline-flex align-items-center gap-1"
-                                                 v-bind:class="{ 'disabled': !selectedTask || isOperatoreIncompatibile(op) }"
-                                                 v-bind:disabled="!selectedTask || isOperatoreIncompatibile(op)"
-                                                 style="font-size: 0.7rem; border-radius: var(--radius-sm);"
-                                                 v-on:click="assegnaTask(op)"
-                                                 title="Assegnazione manuale: cerca il primo slot libero per questo operatore oggi">
-                                             <i class="fa-solid fa-user-check"></i> Assegna
-                                         </button>
-                                     </div>
-                                 </div>
-                            </div>
-                            <div v-if="getOperatoriFiltrati().length === 0" class="text-muted text-center py-4" style="font-size: 0.85rem;">
-                                <i class="fa-solid fa-users-slash d-block mb-2 text-secondary fs-4"></i>
-                                Nessun operatore corrisponde ai filtri
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Destra: Tabellone Gantt (col-xl-9 col-lg-8 col-12) -->
-                <div class="col-xl-9 col-lg-8 col-12 d-flex flex-column">
-                    <!-- TIMELINE OPERATIVA IN BASSO (giorni) -->
-                    <div class="p-2 mb-3 rounded shadow-sm" style="border: 1px solid var(--color-border) !important; border-radius: var(--radius-md) !important; background-color: var(--color-surface);">
-                        <div class="d-flex gap-2 overflow-x-auto" style="scrollbar-width: thin;">
-                            <button v-for="g in giorniSettimana" :key="g.index"
-                                    class="btn calendar-btn transition-all"
-                                    v-bind:class="{ 'active': giornoSelezionato === g.index }"
-                                    v-on:click="selezionaGiorno(g.index)">
-                                <span class="calendar-day">{{ g.giornoSettimana }}</span>
-                                <span class="calendar-date" v-bind:class="giornoSelezionato === g.index ? 'text-white-50' : 'text-muted'">{{ g.dataStr }}</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Chip task attivo: resta visibile durante l'incastro sul Gantt -->
-                    <div v-if="selectedTask" class="d-flex align-items-center gap-2 px-3 py-2 mb-2 rounded" style="background-color: var(--color-primary-subtle, #eef4ff); border: 1px solid var(--color-primary, #4a6fa5);">
-                        <i class="fa-solid fa-crosshairs" style="color: var(--color-primary, #4a6fa5);"></i>
-                        <span style="font-size: 0.8rem;"><strong>Task attivo:</strong> {{ selectedTask.nome }} · {{ selectedTask.competenzaRichiesta }}</span>
-                    </div>
-
-                    <!-- GANTT GRID CONTAINER -->
-                    <div class="gantt-container flex-grow-1 d-flex flex-column shadow-sm" style="border: 1px solid var(--color-border) !important; border-radius: var(--radius-lg); background-color: var(--color-surface);">
-                        <!-- Header ore -->
-                        <div class="gantt-hour-row border-bottom flex-shrink-0">
-                            <div class="gantt-hour-row-label fw-bold text-secondary" style="font-size: 0.75rem; padding-left: 1rem; width: 140px; min-width: 140px; flex-shrink: 0; display: flex; align-items: center;">Banchine</div>
-                            <div class="gantt-hour-row-track">
-                                <span v-for="h in oreTimeline" :key="h" class="gantt-hour-tick text-secondary" style="font-size: 0.62rem; font-weight: 600;" v-bind:style="{ left: tickLeft(h) }">
-                                    {{ fmtTick(h) }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- Righe Banchine Scrollabili -->
-                        <div class="gantt-body flex-grow-1 overflow-y-auto custom-scrollbar">
-                            <div v-for="b in banchine" :key="b" 
-                                 class="gantt-row border-bottom position-relative d-flex align-items-center"
-                                 style="min-height: 48px;">
-                                
-                                 <div class="gantt-row-label px-3 d-flex align-items-center" style="width: 140px; min-width: 140px; height: 100%; flex-shrink: 0; border-right: 1px solid var(--color-border); background: rgba(0, 0, 0, 0.01) !important;">
-                                    <span class="fw-bold text-dark" style="font-size:.72rem;">{{ b }}</span>
-                                </div>
-                                
-                                <div class="gantt-row-track position-relative flex-grow-1" style="height: 100%;">
-                                    <div v-for="h in oreTimeline" :key="'vl'+h" class="gantt-vline" v-bind:style="{ left: tickLeft(h) }"></div>
-
-                                    <!-- Finestra ETA/ETD del task selezionato: dove deve avvenire l'incastro -->
-                                    <div v-if="isTaskSelezionatoVisibileOggi()"
-                                         class="gantt-task-window"
-                                         v-bind:style="{ left: getTaskWindowLeft(), width: getTaskWindowWidth() }"></div>
-
-                                    <!-- Slot libero suggerito in hover: passando il mouse su un operatore compatibile
-                                         compare qui dove finirebbe il turno; un clic lo assegna. -->
-                                    <div v-if="slotFantasma && slotFantasma.banchina === b"
-                                         class="gantt-block gantt-block-fantasma"
-                                         v-bind:style="{ left: blockLeft({ startOra: slotFantasma.orario, isDelayed: false, ritardoOre: 0 }), width: blockWidth({ durataOre: selectedTask.durataOre }) }"
-                                         v-on:click.stop="assegnaSlotFantasma()"
-                                         title="Slot libero — clic per assegnare">
-                                        <div class="gantt-block-title fw-bold" style="font-size: 0.66rem;">
-                                            <i class="fa-regular fa-hand-pointer me-1"></i>Slot libero
-                                        </div>
-                                    </div>
-
-                                    <!-- Blocchi turni assegnati -->
-                                    <div v-for="t in getTurniPerBanchina(b)" :key="t.id"
-                                         class="gantt-block"
-                                         v-bind:class="[getBlockClass(t), { 'gantt-block-evidenziato': hoveredOperatoreNome && t.operatore === hoveredOperatoreNome }]"
-                                         v-bind:style="{ 
-                                             left: blockLeft(t), 
-                                             width: blockWidth(t),
-                                             opacity: isElementoFiltrato(t) ? 1 : 0.15
-                                         }"
-                                         v-on:click.stop="handleBlockClick(t)"
-                                         v-bind:title="t.nome + ' | Operatore: ' + t.operatore + (t.isDelayed ? ' | Ritardo: +' + fmtDurata(t.ritardoOre) : '')">
-                                         <div class="gantt-block-title fw-bold" style="font-size: 0.68rem; line-height: 1.1;">
-                                             {{ t.nome }}
-                                             <span v-if="t.isDelayed" class="fw-bold" style="font-size: 0.6rem;">+{{ fmtDurata(t.ritardoOre) }}</span>
-                                         </div>
-                                         <div class="gantt-block-sub" style="font-size: 0.58rem; opacity: 0.9;">
-                                             <i class="fa-solid fa-user me-1"></i>{{ t.operatore }}
-                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div id="pannello-pianificazione" role="tabpanel" aria-labelledby="tab-pianificazione"
+             v-show="activeTab === 'pianificazione'" class="tab-panel-flex">
+            <partial name="~/Features/PianificazioneTurni/_TabPianificazione.cshtml" />
         </div>
 
-        <!-- TAB 2: SIMULAZIONI -->
-        <div v-show="activeTab === 'simulazioni'" class="w-100">
-            <div class="card border-0 shadow-sm p-4" style="border: 1px solid var(--color-border) !important; border-radius: var(--radius-lg); background: var(--color-surface);">
-                <h5 class="fw-bold text-dark mb-2"><i class="fa-solid fa-sliders text-warning me-2"></i>Pannello Simulazione Ritardi & Emergenze</h5>
-                <p class="text-secondary small mb-4">Utilizzare i controlli seguenti per indurre anomalie temporali nei turni portuali e testare i meccanismi di risoluzione e suggerimento del Decision Support System (DSS).</p>
-                
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="p-4 bg-light rounded border border-light-subtle h-100 d-flex flex-column justify-content-between">
-                            <div>
-                                <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-bolt me-2 text-danger"></i> Genera Emergenza Ritardo</h6>
-                                <p class="text-secondary small">Genera istantaneamente un ritardo casuale su una delle navi programmate nella settimana.</p>
-                            </div>
-                            <button type="button" class="btn btn-danger w-100 fw-bold py-2 mt-3" style="border-radius: var(--radius-sm);" v-on:click="causaRitardoCasuale">
-                                <i class="fa-solid fa-clock-rotate-left me-1.5"></i> Simula Ritardo Nave
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="p-4 bg-light rounded border border-light-subtle h-100 d-flex flex-column justify-content-between">
-                            <div>
-                                <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-power-off me-2 text-secondary"></i> Reset di Stato</h6>
-                                <p class="text-secondary small">Svuota la cache locale del browser per ripristinare i dati della pianificazione allo stato iniziale caricato dal server.</p>
-                            </div>
-                            <button type="button" class="btn btn-outline-secondary w-100 fw-bold py-2 mt-3" style="border-radius: var(--radius-sm);" v-on:click="ripristinaStato">
-                                <i class="fa-solid fa-rotate me-1.5"></i> Ripristina Dati Iniziali
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div id="pannello-simulazioni" role="tabpanel" aria-labelledby="tab-simulazioni"
+             v-show="activeTab === 'simulazioni'" class="w-100" asp-roles="Admin">
+            <partial name="~/Features/PianificazioneTurni/_TabSimulazioni.cshtml" />
         </div>
 
-        <!-- TAB 3: REGISTRO EVENTI / NOTIFICHE -->
-        <div v-show="activeTab === 'eventi'" class="w-100">
-            <div class="card border-0 shadow-sm p-4" style="border: 1px solid var(--color-border) !important; border-radius: var(--radius-lg); background: var(--color-surface);">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold text-dark mb-0"><i class="fa-solid fa-list-ul text-info me-2"></i>Registro Comunicazioni e Notifiche</h5>
-                    <button class="btn btn-outline-danger btn-xs py-1.5 px-3 fw-bold" style="border-radius: var(--radius-sm);" v-if="notificheSimulate.length > 0" v-on:click="svuotaNotifiche">
-                        <i class="fa-solid fa-trash me-1.5"></i> Svuota registro
-                    </button>
-                </div>
-                
-                <div>
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover align-middle mb-0" style="font-size: 0.8rem;">
-                            <thead>
-                                <tr>
-                                    <th>Orario</th>
-                                    <th>Canale</th>
-                                    <th>Destinatario</th>
-                                    <th>Recapito</th>
-                                    <th>Messaggio</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="notifica in notificheSimulate" :key="notifica.id">
-                                    <td class="font-monospace text-secondary">{{ notifica.timestamp }}</td>
-                                    <td>
-                                        <span class="badge" v-bind:class="notifica.tipo === 'SMS' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-info-subtle text-info border border-info-subtle'" style="border-radius: var(--radius-sm); font-size: 0.65rem;">
-                                            {{ notifica.tipo }}
-                                        </span>
-                                    </td>
-                                    <td class="fw-bold text-dark">{{ notifica.destinatario }}</td>
-                                    <td class="font-monospace text-muted">{{ notifica.dettaglioDestinatario }}</td>
-                                    <td class="text-dark small">{{ notifica.messaggio }}</td>
-                                </tr>
-                                <tr v-if="notificheSimulate.length === 0">
-                                    <td colspan="5" class="text-center py-5 text-muted">
-                                        <i class="fa-solid fa-envelope-open-text d-block mb-2 fs-3 text-secondary"></i>
-                                        Nessuna notifica inviata.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-    </div>
-
-    <!-- MODALE DSS / PIANIFICAZIONE -->
-    <div class="modal fade" id="conflittoModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content border-0 shadow-lg" v-if="turnoInRitardo">
-                <div class="modal-header border-0 bg-light py-3">
-                    <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
-                        <i class="fa-solid" v-bind:class="turnoInRitardo.isDelayed ? 'fa-triangle-exclamation text-warning' : 'fa-circle-exclamation text-danger'" style="font-size: 1.25rem;"></i>
-                        <span v-if="turnoInRitardo.isDelayed">Gestione Ritardo e Pianificazione</span>
-                        <span v-else>Risoluzione Conflitto e Pianificazione</span>
-                        <span>— {{ turnoInRitardo.nome }}</span>
-                    </h5>
-                    <button type="button" class="btn-close" v-on:click="annullaModale"></button>
-                </div>
-
-                <div class="modal-body p-4">
-                    <div class="row g-2 mb-3 bg-light p-3 rounded border border-light-subtle text-center">
-                        <div class="col-md-3 border-end">
-                            <span class="d-block text-muted small text-uppercase fw-semibold" style="font-size: .62rem;">Nave</span>
-                            <span class="fw-bold text-dark" style="font-size: .85rem;">{{ turnoInRitardo.nome }}</span>
-                        </div>
-                        <div class="col-md-3 border-end">
-                            <span class="d-block text-muted small text-uppercase fw-semibold" style="font-size: .62rem;">Molo Originario</span>
-                            <span class="fw-bold text-dark" style="font-size: .85rem;">{{ turnoInRitardo.banchina }}</span>
-                        </div>
-                        <div class="col-md-3 border-end">
-                            <span class="d-block text-muted small text-uppercase fw-semibold" style="font-size: .62rem;">Operatore Originario</span>
-                            <span class="fw-bold text-dark" style="font-size: .85rem;">{{ turnoInRitardo.operatore }}</span>
-                        </div>
-                        <div class="col-md-3">
-                            <span class="d-block text-muted small text-uppercase fw-semibold" style="font-size: .62rem;">Qualifica Richiesta</span>
-                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-0.5 mt-0.5" style="font-size: .65rem;">
-                                {{ turnoInRitardo.ruoloRichiesto }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div v-if="soluzioneOttimale" class="alert alert-success border-0 p-3 mb-4 rounded d-flex gap-3 align-items-start shadow-sm" style="background-color: #f0fdf4; border-left: 4px solid #16a34a !important;">
-                        <i class="fa-solid fa-circle-check fs-4 mt-0.5 text-success"></i>
-                        <div>
-                            <h6 class="fw-bold text-success mb-1" style="font-size: .85rem;">Soluzione Ottimale Trovata</h6>
-                            <div v-if="soluzioneOttimale.motivoScelta" class="mb-2">
-                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.68rem; border-radius: 4px;">
-                                    <i class="fa-solid fa-layer-group me-1"></i> Criterio: {{ soluzioneOttimale.motivoScelta }}
-                                </span>
-                            </div>
-                            <p class="mb-0 text-secondary" style="line-height: 1.5; font-size: .8rem;">
-                                Sposta il turno al <strong>{{ soluzioneOttimale.moloSuggerito }}</strong>
-                                <span v-if="soluzioneOttimale.giornoSuggerito !== turnoInRitardo.giorno">il giorno <strong>{{ getNomeGiorno(soluzioneOttimale.giornoSuggerito) }}</strong></span>
-                                alle ore <strong>{{ fmtOra(soluzioneOttimale.orarioSuggerito) }}</strong>.
-                                Assegnato a <strong>{{ soluzioneOttimale.operatoreSuggerito }}</strong> (Carico: {{ soluzioneOttimale.oreSettimanaliOperatore }}h/40h).
-                            </p>
-                        </div>
-                    </div>
-                    <div v-else class="alert alert-warning border-0 p-3 mb-4 rounded d-flex gap-3 align-items-start shadow-sm" style="background-color: #fffbeb; border-left: 4px solid #f59e0b !important;">
-                        <i class="fa-solid fa-triangle-exclamation fs-4 mt-0.5" style="color: #d97706;"></i>
-                        <div>
-                            <h6 class="fw-bold text-warning mb-1" style="font-size: .85rem; color: #b45309 !important;">Nessuna Soluzione Automatica</h6>
-                            <p class="mb-0 text-secondary" style="line-height: 1.5; font-size: .8rem; color: #78350f !important;">
-                                Impossibile automatizzare: Nessuna banchina libera trovata per questo orario o nessun operatore disponibile entro il limite di 40h.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div v-if="formError" class="alert alert-warning border-0 py-2 px-3 mt-3 small" style="background-color: #fffbeb; color: #b45309; font-size: 0.72rem;">
-                        <i class="fa-solid fa-triangle-exclamation me-1 text-warning"></i>{{ formError }}
-                    </div>
-                </div>
-
-                <div class="modal-footer border-0 bg-light py-3">
-                    <button type="button" class="btn btn-outline-secondary px-4 py-2 small fw-semibold" v-on:click="annullaModale">Annulla</button>
-                    <button v-if="soluzioneOttimale"
-                            type="button" 
-                            class="btn btn-primary px-4 py-2 fw-bold shadow-sm"
-                            v-on:click="applicaESalvaSoluzioneSuggerita">
-                        Applica Soluzione Suggerita
-                    </button>
-                </div>
-            </div>
+        <div id="pannello-eventi" role="tabpanel" aria-labelledby="tab-eventi"
+             v-show="activeTab === 'eventi'" class="w-100">
+            <partial name="~/Features/PianificazioneTurni/_TabRegistro.cshtml" />
         </div>
     </div>
 
-    <!-- MODALE DETTAGLI OPERATORE -->
-    <div class="modal fade" id="dettagliOperatoreModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content border-0 shadow-lg" v-if="operatoreSelezionatoDettaglio">
-                <div class="modal-header border-0 bg-light py-3">
-                    <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
-                        <i v-if="operatoreSelezionatoDettaglio.reperibile" class="fa-solid fa-phone text-info fs-4"></i>
-                        <i v-else class="fa-solid fa-circle-user text-primary fs-4"></i>
-                        Scheda Operatore: {{ operatoreSelezionatoDettaglio.nome }}
-                        <span v-if="operatoreSelezionatoDettaglio.reperibile" 
-                              class="badge bg-info text-white px-2 py-1" style="font-size: 0.65rem;">
-                            <i class="fa-solid fa-phone me-1"></i>A Chiamata
-                        </span>
-                    </h5>
-                    <button type="button" class="btn-close" v-on:click="chiudiDettagliOperatore"></button>
-                </div>
+    <partial name="~/Features/PianificazioneTurni/_ModaleConflitto.cshtml" />
+    <partial name="~/Features/PianificazioneTurni/_ModaleOperatore.cshtml" />
+    <partial name="~/Features/PianificazioneTurni/_ModaleNave.cshtml" />
 
-                <div class="modal-body p-4">
-                    <div class="row g-4 mb-4">
-                        <div class="col-md-6 border-end">
-                            <h6 class="text-secondary text-uppercase small fw-bold mb-3"><i class="fa-solid fa-id-card me-1"></i> Informazioni Personali</h6>
-                            <table class="table table-sm table-borderless">
-                                <tbody>
-                                    <tr>
-                                        <td class="text-muted ps-0 py-1" style="width: 130px;">Ruolo / Qualifica:</td>
-                                        <td class="fw-bold py-1">
-                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">{{ operatoreSelezionatoDettaglio.ruolo }}</span>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted ps-0 py-1">Tipo Contratto:</td>
-                                        <td class="fw-bold py-1">
-                                            <span v-if="operatoreSelezionatoDettaglio.reperibile" class="badge bg-info text-white px-2 py-1" style="font-size:0.68rem;">
-                                                <i class="fa-solid fa-phone me-1"></i>A Chiamata (Reperibile)
-                                            </span>
-                                            <span v-else class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size:0.68rem;">
-                                                <i class="fa-solid fa-id-card me-1"></i>Organico Fisso
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted ps-0 py-1">Ore Contrattuali:</td>
-                                        <td class="fw-bold py-1">
-                                            <span v-bind:class="getOpStatus(operatoreSelezionatoDettaglio)==='danger'?'text-danger':getOpStatus(operatoreSelezionatoDettaglio)==='warning'?'text-warning':'text-muted'">
-                                                {{ operatoreSelezionatoDettaglio.oreSettimanali }} / {{ operatoreSelezionatoDettaglio.oreMassime }} ore massime
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted ps-0 py-1">Abilitazioni Molo:</td>
-                                        <td class="fw-bold py-1">
-                                            <span v-if="operatoreSelezionatoDettaglio.abilitazioni && (Array.isArray(operatoreSelezionatoDettaglio.abilitazioni) ? operatoreSelezionatoDettaglio.abilitazioni.length > 0 : operatoreSelezionatoDettaglio.abilitazioni.trim().length > 0)" class="d-flex flex-wrap gap-1">
-                                                <span v-for="ab in (Array.isArray(operatoreSelezionatoDettaglio.abilitazioni) ? operatoreSelezionatoDettaglio.abilitazioni : operatoreSelezionatoDettaglio.abilitazioni.split(',').map(function(s){return s.trim();}).filter(Boolean))" :key="ab" class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1 rounded" style="font-size: 0.7rem; font-weight: 600;">
-                                                    {{ ab }}
-                                                </span>
-                                            </span>
-                                            <span v-else class="text-success small fw-semibold">
-                                                <i class="fa-solid fa-circle-check me-1"></i>Abilitato per tutte le banchine (Jolly)
-                                            </span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="text-secondary text-uppercase small fw-bold mb-3"><i class="fa-solid fa-chart-simple me-1"></i> Statistiche di Lavoro</h6>
-                            <div class="p-3 bg-light rounded-3 d-flex flex-column gap-2">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-muted small">Turni programmati nella settimana:</span>
-                                    <span class="badge bg-dark fw-bold">{{ getTurniOperatoreSettimana(operatoreSelezionatoDettaglio.nome).length }}</span>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-muted small">Ore pianificate effettive (mock):</span>
-                                    <span class="fw-bold text-dark">{{ getOreTotaliPianificateOperatore(operatoreSelezionatoDettaglio.nome) }} ore</span>
-                                </div>
-                                <div class="progress mt-2" style="height: 8px;">
-                                    <div class="progress-bar" role="progressbar"
-                                         v-bind:style="{ width: getOpPercent(operatoreSelezionatoDettaglio) + '%' }"
-                                         v-bind:class="getOpStatus(operatoreSelezionatoDettaglio)==='danger'?'bg-danger':getOpStatus(operatoreSelezionatoDettaglio)==='warning'?'bg-warning':'bg-primary'">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <h6 class="text-secondary text-uppercase small fw-bold mb-3"><i class="fa-solid fa-calendar-check me-1"></i> Programmazione Turni per la Settimana</h6>
-                    <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
-                        <table class="table table-striped table-hover align-middle mb-0" style="font-size: 0.8rem;">
-                            <thead class="table-light sticky-top" style="z-index: 1;">
-                                <tr>
-                                    <th scope="col">Giorno</th>
-                                    <th scope="col">Banchina / Molo</th>
-                                    <th scope="col">Nave</th>
-                                    <th scope="col">Orario</th>
-                                    <th scope="col">Durata</th>
-                                    <th scope="col" class="text-end">Stato</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="t in getTurniOperatoreSettimana(operatoreSelezionatoDettaglio.nome)" :key="t.id"
-                                    v-bind:class="t.giorno === giornoSelezionato ? 'table-primary' : ''">
-                                    <td class="fw-semibold">
-                                        {{ getNomeGiorno(t.giorno) }}
-                                    </td>
-                                    <td>{{ t.banchina }}</td>
-                                    <td class="fw-bold">{{ t.nome }}</td>
-                                    <td>{{ fmtOra(t.startOra) }} - {{ fmtOra(t.startOra + t.durataOre) }}</td>
-                                    <td>{{ fmtDurata(t.durataOre) }}</td>
-                                    <td class="text-end">
-                                        <span v-if="t.isDelayed" class="badge bg-danger">Ritardato (+{{ t.ritardoOre }}h)</span>
-                                        <span v-else class="badge bg-success">Pianificato</span>
-                                    </td>
-                                </tr>
-                                <tr v-if="getTurniOperatoreSettimana(operatoreSelezionatoDettaglio.nome).length === 0">
-                                    <td colspan="6" class="text-center py-4 text-muted">
-                                        Nessun turno programmato per questo operatore nella settimana corrente.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="modal-footer border-0 bg-light py-3">
-                    <button type="button" class="btn btn-secondary px-4" v-on:click="chiudiDettagliOperatore">Chiudi scheda</button>
-                </div>
-            </div>
+    @* Il SignalRConnectionManager cerca questi due blocchi per id: non vanno rinominati. *@
+    <div id="lostConnection" class="avviso-connessione d-none p-3 mt-3 d-flex align-items-center gap-3" role="status">
+        <i class="fa-solid fa-arrows-rotate fa-spin fs-4" aria-hidden="true"></i>
+        <div>
+            <strong>Ho perso il collegamento con gli altri coordinatori.</strong>
+            Sto riprovando: intanto continua pure, le modifiche passano comunque dal server.
         </div>
     </div>
 
-    <!-- MODALE DETTAGLI NAVE / COMPAGNIA -->
-    <div class="modal fade" id="dettagliNaveModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content border-0 shadow-lg" v-if="naveSelezionataDettaglio">
-                <div class="modal-header border-0 bg-light py-3">
-                    <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
-                        <i class="fa-solid fa-ship text-primary fs-4"></i>
-                        Scheda Nave / Compagnia: {{ naveSelezionataDettaglio }}
-                    </h5>
-                    <button type="button" class="btn-close" v-on:click="chiudiDettagliNave"></button>
-                </div>
-
-                <div class="modal-body p-4">
-                    <div class="row g-4 mb-4">
-                        <div class="col-md-6 border-end">
-                            <h6 class="text-secondary text-uppercase small fw-bold mb-3"><i class="fa-solid fa-circle-info me-1"></i> Informazioni Generali</h6>
-                            <table class="table table-sm table-borderless mb-0">
-                                <tbody>
-                                    <tr>
-                                        <td class="text-muted ps-0 py-1" style="width: 140px;">Nome Imbarcazione:</td>
-                                        <td class="fw-bold py-1">{{ naveSelezionataDettaglio }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted ps-0 py-1">Compagnia Marittima:</td>
-                                        <td class="fw-bold py-1 text-secondary">Mediterranean Cargo Lines</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted ps-0 py-1">Tipologia Scalo:</td>
-                                        <td class="fw-bold py-1">Portacontainer / Commerciale</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="text-secondary text-uppercase small fw-bold mb-3"><i class="fa-solid fa-chart-line me-1"></i> Riepilogo Scali</h6>
-                            <div class="p-3 bg-light rounded-3 d-flex flex-column gap-2">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-muted small">Arrivi totali in settimana:</span>
-                                    <span class="badge bg-primary fw-bold px-2 py-1">{{ getTurniNaveSettimana(naveSelezionataDettaglio).length }}</span>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-muted small">Moli/Banchine utilizzate:</span>
-                                    <span class="fw-bold text-dark" style="font-size:0.75rem;">
-                                        {{ getMoliUtilizzatiNave(naveSelezionataDettaglio) }}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <h6 class="text-secondary text-uppercase small fw-bold mb-3"><i class="fa-solid fa-calendar-check me-1"></i> Storico Arrivi e Programmazione Settimanale</h6>
-                    <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
-                        <table class="table table-striped table-hover align-middle mb-0" style="font-size: 0.8rem;">
-                            <thead class="table-light sticky-top" style="z-index: 1;">
-                                <tr>
-                                    <th scope="col">Giorno</th>
-                                    <th scope="col">Banchina / Molo</th>
-                                    <th scope="col">Operatore Assegnato</th>
-                                    <th scope="col">Orario Previsto</th>
-                                    <th scope="col">Durata Operazioni</th>
-                                    <th scope="col" class="text-end">Stato</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="t in getTurniNaveSettimana(naveSelezionataDettaglio)" :key="t.id"
-                                    v-bind:class="t.giorno === giornoSelezionato ? 'table-primary' : ''">
-                                    <td class="fw-semibold">
-                                        {{ getNomeGiorno(t.giorno) }}
-                                    </td>
-                                    <td>{{ t.banchina }}</td>
-                                    <td class="fw-semibold">
-                                        <span class="badge bg-secondary-subtle text-dark border px-2 py-1 text-decoration-hover-underline" style="cursor: pointer;" v-on:click="apriDettagliOperatoreDaNome(t.operatore)" title="Clicca per la scheda dell'operatore">
-                                            <i class="fa-solid fa-user me-1"></i>{{ t.operatore }}
-                                        </span>
-                                    </td>
-                                    <td>{{ fmtOra(t.startOra) }} - {{ fmtOra(t.startOra + t.durataOre) }}</td>
-                                    <td>{{ fmtDurata(t.durataOre) }}</td>
-                                    <td class="text-end">
-                                        <span v-if="t.isDelayed" class="badge bg-danger">Ritardata (+{{ t.ritardoOre }}h)</span>
-                                        <span v-else class="badge bg-success">In Orario</span>
-                                    </td>
-                                </tr>
-                                <tr v-if="getTurniNaveSettimana(naveSelezionataDettaglio).length === 0">
-                                    <td colspan="6" class="text-center py-4 text-muted">
-                                        Nessun arrivo programmato per questa nave nella settimana corrente.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="modal-footer border-0 bg-light py-3">
-                    <button type="button" class="btn btn-secondary px-4" v-on:click="chiudiDettagliNave">Chiudi scheda</button>
-                </div>
-            </div>
+    <div id="lostConnectionManualRetry" class="avviso-connessione d-none p-3 mt-3 d-flex align-items-center gap-3" role="alert">
+        <i class="fa-solid fa-plug-circle-exclamation fs-4" aria-hidden="true"></i>
+        <div class="flex-grow-1">
+            <strong>Non riesco a ricollegarmi.</strong>
+            Da qui in avanti non vedrai le modifiche fatte dagli altri coordinatori finché non ricarichi la pagina.
         </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold flex-shrink-0"
+                onclick="location.reload()">
+            <i class="fa-solid fa-rotate me-1" aria-hidden="true"></i>Ricarica
+        </button>
     </div>
-
 </div>
 
 @section scripts {
     <script src="/js/bundle-vue.js" asp-append-version="true"></script>
+
+    <script src="~/node_modules/@@microsoft/signalr/dist/browser/signalr.js" asp-append-version="true"></script>
+    <script src="~/js/signalRConnectionManager.js" asp-append-version="true"></script>
+
+    @* Index.Regole.js per primo: definisce costanti e funzioni che gli altri usano. *@
+    <script src="~/js/Features/PianificazioneTurni/Index.Regole.js" asp-append-version="true"></script>
     <script src="~/js/Features/PianificazioneTurni/Index.js" asp-append-version="true"></script>
     <script src="~/js/Features/PianificazioneTurni/Index.Gantt.js" asp-append-version="true"></script>
     <script src="~/js/Features/PianificazioneTurni/Index.Assegnazione.js" asp-append-version="true"></script>
     <script src="~/js/Features/PianificazioneTurni/Index.Modali.js" asp-append-version="true"></script>
     <script src="~/js/Features/PianificazioneTurni/Index.Notifiche.js" asp-append-version="true"></script>
-    <script type="application/json" id="Seed_JSON">@Html.Raw(Model.ToJson())</script>
+    <script src="~/js/Features/PianificazioneTurni/Index.Collaborazione.js" asp-append-version="true"></script>
 
     <script type="text/javascript">
-        var appVueModel = new PianificazioneTurni.IndexVueModel();
+        (function () {
+            var modello = new PianificazioneTurni.IndexVueModel();
+            var prototipo = PianificazioneTurni.IndexVueModel.prototype;
 
-        var app = new Vue({
-            el: '#app-turni',
-            data: appVueModel,
-            mounted: function () {
-                appVueModel.inizializzaStato();
-            },
-            computed: {
-                soluzioniDSSTask: function () {
-                    if (!this.selectedTask) return [];
-                    return appVueModel.soluzioniDSSTask;
+            // Vue 2 vede solo le proprietà proprie dell'oggetto passato come `data`:
+            // i metodi stanno sul prototype, quindi vanno inoltrati a mano.
+            var metodi = {};
+            var derivate = {};
+
+            Object.getOwnPropertyNames(prototipo).forEach(function (nome) {
+                if (nome === 'constructor') return;
+                var descrittore = Object.getOwnPropertyDescriptor(prototipo, nome);
+
+                if (typeof descrittore.value === 'function') {
+                    metodi[nome] = function () {
+                        return modello[nome].apply(modello, arguments);
+                    };
+                } else if (typeof descrittore.get === 'function') {
+                    // I getter leggono proprietà reattive: come computed si ricalcolano da soli.
+                    derivate[nome] = function () { return modello[nome]; };
+                }
+            });
+
+            new Vue({
+                el: '#app-turni',
+                data: modello,
+                mounted: function () {
+                    modello.inizializzaStato();
                 },
-                tasksDaAssegnareGiorno: function () {
-                    var g = Number(this.giornoSelezionato);
-                    return (this.tasksDaAssegnare || []).filter(function (t) {
-                        return Number(t.giorno) === g;
-                    });
-                },
-                slotFantasma: function () { return appVueModel.slotFantasma; }
-            },
-            methods: {
-                fmtOra:     function (h)  { return appVueModel.fmtOra(h); },
-                fmtTick:    function (h)  { return appVueModel.fmtTick(h); },
-                fmtDurata:  function (d)  { return appVueModel.fmtDurata(d); },
-                blockLeft:  function (t)  { return appVueModel.blockLeft(t); },
-                blockWidth: function (t)  { return appVueModel.blockWidth(t); },
-                tickLeft:   function (h)  { return appVueModel.tickLeft(h); },
-                getTurniPerBanchina: function (b) { return appVueModel.getTurniPerBanchina(b); },
-                getTurniPerOperatore: function (n) { return appVueModel.getTurniPerOperatore(n); },
-                getOpPercent:  function (op) { return appVueModel.getOpPercent(op); },
-                getOpStatus:   function (op) { return appVueModel.getOpStatus(op); },
-                getOperatoriFiltrati:   function () { return appVueModel.getOperatoriFiltrati(); },
-                apriModale:             function (t) { appVueModel.apriModale(t); },
-                confermaRiassegnazione: function ()  { appVueModel.confermaRiassegnazione(); },
-                applicaESalvaSoluzioneSuggerita: function () { appVueModel.applicaESalvaSoluzioneSuggerita(); },
-                annullaModale:          function ()  { appVueModel.annullaModale(); },
-                ripristinaStato:        function ()  { appVueModel.ripristinaStato(); },
-                selezionaGiorno:        function (idx) { appVueModel.selezionaGiorno(idx); },
-                getTurniDelGiorno:      function ()    { return appVueModel.getTurniDelGiorno(); },
-                getEmergenzaGiornoNome: function ()    { return appVueModel.getEmergenzaGiornoNome(); },
-                risolviEmergenza:       function ()    { appVueModel.risolviEmergenza(); },
-                apriDettagliOperatore:       function (op)  { appVueModel.apriDettagliOperatore(op); },
-                apriDettagliOperatoreDaNome: function (n)   { appVueModel.apriDettagliOperatoreDaNome(n); },
-                chiudiDettagliOperatore:     function ()    { appVueModel.chiudiDettagliOperatore(); },
-                getTurniOperatoreSettimana:  function (n)   { return appVueModel.getTurniOperatoreSettimana(n); },
-                getOreTotaliPianificateOperatore: function (n) { return appVueModel.getOreTotaliPianificateOperatore(n); },
-                getNomeGiorno:               function (idx) { return appVueModel.getNomeGiorno(idx); },
-                isElementoFiltrato:          function (t)   { return appVueModel.isElementoFiltrato(t); },
-                isOperatoreFiltrato:         function (op)  { return appVueModel.isOperatoreFiltrato(op); },
-                isBloccoInCollisione:        function (t)   { return appVueModel.isBloccoInCollisione(t); },
-                getBlockClass:               function (t)   { return appVueModel.getBlockClass(t); },
-                handleBlockClick:            function (t)   { appVueModel.handleBlockClick(t); },
-                saveState:                   function ()    { appVueModel.saveState(); },
-                apriDettagliNave:            function (n)   { appVueModel.apriDettagliNave(n); },
-                chiudiDettagliNave:          function ()    { appVueModel.chiudiDettagliNave(); },
-                getTurniNaveSettimana:       function (n)   { return appVueModel.getTurniNaveSettimana(n); },
-                getMoliUtilizzatiNave:       function (n)   { return appVueModel.getMoliUtilizzatiNave(n); },
-                getDettaglioConflittoOperatore: function (op) { return appVueModel.getDettaglioConflittoOperatore(op); },
-                formatDettaglioConflitto: function (conflitto) { return appVueModel.formatDettaglioConflitto(conflitto); },
-                svuotaNotifiche:             function ()    { appVueModel.svuotaNotifiche(); },
-                causaRitardoCasuale:         function ()    { appVueModel.causaRitardoCasuale(); },
-                selectTask:                  function (t)   { appVueModel.selectTask(t); },
-                assegnaTask:                 function (op)  { appVueModel.assegnaTask(op); },
-                isOperatoreIncompatibile:    function (op)  { return appVueModel.isOperatoreIncompatibile(op); },
-                getIncompatibilitaMotivo:    function (op)  { return appVueModel.getIncompatibilitaMotivo(op); },
-                getPatenteStatus:            function (op)  { return appVueModel.getPatenteStatus(op); },
-                getPatenteFormatted:         function (op)  { return appVueModel.getPatenteFormatted(op); },
-                getTaskDock:                 function (t)   { return appVueModel.getTaskDock(t); },
-                isTaskSelezionatoVisibileOggi: function () { return appVueModel.isTaskSelezionatoVisibileOggi(); },
-                getTaskWindowLeft:           function ()    { return appVueModel.getTaskWindowLeft(); },
-                getTaskWindowWidth:          function ()    { return appVueModel.getTaskWindowWidth(); },
-                assegnaSlotFantasma:         function ()    { appVueModel.assegnaSlotFantasma(); },
-                getOperatoreCompatibilityScore: function (op, t) { return appVueModel.getOperatoreCompatibilityScore(op, t); },
-                getResourceStats:            function (r)   { return appVueModel.getResourceStats(r); },
-                applicaSoluzioneDSSSelezionata: function (sol) { appVueModel.applicaSoluzioneDSSSelezionata(sol); },
-                setActiveTab:                function (tab) { this.activeTab = tab; }
-            }
-        });
+                methods: metodi,
+                computed: Object.assign(derivate, {
+                    // La lista di soluzioni può accorciarsi dopo la scelta: questi due
+                    // tengono l'indice dentro i limiti.
+                    indiceDSSCorrente: function () {
+                        var i = this.soluzioneDSSSelezionataIndex;
+                        if (i === null || i < 0 || i >= this.soluzioniDSSTask.length) return 0;
+                        return i;
+                    },
+                    soluzioneDSSCorrente: function () {
+                        var lista = this.soluzioniDSSTask;
+                        return lista && lista.length > 0 ? (lista[this.indiceDSSCorrente] || null) : null;
+                    },
+                    tasksDaAssegnareGiorno: function () {
+                        var giorno = Number(this.giornoSelezionato);
+                        return (this.tasksDaAssegnare || []).filter(function (t) {
+                            return Number(t.giorno) === giorno;
+                        });
+                    }
+                })
+            });
+        })();
     </script>
 }

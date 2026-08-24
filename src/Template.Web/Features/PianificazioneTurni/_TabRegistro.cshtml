@@ -1,0 +1,71 @@
+@* Comunicazioni simulate agli operatori: nessun SMS o email parte davvero. *@
+
+<section class="card border-0 shadow-sm p-4" aria-labelledby="titolo-registro">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 id="titolo-registro" class="h5 fw-bold text-dark mb-0">
+            <i class="fa-solid fa-list-ul text-info me-2" aria-hidden="true"></i>Registro delle comunicazioni
+        </h2>
+        <button v-if="notificheSimulate.length > 0 && !confermaSvuotamentoAperta"
+                type="button" class="btn btn-outline-danger btn-sm fw-semibold"
+                v-on:click="chiediSvuotamentoRegistro()">
+            <i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Svuota il registro
+        </button>
+    </div>
+
+    <p class="text-secondary">
+        Le comunicazioni sono simulate a scopo dimostrativo: non viene inviato nulla davvero.
+        Vengono conservate le ultime dieci.
+    </p>
+
+    <div v-if="confermaSvuotamentoAperta" class="conferma-distruttiva p-3 mb-3" role="alertdialog"
+         aria-labelledby="titolo-conferma-svuotamento">
+        <p id="titolo-conferma-svuotamento" class="fw-bold mb-2">
+            Verranno rimosse le {{ notificheSimulate.length }} comunicazioni registrate.
+        </p>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" v-on:click="annullaSvuotamentoRegistro()">
+                No, tienile
+            </button>
+            <button type="button" class="btn btn-danger btn-sm fw-bold" v-on:click="svuotaNotifiche()">
+                Sì, svuota il registro
+            </button>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle mb-0">
+            <caption class="visually-hidden">
+                Comunicazioni simulate inviate agli operatori, dalla più recente
+            </caption>
+            <thead>
+                <tr>
+                    <th scope="col">Orario</th>
+                    <th scope="col">Canale</th>
+                    <th scope="col">Destinatario</th>
+                    <th scope="col">Recapito</th>
+                    <th scope="col">Messaggio</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="notifica in notificheSimulate" :key="notifica.id">
+                    <td class="text-secondary">{{ notifica.orario }}</td>
+                    <td>
+                        <span class="badge"
+                              v-bind:class="notifica.tipo === 'SMS' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-info-subtle text-info border border-info-subtle'">
+                            {{ notifica.tipo }}
+                        </span>
+                    </td>
+                    <td class="fw-bold text-dark">{{ notifica.destinatario }}</td>
+                    <td class="text-muted">{{ notifica.recapito }}</td>
+                    <td class="text-dark">{{ notifica.messaggio }}</td>
+                </tr>
+                <tr v-if="notificheSimulate.length === 0">
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-envelope-open-text d-block mb-2 fs-3 text-secondary" aria-hidden="true"></i>
+                        Nessuna comunicazione inviata finora.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>

@@ -1,123 +1,211 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
+using System;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using Template.Web.Areas;
 using Template.Services.PianificazioneTurni;
 using Template.Services.Shared;
-using Template.Services;
+using Template.Web.Areas;
+using Template.Web.Infrastructure;
+using Template.Web.SignalR;
+using Template.Web.SignalR.Hubs.Events;
 
 namespace Template.Web.Features.PianificazioneTurni
 {
+    /// <summary>
+    /// Console di pianificazione turni. Il controller delega tutto al SharedService.
+    /// Gli endpoint di scrittura rispondono con l'esito e lo stato aggiornato, così il
+    /// client si riallinea senza tenere una propria copia dei dati.
+    /// </summary>
     public partial class TurniController : AuthenticatedBaseController
     {
-        private readonly SharedService _sharedService;
-        private readonly TemplateDbContext _dbContext;
+        /// <summary>
+        /// Stesso nome usato dal claim del login e dal tag helper asp-roles nella view:
+        /// una costante sola perché non possano divergere.
+        /// </summary>
+        public const string RuoloAmministrazione = "Admin";
 
-        public TurniController(SharedService sharedService, TemplateDbContext dbContext)
+        private readonly SharedService _sharedService;
+        private readonly IPublishDomainEvents _publisher;
+
+        public TurniController(SharedService sharedService, IPublishDomainEvents publisher)
         {
             _sharedService = sharedService;
-            _dbContext = dbContext;
+            _publisher = publisher;
         }
 
         [HttpGet]
         public virtual async Task<IActionResult> Index()
         {
-            var model = new IndexViewModel
+            var stato = await _sharedService.Query(new StatoPianificazioneQuery());
+
+            var model = new IndexViewModel(stato)
             {
-                Banchine = new List<string> { "Molo Est", "Molo Nord", "Banchina Ovest", "Banchina Sud" },
-                Operatori = await _dbContext.Operatori.ToListAsync(),
-                Turni = await _dbContext.Turni.ToListAsync(),
-                TasksDaAssegnare = await _dbContext.TasksDaAssegnare.ToListAsync()
+                CoordinatoreCorrente = Identita?.EmailUtenteCorrente,
+                PuoAmministrare = Identita?.IsAdmin ?? false
             };
+            model.Vincoli.PreparaElenco(stato.Operatori);
 
             return View("~/Features/PianificazioneTurni/Index.cshtml", model);
         }
 
-        // Usato dal modale di conflitto per un turno GIÀ esistente e in crisi (ritardo
-        // o collisione): calcola la migliore alternativa a partire dal suo stato attuale.
+        [HttpGet]
+        public virtual async Task<IActionResult> Stato()
+        {
+            var stato = await _sharedService.Query(new StatoPianificazioneQuery());
+            return Json(new IndexViewModel(stato));
+        }
+
+        // -----------------------------------------------------------------
+        // Supporto alle decisioni (sola lettura)
+        // -----------------------------------------------------------------
+
+        /// <summary>Alternative per un turno già assegnato che è entrato in crisi.</summary>
         [HttpPost]
         public virtual async Task<IActionResult> CalcolaMigliorAlternativa([FromBody] CalcolaMigliorAlternativaQuery query)
         {
             if (query == null)
             {
-                return BadRequest("I dati della query non sono validi.");
+                return BadRequest();
             }
 
-            var result = await _sharedService.Query(query);
-            if (result == null)
-            {
-                return NotFound("Nessuna alternativa trovata.");
-            }
+            var alternativa = await _sharedService.Query(query);
 
-            return Json(result);
+            // "Nessuna alternativa" non è un errore ma una risposta di merito: va
+            // restituita con esito positivo perché il client la distingua da un
+            // problema di rete.
+            return Json(new { trovata = alternativa != null, alternativa });
         }
 
-        // Usato dal backlog per un task NON ancora assegnato: crea un turno fittizio
-        // temporaneo dal task e lo fa passare per lo stesso solver di sopra, cosicché
-        // la logica dei 7 criteri resti unica indipendentemente da dove viene invocata.
+        /// <summary>Alternative per una lavorazione ancora nel backlog.</summary>
         [HttpPost]
         public virtual async Task<IActionResult> CalcolaMigliorSoluzioneTask([FromBody] CalcolaMigliorSoluzioneTaskQuery query)
         {
             if (query == null)
             {
-                return BadRequest("I dati della query non sono validi.");
+                return BadRequest();
             }
 
-            var result = await _sharedService.Query(query);
-            if (result == null)
-            {
-                return NotFound("Nessuna alternativa trovata.");
-            }
-
-            return Json(result);
+            var alternativa = await _sharedService.Query(query);
+            return Json(new { trovata = alternativa != null, alternativa });
         }
 
-        // Unico endpoint di scrittura reale: sposta un turno esistente sul DB (in
-        // memoria, quindi perso al riavvio) dopo la conferma della riassegnazione nel
-        // modale di conflitto. L'assegnazione di un task dal backlog, invece, resta
-        // solo lato client (localStorage) — vedi eseguiAssegnazioneTask in
-        // Index.Assegnazione.ts, che non chiama mai questo endpoint.
+        // -----------------------------------------------------------------
+        // Comandi (scrittura)
+        // -----------------------------------------------------------------
+
         [HttpPost]
-        public virtual async Task<IActionResult> SpostaTurno([FromBody] SpostaTurnoCommand command)
+        public virtual Task<IActionResult> AssegnaTask([FromBody] AssegnaTaskCommand command)
         {
             if (command == null)
             {
-                return BadRequest("I dati dello spostamento non sono validi.");
+                return Task.FromResult<IActionResult>(BadRequest());
             }
 
-            var turno = await _dbContext.Turni.FirstOrDefaultAsync(t => t.Id == command.TurnoId);
-            if (turno != null)
+            return EseguiComando(() => _sharedService.Handle(command));
+        }
+
+        [HttpPost]
+        public virtual Task<IActionResult> SpostaTurno([FromBody] SpostaTurnoCommand command)
+        {
+            if (command == null)
             {
-                if (turno.Operatore != command.NuovoOperatore)
-                {
-                    var oldOp = await _dbContext.Operatori.FirstOrDefaultAsync(o => o.Nome == turno.Operatore);
-                    if (oldOp != null)
-                    {
-                        oldOp.OreSettimanali = System.Math.Max(0, oldOp.OreSettimanali - turno.DurataOre);
-                    }
-                    var newOp = await _dbContext.Operatori.FirstOrDefaultAsync(o => o.Nome == command.NuovoOperatore);
-                    if (newOp != null)
-                    {
-                        newOp.OreSettimanali += turno.DurataOre;
-                    }
-                }
-
-                turno.StartOra = command.NuovaFasciaOraria;
-                turno.Banchina = command.NuovaBanchina;
-                turno.Operatore = command.NuovoOperatore;
-                if (command.Giorno.HasValue)
-                {
-                    turno.Giorno = command.Giorno.Value;
-                }
-                turno.IsDelayed = false;
-                turno.RequiresResolution = false;
-                turno.RitardoOre = 0;
-
-                await _dbContext.SaveChangesAsync();
+                return Task.FromResult<IActionResult>(BadRequest());
             }
 
-            return Json(new { success = true, message = "Spostamento salvato con successo." });
+            return EseguiComando(() => _sharedService.Handle(command));
+        }
+
+        [HttpPost]
+        public virtual Task<IActionResult> AnnullaTurno([FromBody] AnnullaTurnoCommand command)
+        {
+            if (command == null)
+            {
+                return Task.FromResult<IActionResult>(BadRequest());
+            }
+
+            return EseguiComando(() => _sharedService.Handle(command));
+        }
+
+        // Operazioni riservate all'amministrazione: nasconderle nella view con asp-roles
+        // non protegge l'endpoint, il ruolo va verificato sul server.
+        [HttpPost]
+        [Authorize(Roles = RuoloAmministrazione)]
+        public virtual Task<IActionResult> SimulaRitardo([FromBody] SimulaRitardoNaveCommand command)
+        {
+            return EseguiComando(() => _sharedService.Handle(command ?? new SimulaRitardoNaveCommand()));
+        }
+
+        [HttpPost]
+        [Authorize(Roles = RuoloAmministrazione)]
+        public virtual Task<IActionResult> RipristinaPianificazione()
+        {
+            return EseguiComando(() => _sharedService.Handle(new RipristinaPianificazioneCommand()));
+        }
+
+        /// <summary>
+        /// Cambia il tetto orario contrattuale di un operatore. Unico endpoint con form
+        /// Razor: model binding, DataAnnotations e Post-Redirect-Get per non ripetere
+        /// l'invio al refresh; gli errori sopravvivono al redirect via ModelStateToTempData.
+        /// </summary>
+        [HttpPost]
+        [Authorize(Roles = RuoloAmministrazione)]
+        [ValidateAntiForgeryToken]
+        public virtual async Task<IActionResult> VincoliContrattuali(VincoliContrattualiViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var esito = await _sharedService.Handle(model.ToCommand());
+
+                if (esito.Riuscita)
+                {
+                    Alerts.AddSuccess(this, esito.Messaggio);
+                    await _publisher.Publish(new PianificazioneModificataEvent
+                    {
+                        Descrizione = esito.Messaggio,
+                        Autore = Identita?.EmailUtenteCorrente
+                    });
+                }
+                else
+                {
+                    ModelState.AddModelError(nameof(model.OreMassime), esito.Messaggio);
+                }
+            }
+
+            if (!ModelState.IsValid)
+            {
+                Alerts.AddWarning(this, "Il tetto contrattuale non è stato cambiato: guarda cosa segnala il modulo.");
+            }
+
+            return RedirectToAction("Index");
+        }
+
+        /// <summary>
+        /// Risponde sempre con esito e stato aggiornato, anche quando il comando viene
+        /// rifiutato: un client disallineato si riallinea comunque.
+        /// </summary>
+        private async Task<IActionResult> EseguiComando(Func<Task<EsitoOperazioneDTO>> comando)
+        {
+            var esito = await comando();
+            var stato = await _sharedService.Query(new StatoPianificazioneQuery());
+
+            // L'evento notifica gli altri coordinatori collegati e porta solo l'avviso,
+            // non i dati: chi lo riceve rilegge lo stato dal server.
+            if (esito.Riuscita)
+            {
+                await _publisher.Publish(new PianificazioneModificataEvent
+                {
+                    Descrizione = esito.Messaggio,
+                    Autore = Identita?.EmailUtenteCorrente
+                });
+            }
+
+            return Json(new
+            {
+                riuscita = esito.Riuscita,
+                messaggio = esito.Messaggio,
+                turnoId = esito.TurnoId,
+                stato = new IndexViewModel(stato)
+            });
         }
     }
 }

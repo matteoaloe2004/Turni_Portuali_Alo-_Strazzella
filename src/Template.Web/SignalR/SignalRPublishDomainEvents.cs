@@ -36,5 +36,12 @@ namespace Template.Web.SignalR
         {
             return GetTemplateGroup(e.IdGroup).NewMessage(e.IdUser, e.IdMessage);
         }
+
+        public Task When(PianificazioneModificataEvent e)
+        {
+            return _templateHub.Clients
+                .Group(TemplateHub.GruppoPianificazione)
+                .PianificazioneModificata(e.Descrizione, e.Autore);
+        }
     }
 }

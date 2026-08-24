@@ -1,0 +1,47 @@
+@model Template.Web.Features.PianificazioneTurni.VincoliContrattualiViewModel
+
+@* Tetto orario contrattuale di un operatore: form Razor con validazione lato
+   server. Nessun campo ha sia asp-for sia v-model, e le opzioni del select
+   arrivano dal server, non da Vue. *@
+
+<div class="p-4 bg-light rounded border border-light-subtle h-100">
+    <h3 class="h6 fw-bold text-dark mb-2">
+        <i class="fa-solid fa-file-contract me-2 text-primary" aria-hidden="true"></i>Vincoli contrattuali
+    </h3>
+    <p class="text-secondary">
+        Il tetto di ore settimanali entro cui il sistema pianifica i turni di una persona.
+        Il coordinatore di turno lavora dentro questi limiti; cambiarli spetta all'amministrazione.
+    </p>
+
+    <form method="post" asp-action="VincoliContrattuali" asp-controller="Turni" autocomplete="off">
+        <div class="mb-3">
+            <label asp-for="Operatore" class="form-label fw-semibold"></label>
+            <select asp-for="Operatore" asp-items="Model.OperatoriDisponibili" class="form-select">
+                <option value="">Scegli una persona…</option>
+            </select>
+            <span asp-validation-for="Operatore" class="text-danger d-block mt-1"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="OreMassime" class="form-label fw-semibold"></label>
+            <div class="input-group">
+                <input asp-for="OreMassime" class="form-control" type="number" step="0.5"
+                       min="@Template.Services.PianificazioneTurni.RegolePianificazione.MinimoOreSettimanaliContrattuali"
+                       max="@Template.Services.PianificazioneTurni.RegolePianificazione.MassimoOreSettimanaliDiLegge" />
+                <span class="input-group-text">ore a settimana</span>
+            </div>
+            @* Il limite è dichiarato prima di digitare, non dopo l'errore. *@
+            <div class="form-text">
+                Il contratto collettivo non consente di superare le
+                @Template.Services.PianificazioneTurni.RegolePianificazione.MassimoOreSettimanaliDiLegge.ToString("0") ore.
+                Oltre quella soglia si può andare solo con una deroga sul singolo turno,
+                che il sistema propone e motiva da sé.
+            </div>
+            <span asp-validation-for="OreMassime" class="text-danger d-block mt-1"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary fw-bold w-100">
+            <i class="fa-solid fa-floppy-disk me-1" aria-hidden="true"></i>Aggiorna il contratto
+        </button>
+    </form>
+</div>

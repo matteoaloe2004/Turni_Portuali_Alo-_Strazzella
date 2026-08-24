@@ -1,16 +1,15 @@
-// Il cuore dell'incastro personale/lavorazione: verifica competenze, patente,
-// riposo e ore contrattuali per un operatore rispetto al task selezionato, e i
-// due percorsi di assegnazione (manuale e da soluzione DSS suggerita). Va
-// caricato dopo Index.ts — vedi i tag <script> in Index.cshtml.
+// Incastro operatore/lavorazione: competenze, patente, riposo e ore contrattuali rispetto
+// al task selezionato, più i due percorsi di assegnazione (manuale e da soluzione DSS).
+// Va caricato dopo Index.Regole.ts e Index.ts; a scrivere e rivalidare è sempre il server.
 namespace PianificazioneTurni {
 
     const CONFLICT_WARNING_LABELS: { [key in ConflictWarning]: string } = {
-        MANCA_QUALIFICA: 'manca qualifica',
+        MANCA_QUALIFICA: 'manca la qualifica',
         PATENTE_NON_VALIDA: 'patente non valida',
-        RIPOSO_OBBLIGATORIO: 'riposo insufficiente',
-        LIMITE_ORE_SUPERATO: 'limite ore superato',
-        NON_ABILITATO: 'non abilitato',
-        SOVRAPPOSIZIONE_ORARIA: 'sovrapposizione oraria',
+        RIPOSO_OBBLIGATORIO: 'in riposo obbligatorio',
+        LIMITE_ORE_SUPERATO: 'oltre il limite di ore',
+        NON_ABILITATO: 'non abilitato al molo',
+        SOVRAPPOSIZIONE_ORARIA: 'turno sovrapposto',
         RIPOSO_INSUFFICIENTE: 'riposo insufficiente'
     };
 
@@ -19,518 +18,105 @@ namespace PianificazioneTurni {
         getPatenteFormatted(op: any): string;
         selectTask(task: any): Promise<void>;
         caricaSoluzioneTaskSuggerita(taskId: number): Promise<void>;
-        assegnaTask(op: any): void;
+        assegnaTask(op: any): Promise<void>;
+        motivoIncompatibilita(op: any): string | null;
         isOperatoreIncompatibile(op: any): boolean;
         getIncompatibilitaMotivo(op: any): string;
         getDettaglioConflittoOperatore(op: any): ConflittoOperatore;
         formatDettaglioConflitto(conflitto: ConflittoOperatore): string;
+        descriviConflittoPerLettoreSchermo(op: any): string;
         getOperatoreCompatibilityScore(op: any, task: any): number;
         getResourceStats(ruolo: string): any;
         readonly soluzioniDSSTask: any[];
-        applicaSoluzioneDSSSelezionata(sol: any): void;
+        applicaSoluzioneDSSSelezionata(sol: any): Promise<void>;
         getTaskDock(task: any): string;
         isTaskSelezionatoVisibileOggi(): boolean;
         getTaskWindowLeft(): string;
         getTaskWindowWidth(): string;
         readonly slotFantasma: { banchina: string; orario: number; operatoreNome: string } | null;
-        assegnaSlotFantasma(): void;
+        assegnaSlotFantasma(): Promise<void>;
+        readonly diagnosiIndisponibilita: { nome: string; motivo: string; turno: any }[];
+        readonly turniCheBloccano: number[];
+        evidenziaBloccanti(): void;
     }
+
+    // ---- Patente ------------------------------------------------------------
 
     IndexVueModel.prototype.getPatenteStatus = function (this: IndexVueModel, op: any): 'expired' | 'warning' | 'valid' {
         if (!op.patenteValidaFinoAl) return 'valid';
-        const date = new Date(op.patenteValidaFinoAl);
-        const now = new Date();
-        date.setHours(0, 0, 0, 0);
-        now.setHours(0, 0, 0, 0);
-        const diffTime = date.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        if (diffDays < 0) {
-            return 'expired';
-        } else if (diffDays <= 15) {
-            return 'warning';
-        }
-        return 'valid';
+        if (patenteScaduta(op)) return 'expired';
+
+        const scadenza = new Date(op.patenteValidaFinoAl);
+        const oggi = new Date();
+        scadenza.setHours(0, 0, 0, 0);
+        oggi.setHours(0, 0, 0, 0);
+
+        const giorniMancanti = Math.ceil((scadenza.getTime() - oggi.getTime()) / (1000 * 60 * 60 * 24));
+        return giorniMancanti <= GIORNI_PREAVVISO_PATENTE ? 'warning' : 'valid';
     };
 
     IndexVueModel.prototype.getPatenteFormatted = function (this: IndexVueModel, op: any): string {
         if (!op.patenteValidaFinoAl) return '';
-        const date = new Date(op.patenteValidaFinoAl);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
+        const data = new Date(op.patenteValidaFinoAl);
+        const giorno = String(data.getDate()).padStart(2, '0');
+        const mese = String(data.getMonth() + 1).padStart(2, '0');
+        return `${giorno}/${mese}/${data.getFullYear()}`;
     };
 
-    // Condivisa da assegnaTask() e applicaSoluzioneDSSSelezionata(): crea il turno per
-    // il task selezionato, aggiorna backlog/ore/notifiche e naviga al giorno assegnato.
-    function eseguiAssegnazioneTask(vm: IndexVueModel, operatoreNome: string, banchina: string, startOra: number, giorno: number): void {
-        const self = vm as any;
-        const task = self.selectedTask;
-        if (!task) return;
-        const op = self.operatori.find((o: any) => o.nome === operatoreNome);
-        if (!op) return;
+    // ---- Idoneità dell'operatore --------------------------------------------
 
-        // Ultima verifica prima di scrivere: una soluzione suggerita può essere diventata
-        // obsoleta (un altro turno nel frattempo occupa lo stesso molo/operatore). Meglio
-        // rifiutare l'assegnazione che creare un turno in collisione.
-        const candStart = giorno * 24.0 + startOra;
-        const candEnd = candStart + task.durataOre;
-        const slotNonPiuLibero = self.turni.some((other: any) => {
-            const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
-            const otherStart = other.giorno * 24.0 + oS;
-            const otherEnd = otherStart + other.durataOre;
-            const sovrapposizione = candStart < otherEnd && candEnd > otherStart;
-            if (other.banchina === banchina && sovrapposizione) return true;
-            if (other.operatore === operatoreNome) {
-                if (sovrapposizione) return true;
-                if (candStart >= otherEnd && candStart - otherEnd < 11.0) return true;
-                if (candEnd <= otherStart && otherStart - candEnd < 11.0) return true;
-            }
-            return false;
-        });
-        if (slotNonPiuLibero) {
-            if (typeof Toastify !== 'undefined') {
-                Toastify({
-                    text: `Impossibile assegnare: ${banchina} o ${op.nome} non sono più liberi a quell'orario. Riprova con un'altra soluzione.`,
-                    duration: 5000,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: "#d32f2f"
-                }).showToast();
-            }
-            return;
-        }
-
-        const maxId = self.turni.length > 0 ? Math.max(...self.turni.map((t: any) => t.id).filter((id: number) => id < 1000000)) : 0;
-        const nextId = (maxId < 0 ? 0 : maxId) + 1;
-
-        const nuovoTurno = {
-            id: nextId,
-            nome: task.nome,
-            banchina: banchina,
-            startOra: startOra,
-            durataOre: task.durataOre,
-            operatore: operatoreNome,
-            ruoloRichiesto: task.competenzaRichiesta,
-            isDelayed: false,
-            requiresResolution: false,
-            ritardoOre: 0,
-            giorno: giorno,
-            etaGiorno: task.etaGiorno,
-            etaOra: task.etaOra,
-            etdGiorno: task.etdGiorno,
-            etdOra: task.etdOra
-        };
-
-        self.turni.push(nuovoTurno);
-        self.ricalcolaOreSettimanaliOperatori();
-        self.tasksDaAssegnare = self.tasksDaAssegnare.filter((t: any) => t.id !== task.id);
-
-        // Notifica
-        const tipoNotifica = op.reperibile ? 'SMS' : 'Email';
-        const dettaglioDest = op.reperibile ? 'Cellulare' : 'Email aziendale';
-        const msgNotifica = `Pianificazione turno per nave ${nuovoTurno.nome} assegnato a te al ${nuovoTurno.banchina} il giorno ${self.getNomeGiorno(nuovoTurno.giorno)} dalle ore ${self.fmtOra(nuovoTurno.startOra)} alle ${self.fmtOra(nuovoTurno.startOra + nuovoTurno.durataOre)}.`;
-
-        self.notificheSimulate.unshift({
-            id: Date.now() + 1,
-            destinatario: op.nome,
-            dettaglioDestinatario: dettaglioDest,
-            tipo: tipoNotifica,
-            messaggio: msgNotifica,
-            timestamp: new Date().toLocaleTimeString()
-        });
-
-        const giornoAssegnato = nuovoTurno.giorno;
-        self.selectedTask = null;
-        self.soluzioneTaskSuggerita = null;
-        self.saveState();
-
-        // Naviga al giorno del turno assegnato
-        self.selezionaGiorno(giornoAssegnato);
-
-        if (typeof Toastify !== 'undefined') {
-            Toastify({
-                text: `Task assegnato con successo a ${op.nome} (${self.getNomeGiorno(giornoAssegnato)})!`,
-                duration: 3000,
-                gravity: "top",
-                position: "right",
-                backgroundColor: "#2e7d32"
-            }).showToast();
-        }
-    }
-
-    IndexVueModel.prototype.selectTask = async function (this: IndexVueModel, task: any): Promise<void> {
-        if ((this as any).selectedTask === task) {
-            (this as any).selectedTask = null;
-            (this as any).soluzioneTaskSuggerita = null;
-            (this as any).soluzioneDSSSelezionataIndex = null;
-        } else {
-            (this as any).selectedTask = task;
-            (this as any).soluzioneTaskSuggerita = null;
-            (this as any).soluzioneDSSSelezionataIndex = null;
-            if (task) {
-                await this.caricaSoluzioneTaskSuggerita(task.id);
-            }
-        }
-    };
-
-    IndexVueModel.prototype.caricaSoluzioneTaskSuggerita = async function (this: IndexVueModel, taskId: number): Promise<void> {
-        try {
-            const payload = {
-                TaskId: taskId,
-                CurrentTurni: (this as any).turni
-            };
-            const response = await utilities.postJson('/Turni/CalcolaMigliorSoluzioneTask', payload);
-            if (response.ok) {
-                (this as any).soluzioneTaskSuggerita = await response.json();
-            } else {
-                (this as any).soluzioneTaskSuggerita = null;
-            }
-        } catch (e) {
-            console.error("Errore nel caricamento della soluzione del task dal DSS", e);
-            (this as any).soluzioneTaskSuggerita = null;
-        }
-    };
-
-    // Cerca un molo/orario liberi per assegnare il task all'operatore nel giorno che
-    // si sta visualizzando sul Gantt (a differenza di trovaSlotLiberoPerTask, che
-    // cerca nel giorno proprio del task per le alternative di backlog). Condivisa da
-    // assegnaTask() e dallo slot fantasma mostrato in hover.
-    function trovaSlotPerGiornoVisualizzato(vm: IndexVueModel, task: any, op: any, giorno: number): { banchina: string; orario: number } | null {
-        const self = vm as any;
-        const durata = task.durataOre;
-
-        const etaGiorno = typeof task.etaGiorno !== 'undefined' ? task.etaGiorno : giorno;
-        const etaOra = typeof task.etaOra !== 'undefined' ? task.etaOra : 7.0;
-        const etdGiorno = typeof task.etdGiorno !== 'undefined' ? task.etdGiorno : giorno;
-        const etdOra = typeof task.etdOra !== 'undefined' ? task.etdOra : 24.0;
-
-        const candidateBanchine: string[] = (op.abilitazioni && op.abilitazioni.length > 0)
-            ? op.abilitazioni
-            : self.banchine;
-
-        for (let ora = 7.0; ora <= 24.0 - durata; ora += 0.5) {
-            const candStart = giorno * 24.0 + ora;
-            const candEnd = candStart + durata;
-
-            const dayOffset = giorno - task.giorno;
-            if (dayOffset < 0 || dayOffset > 1) continue;
-
-            const shipEta = (etaGiorno + dayOffset) * 24.0 + etaOra;
-            const shipEtd = (etdGiorno + dayOffset) * 24.0 + etdOra;
-            if (candStart < shipEta || candEnd > shipEtd) continue;
-
-            let opConflict = false;
-            for (const other of self.turni.filter((o: any) => o.operatore === op.nome)) {
-                const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
-                const otherStart = other.giorno * 24.0 + oS;
-                const otherEnd = otherStart + other.durataOre;
-
-                // Overlap
-                if (candStart < otherEnd && candEnd > otherStart) {
-                    opConflict = true;
-                    break;
-                }
-                // 11h Rest gaps
-                if (candStart >= otherEnd && candStart - otherEnd < 11.0) {
-                    opConflict = true;
-                    break;
-                }
-                if (candEnd <= otherStart && otherStart - candEnd < 11.0) {
-                    opConflict = true;
-                    break;
-                }
-            }
-            if (opConflict) continue;
-
-            let foundBanchina = '';
-            for (const banchina of candidateBanchine) {
-                const dockOccupied = self.turni.some((other: any) => {
-                    if (other.banchina !== banchina) return false;
-                    const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
-                    const otherStart = other.giorno * 24.0 + oS;
-                    const otherEnd = otherStart + other.durataOre;
-                    return candStart < otherEnd && candEnd > otherStart;
-                });
-                if (!dockOccupied) {
-                    foundBanchina = banchina;
-                    break;
-                }
-            }
-
-            if (foundBanchina) {
-                return { banchina: foundBanchina, orario: ora };
-            }
-        }
-        return null;
-    }
-
-    IndexVueModel.prototype.assegnaTask = function (this: IndexVueModel, op: any): void {
+    /** Unico punto in cui si decide se un operatore può prendere il task selezionato:
+     *  null se può, altrimenti il motivo. Le due funzioni sotto ne derivano. */
+    IndexVueModel.prototype.motivoIncompatibilita = function (this: IndexVueModel, op: any): string | null {
         const self = this as any;
-        if (!self.selectedTask || this.isOperatoreIncompatibile(op)) return;
+        if (!self.selectedTask) return null;
 
-        const t = self.selectedTask;
-        const giorno = self.giornoSelezionato;
-        const slot = trovaSlotPerGiornoVisualizzato(this, t, op, giorno);
+        const competenzaRichiesta = self.selectedTask.competenzaRichiesta || self.selectedTask.ruoloRichiesto || 'Gruista';
 
-        if (!slot) {
-            if (typeof Toastify !== 'undefined') {
-                Toastify({
-                    text: `Nessuno slot valido trovato per ${op.nome} oggi nel rispetto di ETA/ETD, slittamento massimo e riposo obbligatorio.`,
-                    duration: 5000,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: "#d32f2f"
-                }).showToast();
-            }
-            return;
-        }
-
-        eseguiAssegnazioneTask(this, op.nome, slot.banchina, slot.orario, giorno);
+        if (!haCompetenza(op, competenzaRichiesta)) return `Serve un ${competenzaRichiesta}`;
+        if (patenteScaduta(op)) return 'Patente scaduta';
+        if (op.inRiposoObbligatorio) return 'In riposo obbligatorio';
+        return null;
     };
 
     IndexVueModel.prototype.isOperatoreIncompatibile = function (this: IndexVueModel, op: any): boolean {
-        const self = this as any;
-        if (!self.selectedTask) return false;
-
-        const competenzaRichiesta = self.selectedTask.competenzaRichiesta || self.selectedTask.ruoloRichiesto || 'Gruista';
-
-        // 1. Skill check
-        let haCompetenza = false;
-        if (op.competenze && Array.isArray(op.competenze)) {
-            haCompetenza = op.competenze.indexOf(competenzaRichiesta) !== -1;
-        } else if (op.ruolo) {
-            haCompetenza = op.ruolo === competenzaRichiesta;
-        }
-        if (!haCompetenza) return true;
-
-        // 2. Patente check
-        if (op.patenteValidaFinoAl) {
-            const scadenza = new Date(op.patenteValidaFinoAl);
-            const oggi = new Date();
-            if (scadenza < oggi) return true;
-        }
-
-        // 3. Riposo check
-        if (op.inRiposoObbligatorio) return true;
-
-        return false;
+        return this.motivoIncompatibilita(op) !== null;
     };
 
     IndexVueModel.prototype.getIncompatibilitaMotivo = function (this: IndexVueModel, op: any): string {
-        const self = this as any;
-        if (!self.selectedTask) return '';
-
-        const competenzaRichiesta = self.selectedTask.competenzaRichiesta || self.selectedTask.ruoloRichiesto || 'Gruista';
-
-        // 1. Skill check
-        let haCompetenza = false;
-        if (op.competenze && Array.isArray(op.competenze)) {
-            haCompetenza = op.competenze.indexOf(competenzaRichiesta) !== -1;
-        } else if (op.ruolo) {
-            haCompetenza = op.ruolo === competenzaRichiesta;
-        }
-        if (!haCompetenza) return 'Nessuna qualifica';
-
-        // 2. Patente check
-        if (op.patenteValidaFinoAl) {
-            const scadenza = new Date(op.patenteValidaFinoAl);
-            const oggi = new Date();
-            if (scadenza < oggi) return 'Patente scaduta';
-        }
-
-        // 3. Riposo check
-        if (op.inRiposoObbligatorio) return 'In riposo';
-
-        return '';
+        return this.motivoIncompatibilita(op) || '';
     };
 
-    IndexVueModel.prototype.getDettaglioConflittoOperatore = function (this: IndexVueModel, op: any): ConflittoOperatore {
-        const self = this as any;
-        if (!self.turnoInRitardo && !self.selectedTask) return { warnings: [], successes: [] };
-        const t = self.turnoInRitardo || self.selectedTask;
-        const nStart = self.turnoInRitardo ? self.orarioSelezioneRiassegnazione : (t.etaOra || 7.0);
+    // ---- Ricerca di uno slot libero ------------------------------------------
 
-        let warnings: ConflictWarning[] = [];
-        let successes: string[] = [];
-
-        // 1. Competenza check
-        const competenzaRichiesta = t.competenzaRichiesta || t.ruoloRichiesto || 'Gruista';
-        let haCompetenza = false;
-        if (op.competenze && Array.isArray(op.competenze)) {
-            haCompetenza = op.competenze.indexOf(competenzaRichiesta) !== -1;
-        } else if (op.ruolo) {
-            haCompetenza = op.ruolo === competenzaRichiesta;
-        }
-        if (haCompetenza) {
-            successes.push('competenza disponibile');
-        } else {
-            warnings.push('MANCA_QUALIFICA');
-        }
-
-        // 2. Patente check
-        if (op.patenteValidaFinoAl) {
-            const scadenza = new Date(op.patenteValidaFinoAl);
-            const oggi = new Date();
-            if (scadenza < oggi) {
-                warnings.push('PATENTE_NON_VALIDA');
-            }
-        }
-
-        // 3. Riposo check
-        if (op.inRiposoObbligatorio) {
-            warnings.push('RIPOSO_OBBLIGATORIO');
-        }
-
-        // 4. Ore check
-        const orePreviste = op.oreSettimanali + t.durataOre;
-        if (orePreviste > op.oreMassime) {
-            warnings.push('LIMITE_ORE_SUPERATO');
-        }
-
-        // 5. Abilitazione banchina check
-        const bSel = self.turnoInRitardo ? self.banchinaSelezione : (t.banchina || '');
-        if (bSel && op.abilitazioni && op.abilitazioni.length > 0 && !op.abilitazioni.includes(bSel)) {
-            warnings.push('NON_ABILITATO');
-        }
-
-        // 6. Time overlap and 11-hour rest period checks
-        const candStart = t.giorno * 24.0 + nStart;
-        const candEnd = candStart + t.durataOre;
-        let haRestConflitto = false;
-        let hasOverlap = false;
-
-        self.turni.forEach((other: any) => {
-            if (other.operatore !== op.nome || other.id === t.id) return;
-            const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
-            const otherStart = other.giorno * 24.0 + oS;
-            const otherEnd = otherStart + other.durataOre;
-
-            if (candStart < otherEnd && candEnd > otherStart) {
-                hasOverlap = true;
-            }
-            if (candStart >= otherEnd && candStart - otherEnd < 11.0) {
-                haRestConflitto = true;
-            }
-            if (candEnd <= otherStart && otherStart - candEnd < 11.0) {
-                haRestConflitto = true;
-            }
-        });
-
-        if (hasOverlap) {
-            warnings.push('SOVRAPPOSIZIONE_ORARIA');
-        }
-        if (haRestConflitto) {
-            warnings.push('RIPOSO_INSUFFICIENTE');
-        }
-
-        // Success checks if not warning
-        if (warnings.indexOf('RIPOSO_OBBLIGATORIO') === -1 && warnings.indexOf('RIPOSO_INSUFFICIENTE') === -1) {
-            successes.push('riposo sufficiente');
-        }
-        if (warnings.indexOf('SOVRAPPOSIZIONE_ORARIA') === -1) {
-            successes.push('disponibilità corretta');
-        }
-
-        return { warnings, successes };
-    };
-
-    IndexVueModel.prototype.formatDettaglioConflitto = function (this: IndexVueModel, conflitto: ConflittoOperatore): string {
-        const successPart = conflitto.successes.map(s => `✔ ${s}`).join(' | ');
-        const warningPart = conflitto.warnings
-            .map(w => `❌ ${CONFLICT_WARNING_LABELS[w]}`)
-            .join(' | ');
-
-        if (conflitto.warnings.length > 0) {
-            return (successPart ? successPart + ' — ' : '') + warningPart;
-        }
-        return successPart;
-    };
-
-    IndexVueModel.prototype.getOperatoreCompatibilityScore = function (this: IndexVueModel, op: any, task: any): number {
-        if (!task) return 100;
-        if (this.isOperatoreIncompatibile(op)) return 0;
-
-        let score = 100;
-        const conflitto = this.getDettaglioConflittoOperatore(op);
-        if (conflitto.warnings.indexOf('RIPOSO_OBBLIGATORIO') !== -1) return 0;
-        if (conflitto.warnings.indexOf('RIPOSO_INSUFFICIENTE') !== -1) return 0;
-        if (conflitto.warnings.indexOf('SOVRAPPOSIZIONE_ORARIA') !== -1) return 0;
-        if (conflitto.warnings.indexOf('LIMITE_ORE_SUPERATO') !== -1) score -= 30;
-        if (conflitto.warnings.indexOf('NON_ABILITATO') !== -1) score -= 20;
-
-        if (op.oreSettimanali + task.durataOre > op.oreMassime - 2) {
-            score -= 15;
-        }
-
-        return Math.max(0, score);
-    };
-
-    IndexVueModel.prototype.getResourceStats = function (this: IndexVueModel, ruolo: string): any {
-        const self = this as any;
-        const ops = self.operatori.filter((o: any) => o.ruolo === ruolo);
-        const occupatiNomi = new Set(self.turni.filter((t: any) => t.giorno === self.giornoSelezionato).map((t: any) => t.operatore));
-
-        let disponibili = 0;
-        let occupati = 0;
-        let reperibili = 0;
-
-        ops.forEach((op: any) => {
-            if (op.reperibile) {
-                reperibili++;
-            } else if (occupatiNomi.has(op.nome)) {
-                occupati++;
-            } else {
-                const hasValidLicense = this.getPatenteStatus(op) !== 'expired';
-                if (hasValidLicense && !op.inRiposoObbligatorio) {
-                    disponibili++;
-                }
-            }
-        });
-
-        return { disponibili, occupati, reperibili };
-    };
-
-    // Cerca un molo/orario davvero liberi per assegnare il task a questo operatore,
-    // nel giorno proprio del task (entro la sua finestra ETA/ETD). Usata dalle
-    // "Soluzioni B/C (Alternativa)" per evitare di suggerire un incastro che in
-    // realtà collide con un turno già presente sulla stessa banchina/operatore.
-    function trovaSlotLiberoPerTask(vm: IndexVueModel, task: any, op: any): { banchina: string; orario: number } | null {
+    /** Cerca molo e orario liberi per un operatore in un dato giorno, dentro la
+     *  finestra di attracco della nave. */
+    function trovaSlotLibero(vm: IndexVueModel, task: any, op: any, giorno: number): { banchina: string; orario: number } | null {
         const self = vm as any;
-        const giorno = task.giorno;
         const durata = task.durataOre;
-        const etaOra = typeof task.etaOra !== 'undefined' ? task.etaOra : 7.0;
-        const etdOra = typeof task.etdOra !== 'undefined' ? task.etdOra : 24.0;
 
-        const candidateBanchine: string[] = (op.abilitazioni && op.abilitazioni.length > 0)
+        // Slittamento massimo di un giorno rispetto al giorno proprio del task.
+        const scartoGiorni = giorno - task.giorno;
+        if (scartoGiorni < 0 || scartoGiorni > 1) return null;
+
+        // Finestra di attracco sull'asse assoluto Giorno*24 + Ora: può sfondare la
+        // mezzanotte, quindi non va mai calcolata come differenza di ore dello stesso giorno.
+        const etaNave = (task.etaGiorno ?? task.giorno) * 24.0 + (task.etaOra ?? ORA_INIZIO_GIORNATA);
+        const etdNave = (task.etdGiorno ?? task.giorno) * 24.0 + (task.etdOra ?? ORA_FINE_GIORNATA);
+
+        const banchineCandidate: string[] = (op.abilitazioni && op.abilitazioni.length > 0)
             ? op.abilitazioni
             : self.banchine;
 
-        const oraMax = Math.min(24.0, etdOra) - durata;
-        for (let ora = Math.max(7.0, etaOra); ora <= oraMax + 0.001; ora += 0.5) {
-            const candStart = giorno * 24.0 + ora;
-            const candEnd = candStart + durata;
+        for (let ora = ORA_INIZIO_GIORNATA; ora <= ORA_FINE_GIORNATA - durata + 0.001; ora += PASSO_RICERCA_ORE) {
+            const inizioCand = giorno * 24.0 + ora;
+            const fineCand = inizioCand + durata;
 
-            let opConflict = false;
-            for (const other of self.turni.filter((o: any) => o.operatore === op.nome)) {
-                const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
-                const otherStart = other.giorno * 24.0 + oS;
-                const otherEnd = otherStart + other.durataOre;
-                if (candStart < otherEnd && candEnd > otherStart) { opConflict = true; break; }
-                if (candStart >= otherEnd && candStart - otherEnd < 11.0) { opConflict = true; break; }
-                if (candEnd <= otherStart && otherStart - candEnd < 11.0) { opConflict = true; break; }
-            }
-            if (opConflict) continue;
+            if (inizioCand < etaNave || fineCand > etdNave) continue;
+            if (operatoreOccupato(op.nome, inizioCand, fineCand, self.turni)) continue;
 
-            for (const banchina of candidateBanchine) {
-                const dockOccupied = self.turni.some((other: any) => {
-                    if (other.banchina !== banchina || other.giorno !== giorno) return false;
-                    const oS = other.isDelayed ? other.startOra + other.ritardoOre : other.startOra;
-                    const otherStart = giorno * 24.0 + oS;
-                    const otherEnd = otherStart + other.durataOre;
-                    return candStart < otherEnd && candEnd > otherStart;
-                });
-                if (!dockOccupied) {
+            for (const banchina of banchineCandidate) {
+                if (!banchinaOccupata(banchina, inizioCand, fineCand, self.turni)) {
                     return { banchina, orario: ora };
                 }
             }
@@ -538,171 +124,490 @@ namespace PianificazioneTurni {
         return null;
     }
 
+    // ---- Selezione di un task e richiesta al DSS ------------------------------
+
+    IndexVueModel.prototype.selectTask = async function (this: IndexVueModel, task: any): Promise<void> {
+        const self = this as any;
+
+        if (self.selectedTask === task) {
+            self.selectedTask = null;
+            self.soluzioneTaskSuggerita = null;
+            self.soluzioneDSSSelezionataIndex = null;
+            self.caricamentoDSSTask = false;
+            self.problemaDSS = false;
+            self.mostraBloccanti = false;
+            return;
+        }
+
+        self.selectedTask = task;
+        self.soluzioneTaskSuggerita = null;
+        self.soluzioneDSSSelezionataIndex = null;
+        self.problemaDSS = false;
+        self.mostraBloccanti = false;
+
+        if (task) {
+            await this.caricaSoluzioneTaskSuggerita(task.id);
+        }
+    };
+
+    IndexVueModel.prototype.caricaSoluzioneTaskSuggerita = async function (this: IndexVueModel, taskId: number): Promise<void> {
+        const self = this as any;
+        self.caricamentoDSSTask = true;
+        self.problemaDSS = false;
+
+        const risposta = await inviaAlServer<{ trovata: boolean; alternativa: any }>(
+            '/Turni/CalcolaMigliorSoluzioneTask', { TaskId: taskId });
+
+        // La risposta può arrivare quando l'utente ha già cambiato selezione: va scartata,
+        // altrimenti la soluzione del task precedente verrebbe attribuita a quello corrente.
+        if (!self.selectedTask || self.selectedTask.id !== taskId) {
+            self.caricamentoDSSTask = false;
+            return;
+        }
+
+        if (!risposta.ok || !risposta.dati) {
+            // Il server non ha risposto: diverso dall'aver risposto che non ci sono
+            // alternative, e l'interfaccia deve dire l'una o l'altra cosa.
+            self.problemaDSS = true;
+            self.soluzioneTaskSuggerita = null;
+        } else {
+            self.problemaDSS = false;
+            self.soluzioneTaskSuggerita = risposta.dati.trovata ? risposta.dati.alternativa : null;
+        }
+
+        self.caricamentoDSSTask = false;
+    };
+
+    // ---- Quando il DSS non trova nulla ----------------------------------------
+    //
+    // "Nessuna alternativa" senza altro è una strada senza uscita: l'euristica 9 chiede
+    // di indicare in modo preciso il problema e di suggerire una via d'uscita. Qui si
+    // ricostruisce, persona per persona, il motivo per cui non è utilizzabile, e i turni
+    // che stanno occupando la finestra diventano il punto da cui ripartire.
+
+    /** Turno di `op` che si sovrappone alla finestra di attracco del task, se c'è. */
+    function turnoSovrapposto(vm: IndexVueModel, task: any, op: any): any {
+        const self = vm as any;
+        const etaNave = (task.etaGiorno ?? task.giorno) * 24.0 + (task.etaOra ?? ORA_INIZIO_GIORNATA);
+        const etdNave = (task.etdGiorno ?? task.giorno) * 24.0 + (task.etdOra ?? ORA_FINE_GIORNATA);
+
+        return (self.turni || [])
+            .filter((t: any) => t.operatore === op.nome)
+            .find((t: any) => siSovrappongono(etaNave, etdNave, inizioAssoluto(t), fineAssoluta(t))) || null;
+    }
+
+    Object.defineProperty(IndexVueModel.prototype, 'diagnosiIndisponibilita', {
+        enumerable: true,
+        configurable: true,
+        get: function (this: IndexVueModel): any[] {
+            const self = this as any;
+            const task = self.selectedTask;
+            if (!task) return [];
+
+            const competenzaRichiesta = task.competenzaRichiesta || task.ruoloRichiesto || 'Gruista';
+
+            return (self.operatori || [])
+                .filter((op: any) => haCompetenza(op, competenzaRichiesta))
+                .map((op: any) => {
+                    if (patenteScaduta(op)) {
+                        return { nome: op.nome, motivo: `ha la patente scaduta il ${this.getPatenteFormatted(op)}`, turno: null };
+                    }
+                    if (op.inRiposoObbligatorio) {
+                        return { nome: op.nome, motivo: 'è in riposo obbligatorio', turno: null };
+                    }
+
+                    const bloccante = turnoSovrapposto(this, task, op);
+                    if (bloccante) {
+                        return {
+                            nome: op.nome,
+                            motivo: `è su ${bloccante.nome} dalle ${this.fmtOra(bloccante.startOra)} alle ${this.fmtOra(bloccante.startOra + bloccante.durataOre)}`,
+                            turno: bloccante
+                        };
+                    }
+
+                    return { nome: op.nome, motivo: 'non ha una banchina libera dentro la finestra della nave', turno: null };
+                });
+        }
+    });
+
+    /** I turni citati nella diagnosi: sono quelli da spostare o annullare per liberare
+     *  la finestra, quindi vanno ritrovati sul tabellone. */
+    Object.defineProperty(IndexVueModel.prototype, 'turniCheBloccano', {
+        enumerable: true,
+        configurable: true,
+        get: function (this: IndexVueModel): number[] {
+            return (this as any).diagnosiIndisponibilita
+                .filter((d: any) => d.turno)
+                .map((d: any) => d.turno.id);
+        }
+    });
+
+    IndexVueModel.prototype.evidenziaBloccanti = function (this: IndexVueModel): void {
+        const self = this as any;
+        self.mostraBloccanti = !self.mostraBloccanti;
+        if (!self.mostraBloccanti) return;
+
+        const quanti = self.turniCheBloccano.length;
+        mostraMessaggio('informazione', quanti > 0
+            ? `Segnati sul tabellone ${quanti === 1 ? 'il turno che occupa' : 'i ' + quanti + ' turni che occupano'} la finestra: spostane o annullane uno per liberare lo spazio.`
+            : 'Nessun turno sta occupando la finestra: il problema è la finestra stessa, troppo stretta per la durata della lavorazione.');
+
+        const tabellone = document.querySelector('.gantt-container');
+        if (tabellone) tabellone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    // ---- Assegnazione ---------------------------------------------------------
+
+    /** Chiede al server di assegnare il task: la validazione è la sua, qui si mostra
+     *  solo il messaggio che torna indietro. */
+    async function assegnaSulServer(vm: IndexVueModel, operatoreNome: string, banchina: string, startOra: number, giorno: number): Promise<void> {
+        const self = vm as any;
+        const task = self.selectedTask;
+        if (!task) return;
+
+        const esito = await self.inviaComando('/Turni/AssegnaTask', {
+            TaskId: task.id,
+            Operatore: operatoreNome,
+            Banchina: banchina,
+            StartOra: startOra,
+            Giorno: giorno
+        });
+
+        if (!esito || !esito.riuscita) return;
+
+        // applicaStato() ha già tolto il task dal backlog e azzerato la selezione.
+        self.selezionaGiorno(giorno);
+
+        const durata = task.durataOre;
+        vm.inviaNotificaSimulata(
+            'EMAIL', operatoreNome,
+            `Pianificazione turno per la nave ${task.nome} al ${banchina}, ${self.getNomeGiorno(giorno)} dalle ${self.fmtOra(startOra)} alle ${self.fmtOra(startOra + durata)}.`);
+    }
+
+    IndexVueModel.prototype.assegnaTask = async function (this: IndexVueModel, op: any): Promise<void> {
+        const self = this as any;
+        const motivo = this.motivoIncompatibilita(op);
+        if (!self.selectedTask || motivo !== null) return;
+
+        const giorno = self.giornoSelezionato;
+        const slot = trovaSlotLibero(this, self.selectedTask, op, giorno);
+
+        if (!slot) {
+            mostraMessaggio('attenzione',
+                `${op.nome} non ha un molo libero ${self.getNomeGiorno(giorno).toLowerCase()} dentro la finestra di attracco della nave. Prova un altro giorno o un altro operatore.`);
+            return;
+        }
+
+        await assegnaSulServer(this, op.nome, slot.banchina, slot.orario, giorno);
+    };
+
+    IndexVueModel.prototype.applicaSoluzioneDSSSelezionata = async function (this: IndexVueModel, sol: any): Promise<void> {
+        // `sol` può essere undefined se la lista si è ricalcolata e accorciata dopo la scelta.
+        if (!(this as any).selectedTask || !sol) return;
+        await assegnaSulServer(this, sol.operatore, sol.molo, sol.orario, sol.giorno);
+    };
+
+    // ---- Dettaglio dei conflitti ----------------------------------------------
+
+    IndexVueModel.prototype.getDettaglioConflittoOperatore = function (this: IndexVueModel, op: any): ConflittoOperatore {
+        const self = this as any;
+        if (!self.turnoInRitardo && !self.selectedTask) return { warnings: [], successes: [] };
+
+        const t = self.turnoInRitardo || self.selectedTask;
+
+        // Per un turno in riassegnazione l'orario è quello scelto nel modale; per un task
+        // del backlog è l'ETA della nave. `??` e non `||`: un ETA a mezzanotte vale 0.
+        const oraInizio = self.turnoInRitardo
+            ? self.orarioSelezioneRiassegnazione
+            : (t.etaOra ?? ORA_INIZIO_GIORNATA);
+
+        const warnings: ConflictWarning[] = [];
+        const successes: string[] = [];
+
+        const competenzaRichiesta = t.competenzaRichiesta || t.ruoloRichiesto || 'Gruista';
+        if (haCompetenza(op, competenzaRichiesta)) {
+            successes.push('competenza disponibile');
+        } else {
+            warnings.push('MANCA_QUALIFICA');
+        }
+
+        if (patenteScaduta(op)) warnings.push('PATENTE_NON_VALIDA');
+        if (op.inRiposoObbligatorio) warnings.push('RIPOSO_OBBLIGATORIO');
+        if (op.oreSettimanali + t.durataOre > op.oreMassime) warnings.push('LIMITE_ORE_SUPERATO');
+
+        const banchina = self.turnoInRitardo ? self.banchinaSelezione : (t.banchina || '');
+        if (banchina && !abilitatoAllaBanchina(op, banchina)) warnings.push('NON_ABILITATO');
+
+        // Si esclude solo il turno che si sta spostando: task e turni hanno id indipendenti
+        // che partono entrambi da 1, quindi l'id di un task non identifica nessun turno.
+        const idDaEscludere = self.turnoInRitardo ? t.id : null;
+
+        const inizioCand = t.giorno * 24.0 + oraInizio;
+        const fineCand = inizioCand + t.durataOre;
+
+        let sovrapposto = false;
+        let riposoCorto = false;
+
+        for (const altro of self.turni) {
+            if (altro.operatore !== op.nome) continue;
+            if (idDaEscludere !== null && altro.id === idDaEscludere) continue;
+
+            const inizioAltro = inizioAssoluto(altro);
+            const fineAltro = fineAssoluta(altro);
+
+            if (siSovrappongono(inizioCand, fineCand, inizioAltro, fineAltro)) sovrapposto = true;
+            if (riposoInsufficiente(inizioCand, fineCand, inizioAltro, fineAltro)) riposoCorto = true;
+        }
+
+        if (sovrapposto) warnings.push('SOVRAPPOSIZIONE_ORARIA');
+        if (riposoCorto) warnings.push('RIPOSO_INSUFFICIENTE');
+
+        if (warnings.indexOf('RIPOSO_OBBLIGATORIO') === -1 && warnings.indexOf('RIPOSO_INSUFFICIENTE') === -1) {
+            successes.push('riposo sufficiente');
+        }
+        if (!sovrapposto) {
+            successes.push('disponibilità corretta');
+        }
+
+        return { warnings, successes };
+    };
+
+    IndexVueModel.prototype.formatDettaglioConflitto = function (this: IndexVueModel, conflitto: ConflittoOperatore): string {
+        const parteOk = conflitto.successes.map(s => `✔ ${s}`).join(' · ');
+        const parteKo = conflitto.warnings.map(w => `✖ ${CONFLICT_WARNING_LABELS[w]}`).join(' · ');
+
+        if (conflitto.warnings.length > 0) {
+            return (parteOk ? parteOk + ' — ' : '') + parteKo;
+        }
+        return parteOk;
+    };
+
+    /** Stessa informazione della riga di ✔/✖, ma a parole: quella visiva è aria-hidden. */
+    IndexVueModel.prototype.descriviConflittoPerLettoreSchermo = function (this: IndexVueModel, op: any): string {
+        const conflitto = this.getDettaglioConflittoOperatore(op);
+        const parti: string[] = [];
+
+        if (conflitto.successes.length > 0) {
+            parti.push('Requisiti soddisfatti: ' + conflitto.successes.join(', ') + '.');
+        }
+        if (conflitto.warnings.length > 0) {
+            parti.push('Criticità: ' + conflitto.warnings.map(w => CONFLICT_WARNING_LABELS[w]).join(', ') + '.');
+        }
+        return parti.join(' ');
+    };
+
+    IndexVueModel.prototype.getOperatoreCompatibilityScore = function (this: IndexVueModel, op: any, task: any): number {
+        const riferimento = task || (this as any).selectedTask;
+        if (!riferimento) return 100;
+        if (this.isOperatoreIncompatibile(op)) return 0;
+
+        const conflitto = this.getDettaglioConflittoOperatore(op);
+
+        // Vincoli che rendono l'operatore inutilizzabile, non solo meno adatto.
+        if (conflitto.warnings.indexOf('RIPOSO_OBBLIGATORIO') !== -1) return 0;
+        if (conflitto.warnings.indexOf('RIPOSO_INSUFFICIENTE') !== -1) return 0;
+        if (conflitto.warnings.indexOf('SOVRAPPOSIZIONE_ORARIA') !== -1) return 0;
+
+        let punteggio = 100;
+        if (conflitto.warnings.indexOf('LIMITE_ORE_SUPERATO') !== -1) punteggio -= 30;
+        if (conflitto.warnings.indexOf('NON_ABILITATO') !== -1) punteggio -= 20;
+
+        // Quasi al limite contrattuale: utilizzabile, ma non è la scelta migliore.
+        if (op.oreSettimanali + riferimento.durataOre > op.oreMassime - 2) punteggio -= 15;
+
+        return Math.max(0, punteggio);
+    };
+
+    IndexVueModel.prototype.getResourceStats = function (this: IndexVueModel, ruolo: string): any {
+        const self = this as any;
+        const ops = self.operatori.filter((o: any) => o.ruolo === ruolo);
+        const nomiOccupati = new Set(
+            self.turni.filter((t: any) => t.giorno === self.giornoSelezionato).map((t: any) => t.operatore));
+
+        let disponibili = 0;
+        let occupati = 0;
+        let reperibili = 0;
+
+        // L'ordine dei rami conta: chi ha già un turno nel giorno è occupato anche se
+        // reperibile, e chi non è idoneo non entra in nessuno dei conteggi.
+        ops.forEach((op: any) => {
+            const idoneo = !patenteScaduta(op) && !op.inRiposoObbligatorio;
+            if (nomiOccupati.has(op.nome)) occupati++;
+            else if (!idoneo) { /* né disponibile né attivabile */ }
+            else if (op.reperibile) reperibili++;
+            else disponibili++;
+        });
+
+        return { disponibili, occupati, reperibili };
+    };
+
+    // ---- Le tre soluzioni proposte al coordinatore -----------------------------
+
     Object.defineProperty(IndexVueModel.prototype, 'soluzioniDSSTask', {
         enumerable: true,
         configurable: true,
         get: function (this: IndexVueModel): any[] {
             const self = this as any;
             if (!self.selectedTask) return [];
-            const list: any[] = [];
-            const t = self.selectedTask;
 
-            // Opzione A: Soluzione Ottimale dal Backend
+            const task = self.selectedTask;
+            const soluzioni: any[] = [];
+
+            // Soluzione A: quella calcolata dal motore server-side.
             if (self.soluzioneTaskSuggerita) {
-                const sol = self.soluzioneTaskSuggerita;
-                const op = self.operatori.find((o: any) => o.nome === sol.operatoreSuggerito);
-                const isChiamata = op ? !!op.reperibile : false;
-
-                const vantaggi: string[] = [];
-                const compromessi: string[] = [];
-                if (!isChiamata) {
-                    vantaggi.push("Minor costo (standard)");
-                } else {
-                    compromessi.push("Costo maggiore (reperibile)");
-                }
-                if (sol.motivoScelta) {
-                    vantaggi.push(`Criterio: ${sol.motivoScelta}`);
-                }
-                if (op && op.abilitazioni && (op.abilitazioni.length === 0 || op.abilitazioni.includes(sol.moloSuggerito))) {
-                    vantaggi.push("Molo abilitato");
-                } else {
-                    compromessi.push("Deroga abilitazione molo");
-                }
-
-                list.push({
-                    titolo: "Soluzione A (Ottimale)",
-                    molo: sol.moloSuggerito,
-                    orario: sol.orarioSuggerito,
-                    operatore: sol.operatoreSuggerito,
-                    giorno: sol.giornoSuggerito,
-                    score: 95,
-                    vantaggi: vantaggi.length > 0 ? vantaggi : ["Nessun conflitto"],
-                    compromessi: compromessi.length > 0 ? compromessi : ["Nessuno"]
-                });
+                soluzioni.push(costruisciSoluzioneOttimale(self, task, self.soluzioneTaskSuggerita));
             }
 
-            // Opzioni B e C: Operatori dello stesso ruolo ordinati per compatibilità
-            const competenzaRichiesta = t.competenzaRichiesta || t.ruoloRichiesto || 'Gruista';
-            const opsMolt = self.operatori.filter((op: any) => {
-                if (op.ruolo !== competenzaRichiesta) return false;
-                if (self.soluzioneTaskSuggerita && op.nome === self.soluzioneTaskSuggerita.operatoreSuggerito) return false;
-                return true;
-            });
+            // Soluzioni successive: gli altri operatori dello stesso ruolo per compatibilità
+            // decrescente, scartando chi non ha uno slot libero.
+            // Stesso filtro che il comando applica sul server: patente scaduta e riposo
+            // obbligatorio escludono l'operatore, quindi non deve comparire fra le proposte.
+            const alternativi = self.operatori
+                .filter((op: any) => !self.isOperatoreIncompatibile(op))
+                .filter((op: any) => !self.soluzioneTaskSuggerita || op.nome !== self.soluzioneTaskSuggerita.operatoreSuggerito)
+                .map((op: any) => ({ op, score: this.getOperatoreCompatibilityScore(op, task) }))
+                .sort((a: any, b: any) => b.score - a.score);
 
-            // Calcoliamo e ordiniamo per score decrescente
-            const opsConScore = opsMolt.map((op: any) => {
-                const score = this.getOperatoreCompatibilityScore(op, t);
-                return { op, score };
-            });
+            const MAX_SOLUZIONI = 3;
+            for (const candidato of alternativi) {
+                if (soluzioni.length >= MAX_SOLUZIONI) break;
 
-            opsConScore.sort((a: any, b: any) => b.score - a.score);
-
-            // Prendiamo le migliori alternative per riempire fino a 3 soluzioni in totale.
-            // Ogni candidato deve avere un molo/orario davvero liberi: altrimenti si scarta
-            // (niente suggerimenti che poi, applicati, creano un turno in collisione).
-            for (const item of opsConScore) {
-                if (list.length >= 3) break;
-                const op = item.op;
-                const score = item.score;
-
-                const slot = trovaSlotLiberoPerTask(this, t, op);
+                const slot = trovaSlotLibero(this, task, candidato.op, task.giorno);
                 if (!slot) continue;
 
-                const isChiamata = !!op.reperibile;
-                const vantaggi: string[] = [];
-                const compromessi: string[] = [];
-
-                if (!isChiamata) {
-                    vantaggi.push("Minor costo (standard)");
-                } else {
-                    compromessi.push("Costo maggiore (reperibile)");
-                }
-
-                if (op.abilitazioni && (op.abilitazioni.length === 0 || op.abilitazioni.includes(slot.banchina))) {
-                    vantaggi.push("Molo abilitato");
-                } else {
-                    compromessi.push("Non abilitato al molo");
-                }
-
-                if (op.oreSettimanali + t.durataOre > op.oreMassime) {
-                    compromessi.push("Superamento ore massime");
-                } else {
-                    vantaggi.push("Ore residue sufficienti");
-                }
-
-                if (score === 0) {
-                    compromessi.push("Violazione vincoli");
-                }
-
-                list.push({
-                    titolo: `Soluzione ${String.fromCharCode(65 + list.length)} (Alternativa)`,
-                    molo: slot.banchina,
-                    orario: slot.orario,
-                    operatore: op.nome,
-                    giorno: t.giorno,
-                    score: score,
-                    vantaggi: vantaggi.length > 0 ? vantaggi : ["Nessun conflitto"],
-                    compromessi: compromessi.length > 0 ? compromessi : ["Nessuno"]
-                });
+                soluzioni.push(costruisciSoluzioneAlternativa(
+                    task, candidato.op, candidato.score, slot, soluzioni.length));
             }
 
-            return list;
+            return soluzioni;
         }
     });
 
-    IndexVueModel.prototype.applicaSoluzioneDSSSelezionata = function (this: IndexVueModel, sol: any): void {
-        if (!(this as any).selectedTask) return;
-        eseguiAssegnazioneTask(this, sol.operatore, sol.molo, sol.orario, sol.giorno);
-    };
+    function costruisciSoluzioneOttimale(self: any, task: any, sol: any): any {
+        const op = self.operatori.find((o: any) => o.nome === sol.operatoreSuggerito);
+        const vantaggi: string[] = [];
+        const compromessi: string[] = [];
+
+        if (op && op.reperibile) compromessi.push('Costo maggiore (reperibile)');
+        else vantaggi.push('Minor costo (operatore di linea)');
+
+        if (sol.motivoScelta) vantaggi.push(`Criterio: ${sol.motivoScelta}`);
+
+        if (abilitatoAllaBanchina(op, sol.moloSuggerito)) vantaggi.push('Abilitato al molo');
+        else compromessi.push('Deroga sull\'abilitazione al molo');
+
+        return {
+            titolo: 'Soluzione A (consigliata dal sistema)',
+            molo: sol.moloSuggerito,
+            orario: sol.orarioSuggerito,
+            operatore: sol.operatoreSuggerito,
+            giorno: sol.giornoSuggerito,
+            // Stesso calcolo della card dell'operatore: un punteggio fisso qui faceva
+            // leggere due numeri diversi per la stessa persona.
+            score: op ? self.getOperatoreCompatibilityScore(op, task) : 100,
+            consigliata: true,
+            vantaggi: vantaggi.length > 0 ? vantaggi : ['Nessun conflitto'],
+            compromessi: compromessi
+        };
+    }
+
+    function costruisciSoluzioneAlternativa(task: any, op: any, score: number, slot: any, indice: number): any {
+        const vantaggi: string[] = [];
+        const compromessi: string[] = [];
+
+        if (op.reperibile) compromessi.push('Costo maggiore (reperibile)');
+        else vantaggi.push('Minor costo (operatore di linea)');
+
+        if (abilitatoAllaBanchina(op, slot.banchina)) vantaggi.push('Abilitato al molo');
+        else compromessi.push('Non abilitato a questo molo');
+
+        if (op.oreSettimanali + task.durataOre > op.oreMassime) compromessi.push('Supera le ore contrattuali');
+        else vantaggi.push('Ore residue sufficienti');
+
+        if (score === 0) compromessi.push('Viola un vincolo: da validare a mano');
+
+        return {
+            titolo: `Soluzione ${String.fromCharCode(65 + indice)} (alternativa)`,
+            molo: slot.banchina,
+            orario: slot.orario,
+            operatore: op.nome,
+            giorno: task.giorno,
+            score: score,
+            consigliata: false,
+            vantaggi: vantaggi.length > 0 ? vantaggi : ['Nessun conflitto'],
+            compromessi: compromessi
+        };
+    }
+
+    // ---- Supporto visivo sul Gantt --------------------------------------------
 
     IndexVueModel.prototype.getTaskDock = function (this: IndexVueModel, task: any): string {
         if (!task) return 'Da assegnare';
-        return task.banchina || 'Molo preferenziale';
+        return task.banchina || 'Molo da definire';
     };
 
-    // Supporto visivo per l'incastro: la finestra ETA/ETD del task selezionato,
-    // disegnata come banda sul Gantt (solo se ricade nel giorno visualizzato).
     IndexVueModel.prototype.isTaskSelezionatoVisibileOggi = function (this: IndexVueModel): boolean {
         const self = this as any;
         return !!self.selectedTask && self.selectedTask.giorno === self.giornoSelezionato;
     };
 
+    /** Porzione della finestra ETA/ETD che cade nel giorno visualizzato, in ore locali.
+     *  La finestra vive sull'asse assoluto e può sfondare la mezzanotte. */
+    function finestraTaskSulGiornoVisualizzato(vm: IndexVueModel): { inizio: number; fine: number } | null {
+        const self = vm as any;
+        const t = self.selectedTask;
+        if (!t) return null;
+
+        const etaAssoluto = (t.etaGiorno ?? t.giorno) * 24.0 + (t.etaOra ?? ORA_INIZIO_GIORNATA);
+        const etdAssoluto = (t.etdGiorno ?? t.giorno) * 24.0 + (t.etdOra ?? ORA_FINE_GIORNATA);
+
+        const offsetGiorno = self.giornoSelezionato * 24.0;
+        const inizio = Math.max(self.orarioInizio, etaAssoluto - offsetGiorno);
+        const fine = Math.min(self.orarioFine, etdAssoluto - offsetGiorno);
+
+        return fine > inizio ? { inizio, fine } : null;
+    }
+
     IndexVueModel.prototype.getTaskWindowLeft = function (this: IndexVueModel): string {
-        const t = (this as any).selectedTask;
-        if (!t) return '0%';
-        return this.blockLeft({ startOra: t.etaOra, isDelayed: false, ritardoOre: 0 });
+        const f = finestraTaskSulGiornoVisualizzato(this);
+        if (!f) return '0%';
+        return this.blockLeft({ startOra: f.inizio, giorno: (this as any).giornoSelezionato, isDelayed: false, ritardoOre: 0 });
     };
 
     IndexVueModel.prototype.getTaskWindowWidth = function (this: IndexVueModel): string {
-        const t = (this as any).selectedTask;
-        if (!t) return '0%';
-        return this.blockWidth({ durataOre: t.etdOra - t.etaOra });
+        const f = finestraTaskSulGiornoVisualizzato(this);
+        if (!f) return '0%';
+        return this.blockWidth({ durataOre: f.fine - f.inizio });
     };
 
-    // Slot "fantasma": mentre si passa il mouse su un operatore compatibile con il
-    // task selezionato, calcola dove finirebbe il turno se lo si assegnasse ora
-    // (stessa ricerca di assegnaTask, senza scrivere nulla) per mostrare un blocco
-    // tratteggiato cliccabile sul Gantt del giorno visualizzato.
+    /** Anteprima di dove finirebbe il turno per l'operatore sotto il mouse o col focus:
+     *  stessa ricerca di assegnaTask, senza scrivere nulla. */
     Object.defineProperty(IndexVueModel.prototype, 'slotFantasma', {
         enumerable: true,
         configurable: true,
         get: function (this: IndexVueModel): { banchina: string; orario: number; operatoreNome: string } | null {
             const self = this as any;
-            if (!self.selectedTask || !self.hoveredOperatoreNome) return null;
-            const op = self.operatori.find((o: any) => o.nome === self.hoveredOperatoreNome);
+            const nome = self.operatoreInAnteprima;
+            if (!self.selectedTask || !nome) return null;
+
+            const op = self.operatori.find((o: any) => o.nome === nome);
             if (!op || this.isOperatoreIncompatibile(op)) return null;
-            const slot = trovaSlotPerGiornoVisualizzato(this, self.selectedTask, op, self.giornoSelezionato);
+
+            const slot = trovaSlotLibero(this, self.selectedTask, op, self.giornoSelezionato);
             if (!slot) return null;
+
             return { banchina: slot.banchina, orario: slot.orario, operatoreNome: op.nome };
         }
     });
 
-    IndexVueModel.prototype.assegnaSlotFantasma = function (this: IndexVueModel): void {
+    IndexVueModel.prototype.assegnaSlotFantasma = async function (this: IndexVueModel): Promise<void> {
         const self = this as any;
         const slot = this.slotFantasma;
         if (!slot) return;
+
         const op = self.operatori.find((o: any) => o.nome === slot.operatoreNome);
         if (!op) return;
-        this.assegnaTask(op);
+
+        await this.assegnaTask(op);
     };
 }

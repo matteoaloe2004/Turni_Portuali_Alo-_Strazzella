@@ -1,193 +1,149 @@
-// Simulazione emergenze/ritardi e registro notifiche (tab "Simulazioni &
-// Emergenze" e "Registro Eventi"): non fa parte della maschera di lavoro
-// principale, serve per dimostrare dal vivo come il DSS risolve un conflitto.
-// Va caricato dopo Index.ts — vedi i tag <script> in Index.cshtml.
+// Simulazione emergenze e registro delle comunicazioni agli operatori (tab "Simulazioni
+// & Emergenze" e "Registro Eventi"), fuori dalla maschera di lavoro principale.
+// Va caricato dopo Index.Regole.ts e Index.ts.
 namespace PianificazioneTurni {
 
     export interface IndexVueModel {
         getEmergenzaGiornoNome(): string;
-        risolviEmergenza(): void;
-        causaRitardoCasuale(): void;
-        startDemoTimer(): void;
-        showDemoToast(message: string): void;
+        risolviEmergenza(): Promise<void>;
+        simulaRitardoNave(): Promise<void>;
+        chiediRipristinoPianificazione(): void;
+        ripristinaPianificazione(): Promise<void>;
+        annullaRipristino(): void;
         inviaNotificaSimulata(tipo: 'SMS' | 'EMAIL', operatoreNome: string, messaggio: string): void;
+        chiediSvuotamentoRegistro(): void;
         svuotaNotifiche(): void;
+        annullaSvuotamentoRegistro(): void;
+        readonly turniDaRisolvere: any[];
     }
+
+    /** Quante comunicazioni tenere nel registro prima di scartare le più vecchie. */
+    const MAX_NOTIFICHE_IN_REGISTRO = 10;
+
+    Object.defineProperty(IndexVueModel.prototype, 'turniDaRisolvere', {
+        enumerable: true,
+        configurable: true,
+        get: function (this: IndexVueModel): any[] {
+            return (this as any).turni.filter((t: any) => t.isDelayed || t.requiresResolution);
+        }
+    });
 
     IndexVueModel.prototype.getEmergenzaGiornoNome = function (this: IndexVueModel): string {
         const self = this as any;
-        if (!self.turnoInRitardo) return '';
-        const gObj = self.giorniSettimana.find((g: any) => g.index === self.turnoInRitardo.giorno);
-        return gObj ? `${gObj.nome} (${gObj.dataStr})` : 'Oggi';
+        const daRisolvere = this.turniDaRisolvere;
+        if (daRisolvere.length === 0) return '';
+
+        const giorno = self.giorniSettimana.find((g: any) => g.index === daRisolvere[0].giorno);
+        return giorno ? `${giorno.nome} (${giorno.dataStr})` : 'Oggi';
     };
 
-    IndexVueModel.prototype.risolviEmergenza = function (this: IndexVueModel): void {
+    /** Porta il coordinatore direttamente sul primo turno da sistemare. */
+    IndexVueModel.prototype.risolviEmergenza = async function (this: IndexVueModel): Promise<void> {
         const self = this as any;
-        if (self.turnoInRitardo) {
-            self.selezionaGiorno(self.turnoInRitardo.giorno);
-            this.apriModale(self.turnoInRitardo);
-        }
+        const daRisolvere = this.turniDaRisolvere;
+        if (daRisolvere.length === 0) return;
+
+        const turno = daRisolvere[0];
+        self.selezionaGiorno(turno.giorno);
+        await this.apriModale(turno);
     };
 
-    IndexVueModel.prototype.causaRitardoCasuale = function (this: IndexVueModel): void {
+    /** Il ritardo lo applica il server: l'emergenza deve valere per tutti i coordinatori
+     *  collegati, non solo per chi ha premuto il pulsante. */
+    IndexVueModel.prototype.simulaRitardoNave = async function (this: IndexVueModel): Promise<void> {
         const self = this as any;
-        if (self.emergenzaAttiva) {
-            if (typeof Toastify !== 'undefined') {
-                Toastify({
-                    text: "[!] C'è già un'emergenza attiva. Risolvila prima di causarne un'altra.",
-                    duration: 3000, gravity: 'top', position: 'right',
-                    style: { background: "#ff9800" }
-                }).showToast();
-            }
-            return;
-        }
+        const esito = await self.inviaComando('/Turni/SimulaRitardo', {});
+        if (!esito || !esito.riuscita || !esito.turnoId) return;
 
-        const currentDay = Number(self.giornoSelezionato || 0);
+        const turno = self.turni.find((t: any) => t.id === esito.turnoId);
+        if (!turno) return;
 
-        // Seleziona una nave a caso da qualsiasi giorno della settimana
-        let turniCandidati = self.turni.filter((t: any) => !t.isDelayed);
+        self.selezionaGiorno(turno.giorno);
+        self.activeTab = 'pianificazione';
+        self.salvaPreferenze();
 
-        if (turniCandidati.length === 0) {
-            if (typeof Toastify !== 'undefined') {
-                Toastify({
-                    text: "Nessun turno disponibile per causare un ritardo.",
-                    duration: 3000, gravity: 'top', position: 'right',
-                    style: { background: "#ff9800" }
-                }).showToast();
-            }
-            return;
-        }
-
-        const randIndex = Math.floor(Math.random() * turniCandidati.length);
-        const turno = turniCandidati[randIndex];
-
-        const ritardiDisponibili = [1.5, 2, 2.5];
-        const randRitardo = ritardiDisponibili[Math.floor(Math.random() * ritardiDisponibili.length)];
-
-        turno.isDelayed = true;
-        turno.requiresResolution = true;
-        turno.ritardoOre = randRitardo;
-
-        self.turnoInRitardo = turno;
-        self.emergenzaAttiva = true;
-
-        // Forza l'aggiornamento reattivo dell'array turni in Vue
-        self.turni = [...self.turni];
-
-        // Invia notifica all'operatore sul ritardo della nave
-        const msgSms = `ATTENZIONE [Porto]: Il turno del giorno ${self.getNomeGiorno(turno.giorno)} per la nave ${turno.nome} ha subito un ritardo di ${self.fmtDurata(randRitardo)}. Verifica gli aggiornamenti.`;
-        this.inviaNotificaSimulata('SMS', turno.operatore, msgSms);
-
-        if (Number(turno.giorno) !== currentDay) {
-            self.selezionaGiorno(turno.giorno);
-        } else {
-            self.saveState();
-        }
-
-        if (typeof Toastify !== 'undefined') {
-            Toastify({
-                text: `[!] EMERGENZA: La nave ${turno.nome} è in ritardo di ${self.fmtDurata(randRitardo)}!`,
-                duration: 5000, gravity: 'top', position: 'right',
-                style: { background: "#dc3545" }
-            }).showToast();
-        }
+        this.inviaNotificaSimulata('SMS', turno.operatore,
+            `La nave ${turno.nome} del ${self.getNomeGiorno(turno.giorno)} arriverà con ${self.fmtDurata(turno.ritardoOre)} di ritardo. Attendi il nuovo orario.`);
     };
 
-    // Non richiamato da mounted() né da alcun elemento del template: iniettava un
-    // ritardo casuale ogni 25s in automatico, cosa che contraddiceva la richiesta del
-    // prof di una maschera di lavoro e non di una dashboard con allerte spontanee.
-    // Tenuto per un eventuale uso manuale futuro, non per abitudine.
-    IndexVueModel.prototype.startDemoTimer = function (this: IndexVueModel): void {
+    // ---- Ripristino dei dati iniziali -------------------------------------------
+    //
+    // Azione distruttiva: cancella tutta la pianificazione, quindi passa da una conferma.
+
+    IndexVueModel.prototype.chiediRipristinoPianificazione = function (this: IndexVueModel): void {
+        (this as any).confermaRipristinoAperta = true;
+    };
+
+    IndexVueModel.prototype.annullaRipristino = function (this: IndexVueModel): void {
+        (this as any).confermaRipristinoAperta = false;
+    };
+
+    IndexVueModel.prototype.ripristinaPianificazione = async function (this: IndexVueModel): Promise<void> {
         const self = this as any;
-        const INTERVAL_MS = 25000; // 25 secondi
-        setInterval(() => {
-            const anyDelayed = self.turni.some((t: any) => t.isDelayed);
-            if (anyDelayed) return;
+        self.confermaRipristinoAperta = false;
 
-            let candidates = self.turni.filter((t: any) => !t.isDelayed);
-            if (candidates.length === 0) return;
+        const esito = await self.inviaComando('/Turni/RipristinaPianificazione', {});
+        if (!esito || !esito.riuscita) return;
 
-            const ship = candidates[Math.floor(Math.random() * candidates.length)];
-
-            const ritardiDisponibili = [1.5, 2, 2.5, 3];
-            const ritardo = ritardiDisponibili[Math.floor(Math.random() * ritardiDisponibili.length)];
-
-            ship.isDelayed = true;
-            ship.requiresResolution = true;
-            ship.ritardoOre = ritardo;
-
-            self.turnoInRitardo = ship;
-            self.emergenzaAttiva = true;
-
-            self.turni = [...self.turni];
-
-            const currentDay = Number(self.giornoSelezionato || 0);
-            if (Number(ship.giorno) !== currentDay) {
-                self.selezionaGiorno(ship.giorno);
-            } else {
-                self.saveState();
-            }
-
-            this.showDemoToast(`[!] Aggiornamento: La nave ${ship.nome} ha subito un ritardo di +${self.fmtDurata(ritardo)}.`);
-        }, INTERVAL_MS);
+        self.notificheSimulate = [];
+        salvaRegistro(self.notificheSimulate);
     };
 
-    // ---- Toast non intrusivo (DOM puro) ----
-    IndexVueModel.prototype.showDemoToast = function (this: IndexVueModel, message: string): void {
-        const container = document.getElementById('demo-toast-container');
-        if (!container) return;
-        const toast = document.createElement('div');
-        toast.className = 'demo-toast';
-        toast.textContent = message;
-        container.appendChild(toast);
-        setTimeout(() => {
-            if (toast.parentNode) toast.parentNode.removeChild(toast);
-        }, 4500);
-    };
+    // ---- Registro delle comunicazioni --------------------------------------------
+    //
+    // Le notifiche sono simulate: nessun SMS o email parte davvero, il registro è un
+    // promemoria locale di quello che il sistema avrebbe inviato.
+
+    const CHIAVE_REGISTRO = 'pianificazione_turni_registro';
+
+    function salvaRegistro(notifiche: any[]): void {
+        try {
+            localStorage.setItem(CHIAVE_REGISTRO, JSON.stringify(notifiche));
+        } catch (e) {
+            console.warn('Registro non salvato', e);
+        }
+    }
+
+    export function caricaRegistro(): any[] {
+        try {
+            const salvato = localStorage.getItem(CHIAVE_REGISTRO);
+            return salvato ? JSON.parse(salvato) : [];
+        } catch (e) {
+            console.warn('Registro non leggibile', e);
+            return [];
+        }
+    }
 
     IndexVueModel.prototype.inviaNotificaSimulata = function (this: IndexVueModel, tipo: 'SMS' | 'EMAIL', operatoreNome: string, messaggio: string): void {
         const self = this as any;
-        const id = Math.random().toString(36).substring(2, 9);
-        const timestamp = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        if (!operatoreNome) return;
 
-        let dettaglioDestinatario = '';
-        if (tipo === 'SMS') {
-            const sum = operatoreNome.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            dettaglioDestinatario = `+39 339 ${1000000 + (sum * 4321) % 8999999}`;
-        } else {
-            dettaglioDestinatario = `${operatoreNome.toLowerCase()}@portoditurni.it`;
-        }
-
-        const nuovaNotifica = {
-            id,
+        const notifica = {
+            id: `${Date.now()}-${self.notificheSimulate.length}`,
             tipo,
             destinatario: operatoreNome,
-            dettaglioDestinatario,
+            recapito: tipo === 'SMS' ? 'numero aziendale' : `${operatoreNome.toLowerCase()}@portodiesempio.it`,
             messaggio,
-            timestamp,
-            letta: false
+            orario: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
         };
 
-        self.notificheSimulate.unshift(nuovaNotifica);
-        if (self.notificheSimulate.length > 10) {
-            self.notificheSimulate.pop();
-        }
-        self.saveState();
+        self.notificheSimulate = [notifica, ...self.notificheSimulate].slice(0, MAX_NOTIFICHE_IN_REGISTRO);
+        salvaRegistro(self.notificheSimulate);
+    };
 
-        if (typeof Toastify !== 'undefined') {
-            Toastify({
-                text: `${tipo} inviato a ${operatoreNome} (${dettaglioDestinatario})`,
-                duration: 3500,
-                gravity: 'bottom',
-                position: 'left',
-                backgroundColor: tipo === 'SMS' ? '#4f46e5' : '#0ea5e9'
-            }).showToast();
-        }
+    IndexVueModel.prototype.chiediSvuotamentoRegistro = function (this: IndexVueModel): void {
+        (this as any).confermaSvuotamentoAperta = true;
+    };
+
+    IndexVueModel.prototype.annullaSvuotamentoRegistro = function (this: IndexVueModel): void {
+        (this as any).confermaSvuotamentoAperta = false;
     };
 
     IndexVueModel.prototype.svuotaNotifiche = function (this: IndexVueModel): void {
         const self = this as any;
         self.notificheSimulate = [];
-        self.saveState();
+        self.confermaSvuotamentoAperta = false;
+        salvaRegistro(self.notificheSimulate);
+        mostraMessaggio('informazione', 'Registro delle comunicazioni svuotato.');
     };
 }

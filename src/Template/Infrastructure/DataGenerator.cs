@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using Template.Services;
+using Template.Services.PianificazioneTurni;
 
 namespace Template.Infrastructure
 {
@@ -16,6 +17,29 @@ namespace Template.Infrastructure
             }
 
             context.Users.AddRange(
+                // Le due personas della ricerca: Marco compone i turni, Elena (IsAdmin)
+                // presidia le regole e vede la scheda "Simulazioni ed emergenze".
+                new User
+                {
+                    Id = Guid.Parse("1d0f9b2e-4c31-4f7a-9a55-2b6f0c9de001"),
+                    Email = "marco.rossi@portodiesempio.it",
+                    Password = "uHS9vaUGE53NzdvnD7RGvx3ILRceB9nF8kAn+HEst9E=", // SHA-256 di "Portuale2026"
+                    FirstName = "Marco",
+                    LastName = "Rossi",
+                    NickName = "Marco - coordinatore di turno",
+                    IsAdmin = false
+                },
+                new User
+                {
+                    Id = Guid.Parse("1d0f9b2e-4c31-4f7a-9a55-2b6f0c9de002"),
+                    Email = "amministrazione@portodiesempio.it",
+                    Password = "uHS9vaUGE53NzdvnD7RGvx3ILRceB9nF8kAn+HEst9E=", // SHA-256 di "Portuale2026"
+                    FirstName = "Elena",
+                    LastName = "Amministrazione",
+                    NickName = "Dott.ssa Elena - sicurezza e personale",
+                    IsAdmin = true
+                },
+
                 new User
                 {
                     Id = Guid.Parse("3de6883f-9a0b-4667-aa53-0fbc52c4d300"), // Forced to specific Guid for tests
@@ -57,35 +81,38 @@ namespace Template.Infrastructure
             context.SaveChanges();
         }
 
-        // Dataset volutamente piccolo (10 operatori, 8 turni, 6 task): basta a
-        // dimostrare ogni regola del DSS - ruoli, reperibilità, abilitazioni
-        // "jolly" vs specifiche, patente in scadenza/scaduta, riposo obbligatorio,
-        // carico orario vicino al limite - senza righe da scrollare a vuoto.
+        // Dataset piccolo di proposito (10 operatori, 8 turni, 6 task): copre comunque
+        // ogni vincolo del DSS, dai ruoli alla patente scaduta al riposo obbligatorio.
         public static void InitializeTurniAndOperatori(TemplateDbContext context)
         {
             if (!context.Operatori.Any())
             {
+                // Le tre condizioni della patente non sono tre date scelte a mano: sono
+                // derivate dalla soglia di preavviso, così restano quelle volute qualunque
+                // sia il giorno in cui la demo viene avviata.
+                var patenteValida = DateTime.Today.AddDays(RegolePianificazione.GiorniPreavvisoPatente * 2);
+                var patenteInScadenza = DateTime.Today.AddDays(RegolePianificazione.GiorniPreavvisoPatente / 2);
+                var patenteScaduta = DateTime.Today.AddDays(-10);
+
                 context.Operatori.AddRange(
-                    // Gruisti: standard, patente in scadenza (Elena, entro 15gg -> badge "warning"),
-                    // in riposo obbligatorio (Davide), reperibile (Vincenzo).
-                    // OreSettimanali riflette la somma dei turni già assegnati qui sotto: il client
-                    // la ricalcola comunque da zero ad ogni caricamento (ricalcolaOreSettimanaliOperatori).
-                    new Operatore { Nome = "Filippo", Ruolo = "Gruista", OreSettimanali = 2.5, OreMassime = 35, Abilitazioni = "Molo Est,Molo Nord", Reperibile = false, Competenze = new List<string> { "Gruista" }, PatenteValidaFinoAl = DateTime.Now.AddDays(30), InRiposoObbligatorio = false, OreSettimanaliAttuali = 2 },
-                    new Operatore { Nome = "Elena", Ruolo = "Gruista", OreSettimanali = 3.5, OreMassime = 38, Abilitazioni = "Molo Est,Molo Nord", Reperibile = false, Competenze = new List<string> { "Gruista" }, PatenteValidaFinoAl = DateTime.Now.AddDays(7), InRiposoObbligatorio = false, OreSettimanaliAttuali = 3 },
-                    new Operatore { Nome = "Davide", Ruolo = "Gruista", OreSettimanali = 2.5, OreMassime = 40, Abilitazioni = "Banchina Ovest,Molo Nord", Reperibile = false, Competenze = new List<string> { "Gruista" }, PatenteValidaFinoAl = DateTime.Now.AddDays(30), InRiposoObbligatorio = true, OreSettimanaliAttuali = 2 },
-                    new Operatore { Nome = "Vincenzo", Ruolo = "Gruista", OreSettimanali = 0, OreMassime = 35, Abilitazioni = "Molo Est", Reperibile = true, Competenze = new List<string> { "Gruista" }, PatenteValidaFinoAl = DateTime.Now.AddDays(30), InRiposoObbligatorio = false, OreSettimanaliAttuali = 0 },
+                    // Gruisti: standard (Filippo), patente in scadenza (Elena), riposo
+                    // obbligatorio (Davide), reperibile (Vincenzo).
+                    new Operatore { Nome = "Filippo", Ruolo = "Gruista", OreSettimanali = 2.5, OreMassime = 35, Abilitazioni = "Molo Est,Molo Nord", Reperibile = false, Competenze = new List<string> { "Gruista" }, PatenteValidaFinoAl = patenteValida, InRiposoObbligatorio = false },
+                    new Operatore { Nome = "Elena", Ruolo = "Gruista", OreSettimanali = 3.5, OreMassime = 38, Abilitazioni = "Molo Est,Molo Nord", Reperibile = false, Competenze = new List<string> { "Gruista" }, PatenteValidaFinoAl = patenteInScadenza, InRiposoObbligatorio = false },
+                    new Operatore { Nome = "Davide", Ruolo = "Gruista", OreSettimanali = 2.5, OreMassime = 40, Abilitazioni = "Banchina Ovest,Molo Nord", Reperibile = false, Competenze = new List<string> { "Gruista" }, PatenteValidaFinoAl = patenteValida, InRiposoObbligatorio = true },
+                    new Operatore { Nome = "Vincenzo", Ruolo = "Gruista", OreSettimanali = 0, OreMassime = 35, Abilitazioni = "Molo Est", Reperibile = true, Competenze = new List<string> { "Gruista" }, PatenteValidaFinoAl = patenteValida, InRiposoObbligatorio = false },
 
                     // Mulettisti: jolly (Anna, nessuna restrizione banchina), standard (Sara), reperibile (Clara)
-                    new Operatore { Nome = "Anna", Ruolo = "Mulettista", OreSettimanali = 2.5, OreMassime = 40, Abilitazioni = "", Reperibile = false, Competenze = new List<string> { "Mulettista" }, PatenteValidaFinoAl = DateTime.Now.AddDays(30), InRiposoObbligatorio = false, OreSettimanaliAttuali = 2 },
-                    new Operatore { Nome = "Sara", Ruolo = "Mulettista", OreSettimanali = 3, OreMassime = 40, Abilitazioni = "Banchina Sud,Banchina Ovest", Reperibile = false, Competenze = new List<string> { "Mulettista" }, PatenteValidaFinoAl = DateTime.Now.AddDays(30), InRiposoObbligatorio = false, OreSettimanaliAttuali = 3 },
-                    new Operatore { Nome = "Clara", Ruolo = "Mulettista", OreSettimanali = 0, OreMassime = 40, Abilitazioni = "", Reperibile = true, Competenze = new List<string> { "Mulettista" }, PatenteValidaFinoAl = DateTime.Now.AddDays(30), InRiposoObbligatorio = false, OreSettimanaliAttuali = 0 },
+                    new Operatore { Nome = "Anna", Ruolo = "Mulettista", OreSettimanali = 2.5, OreMassime = 40, Abilitazioni = "", Reperibile = false, Competenze = new List<string> { "Mulettista" }, PatenteValidaFinoAl = patenteValida, InRiposoObbligatorio = false },
+                    new Operatore { Nome = "Sara", Ruolo = "Mulettista", OreSettimanali = 3, OreMassime = 40, Abilitazioni = "Banchina Sud,Banchina Ovest", Reperibile = false, Competenze = new List<string> { "Mulettista" }, PatenteValidaFinoAl = patenteValida, InRiposoObbligatorio = false },
+                    new Operatore { Nome = "Clara", Ruolo = "Mulettista", OreSettimanali = 0, OreMassime = 40, Abilitazioni = "", Reperibile = true, Competenze = new List<string> { "Mulettista" }, PatenteValidaFinoAl = patenteValida, InRiposoObbligatorio = false },
 
                     // Stivatori: patente scaduta (Giorgio)
-                    new Operatore { Nome = "Luigi", Ruolo = "Stivatore", OreSettimanali = 6.5, OreMassime = 40, Abilitazioni = "Banchina Sud,Banchina Ovest", Reperibile = false, Competenze = new List<string> { "Stivatore" }, PatenteValidaFinoAl = DateTime.Now.AddDays(30), InRiposoObbligatorio = false, OreSettimanaliAttuali = 6 },
-                    new Operatore { Nome = "Giorgio", Ruolo = "Stivatore", OreSettimanali = 3.5, OreMassime = 40, Abilitazioni = "", Reperibile = false, Competenze = new List<string> { "Stivatore" }, PatenteValidaFinoAl = DateTime.Now.AddDays(-10), InRiposoObbligatorio = false, OreSettimanaliAttuali = 3 },
+                    new Operatore { Nome = "Luigi", Ruolo = "Stivatore", OreSettimanali = 6.5, OreMassime = 40, Abilitazioni = "Banchina Sud,Banchina Ovest", Reperibile = false, Competenze = new List<string> { "Stivatore" }, PatenteValidaFinoAl = patenteValida, InRiposoObbligatorio = false },
+                    new Operatore { Nome = "Giorgio", Ruolo = "Stivatore", OreSettimanali = 3.5, OreMassime = 40, Abilitazioni = "", Reperibile = false, Competenze = new List<string> { "Stivatore" }, PatenteValidaFinoAl = patenteScaduta, InRiposoObbligatorio = false },
 
                     // Coordinatore
-                    new Operatore { Nome = "Roberto", Ruolo = "Coordinatore", OreSettimanali = 0, OreMassime = 45, Abilitazioni = "", Reperibile = false, Competenze = new List<string> { "Coordinatore" }, PatenteValidaFinoAl = DateTime.Now.AddDays(30), InRiposoObbligatorio = false, OreSettimanaliAttuali = 0 }
+                    new Operatore { Nome = "Roberto", Ruolo = "Coordinatore", OreSettimanali = 0, OreMassime = 45, Abilitazioni = "", Reperibile = false, Competenze = new List<string> { "Coordinatore" }, PatenteValidaFinoAl = patenteValida, InRiposoObbligatorio = false }
                 );
             }
 
@@ -93,8 +120,7 @@ namespace Template.Infrastructure
             {
                 var turniList = new List<Turno>
                 {
-                    // Oggi (Giorno 0) - include "MCL Zephyrus": referenziata per nome da
-                    // IndexVueModel.initEmergenza() per la demo di ritardo/emergenza
+                    // Oggi (Giorno 0)
                     new Turno { Id = 1, Nome = "MCL Athena", Banchina = "Molo Est", StartOra = 8, DurataOre = 2.5, Operatore = "Luigi", RuoloRichiesto = "Stivatore", IsDelayed = false, RequiresResolution = false, RitardoOre = 0, Giorno = 0 },
                     new Turno { Id = 2, Nome = "MCL Poseidon", Banchina = "Banchina Sud", StartOra = 11, DurataOre = 3, Operatore = "Sara", RuoloRichiesto = "Mulettista", IsDelayed = false, RequiresResolution = false, RitardoOre = 0, Giorno = 0 },
                     new Turno { Id = 3, Nome = "MCL Zephyrus", Banchina = "Molo Nord", StartOra = 8, DurataOre = 2.5, Operatore = "Filippo", RuoloRichiesto = "Gruista", IsDelayed = false, RequiresResolution = false, RitardoOre = 0, Giorno = 0 },
@@ -111,11 +137,14 @@ namespace Template.Infrastructure
                     new Turno { Id = 8, Nome = "MCL Odyssey", Banchina = "Banchina Ovest", StartOra = 12.5, DurataOre = 4, Operatore = "Luigi", RuoloRichiesto = "Stivatore", IsDelayed = false, RequiresResolution = false, RitardoOre = 0, Giorno = 3 }
                 };
 
+                // ETA un'ora prima dell'inizio previsto, ETD il giorno dopo: il solver non
+                // allarga la finestra, quindi lo slittamento al giorno +1 è possibile solo
+                // se la finestra della nave arriva fin là.
                 foreach (var t in turniList)
                 {
                     t.EtaGiorno = t.Giorno;
                     t.EtaOra = Math.Max(0.0, t.StartOra - 1.0);
-                    t.EtdGiorno = t.Giorno;
+                    t.EtdGiorno = t.Giorno + 1;
                     t.EtdOra = Math.Min(24.0, t.StartOra + t.DurataOre + 2.0);
                 }
 
@@ -147,15 +176,33 @@ namespace Template.Infrastructure
                     t.EtdGiorno = t.Giorno;
                     if (t.EtaOra == 0.0 && t.EtdOra == 0.0)
                     {
+                        // Finestra non specificata: default largo fino al giorno dopo, per
+                        // lasciare al DSS anche l'opzione giorno +1.
                         t.EtaOra = 7.0;
+                        t.EtdGiorno = t.Giorno + 1;
                         t.EtdOra = Math.Min(24.0, 7.0 + t.DurataOre + 4.0);
                     }
+                    // I task con finestra impostata a mano restano intra-giornalieri di proposito.
                 }
 
                 context.TasksDaAssegnare.AddRange(tasksList);
             }
 
             context.SaveChanges();
+        }
+
+        /// <summary>
+        /// Riporta turni, operatori e backlog ai dati iniziali. Gli utenti non vengono
+        /// toccati, altrimenti il ripristino butterebbe fuori chi sta usando la demo.
+        /// </summary>
+        public static void RipristinaPianificazione(TemplateDbContext context)
+        {
+            context.Turni.RemoveRange(context.Turni);
+            context.TasksDaAssegnare.RemoveRange(context.TasksDaAssegnare);
+            context.Operatori.RemoveRange(context.Operatori);
+            context.SaveChanges();
+
+            InitializeTurniAndOperatori(context);
         }
     }
 }
