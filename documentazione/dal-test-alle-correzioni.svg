@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1640 1040" width="1640" height="1040" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+  <rect width="1640" height="1040" fill="#ffffff"/>
+
+  <text x="70" y="66" font-size="32" font-weight="700" fill="#0f172a">Dal test alle correzioni</text>
+  <text x="70" y="98" font-size="17" fill="#475569">Cosa hanno trovato i partecipanti sui Prototipi 1 e 2, e cosa fa oggi il Prototipo 3</text>
+
+  <rect x="1180" y="46" width="390" height="56" rx="10" fill="#f5f3ff" stroke="#ddd6fe"/>
+  <text x="1204" y="70" font-size="13" font-weight="700" fill="#6d28d9">7 rilievi dal test · 6 risolti · 1 affrontato</text>
+  <text x="1204" y="90" font-size="12" fill="#7c3aed">più 1 funzionalità nata da un suggerimento</text>
+
+  <rect x="70" y="128" width="1500" height="40" rx="8" fill="#0f172a"/>
+  <g font-size="13" font-weight="700" fill="#ffffff">
+    <text x="90" y="154">COSA HANNO TROVATO</text>
+    <text x="690" y="154">CHI</text>
+    <text x="800" y="154">COSA FA OGGI IL PROTOTIPO 3</text>
+    <text x="1440" y="154">ESITO</text>
+  </g>
+
+  <g font-size="13.5" fill="#334155">
+
+    <!-- 1 -->
+    <rect x="70" y="176" width="1500" height="104" rx="8" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="90" y="206" font-weight="600" fill="#0f172a">Patente, qualifica, riposo e reperibilità</text>
+    <text x="90" y="227">non erano visibili: bisognava aprire la</text>
+    <text x="90" y="248">scheda della persona per scoprirli.</text>
+    <text x="690" y="206" font-size="12" fill="#64748b">Leonardo · P1</text>
+    <text x="690" y="227" font-size="12" fill="#64748b">Marco · P2</text>
+    <text x="690" y="252" font-size="12" font-weight="700" fill="#b91c1c">2/5 · alta</text>
+    <text x="800" y="206" font-weight="600" fill="#047857">Tutto sulla card dell'operatore, senza aprire nulla:</text>
+    <text x="800" y="227">ruolo, stato della patente (valida / in scadenza / scaduta),</text>
+    <text x="800" y="248">«In riposo obbligatorio», «A chiamata», carico settimanale.</text>
+    <rect x="1420" y="216" width="88" height="24" rx="12" fill="#dcfce7"/>
+    <text x="1464" y="233" font-size="11" font-weight="700" fill="#15803d" text-anchor="middle">RISOLTO</text>
+
+    <!-- 2 -->
+    <rect x="70" y="292" width="1500" height="104" rx="8" fill="#ffffff" stroke="#e2e8f0"/>
+    <text x="90" y="322" font-weight="600" fill="#0f172a">Nessun criterio per scegliere: né quale</text>
+    <text x="90" y="343">operatore fosse migliore, né quale orario</text>
+    <text x="90" y="364">prendere dentro la finestra disponibile.</text>
+    <text x="690" y="322" font-size="12" fill="#64748b">Leonardo · P1</text>
+    <text x="690" y="343" font-size="12" fill="#64748b">Marco · P2</text>
+    <text x="690" y="368" font-size="12" font-weight="700" fill="#b91c1c">2/5 · alta</text>
+    <text x="800" y="322" font-weight="600" fill="#047857">È la ragione per cui il sistema è diventato un DSS.</text>
+    <text x="800" y="343">Propone N alternative con punteggio di compatibilità,</text>
+    <text x="800" y="364">vantaggi, compromessi e criterio applicato.</text>
+    <rect x="1420" y="332" width="88" height="24" rx="12" fill="#dcfce7"/>
+    <text x="1464" y="349" font-size="11" font-weight="700" fill="#15803d" text-anchor="middle">RISOLTO</text>
+
+    <!-- 3 -->
+    <rect x="70" y="408" width="1500" height="83" rx="8" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="90" y="438" font-weight="600" fill="#0f172a">Si vedeva un giorno solo: impossibile</text>
+    <text x="90" y="459">anticipare gli scarichi dei giorni dopo.</text>
+    <text x="690" y="438" font-size="12" fill="#64748b">Alessandra · P1</text>
+    <text x="690" y="459" font-size="12" fill="#64748b">Zack</text>
+    <text x="690" y="481" font-size="12" font-weight="700" fill="#b91c1c">2/5 · alta</text>
+    <text x="800" y="438" font-weight="600" fill="#047857">Selettore a 7 giorni sopra il tabellone,</text>
+    <text x="800" y="459">e il motore cerca alternative anche sul giorno successivo.</text>
+    <rect x="1420" y="437" width="88" height="24" rx="12" fill="#dcfce7"/>
+    <text x="1464" y="454" font-size="11" font-weight="700" fill="#15803d" text-anchor="middle">RISOLTO</text>
+
+    <!-- 4 -->
+    <rect x="70" y="503" width="1500" height="104" rx="8" fill="#fef2f2" stroke="#b91c1c" stroke-width="1.5"/>
+    <text x="90" y="533" font-weight="600" fill="#0f172a">L'allerta rossa della nave in ritardo non</text>
+    <text x="90" y="554">diceva come risolverla. Una partecipante</text>
+    <text x="90" y="575" font-weight="600" fill="#b91c1c">si è bloccata e non ha finito il task.</text>
+    <text x="690" y="533" font-size="12" fill="#64748b">Alessandra · P2</text>
+    <text x="690" y="559" font-size="12" font-weight="700" fill="#b91c1c">1/5 · alta</text>
+    <text x="690" y="579" font-size="11" fill="#94a3b8">bloccante</text>
+    <text x="800" y="533" font-weight="600" fill="#047857">Il pannello rosso ora porta un pulsante «Vedi le alternative».</text>
+    <text x="800" y="554">La finestra dichiara il nuovo orario di attracco e propone una</text>
+    <text x="800" y="575">soluzione applicabile, oppure «Lo gestisco a mano».</text>
+    <rect x="1420" y="543" width="88" height="24" rx="12" fill="#dcfce7"/>
+    <text x="1464" y="560" font-size="11" font-weight="700" fill="#15803d" text-anchor="middle">RISOLTO</text>
+
+    <!-- 5 -->
+    <rect x="70" y="619" width="1500" height="83" rx="8" fill="#ffffff" stroke="#e2e8f0"/>
+    <text x="90" y="649" font-weight="600" fill="#0f172a">Si trascinava senza capire il perché,</text>
+    <text x="90" y="670">né se il movimento fosse corretto.</text>
+    <text x="690" y="649" font-size="12" fill="#64748b">Alessandra · P2</text>
+    <text x="690" y="674" font-size="12" font-weight="700" fill="#b45309">1/5 · media</text>
+    <text x="800" y="649" font-weight="600" fill="#047857">Il trascinamento è stato tolto: si seleziona la lavorazione e il</text>
+    <text x="800" y="670">sistema mostra dove finirebbe, con il motivo. Nessun gesto al buio.</text>
+    <rect x="1420" y="648" width="88" height="24" rx="12" fill="#dcfce7"/>
+    <text x="1464" y="665" font-size="11" font-weight="700" fill="#15803d" text-anchor="middle">RISOLTO</text>
+
+    <!-- 6 -->
+    <rect x="70" y="714" width="1500" height="83" rx="8" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="90" y="744" font-weight="600" fill="#0f172a">Mancava la gestione degli utenti: come</text>
+    <text x="90" y="765">si cambia la password, chi amministra.</text>
+    <text x="690" y="744" font-size="12" fill="#64748b">Alessandra · P1</text>
+    <text x="690" y="765" font-size="12" fill="#64748b">Zack</text>
+    <text x="690" y="787" font-size="12" font-weight="700" fill="#b45309">2/5 · media</text>
+    <text x="800" y="744" font-weight="600" fill="#047857">Area Amministrazione con elenco e modifica degli utenti,</text>
+    <text x="800" y="765">visibile solo a chi ha il ruolo: è nata da qui la separazione dei ruoli.</text>
+    <rect x="1420" y="743" width="88" height="24" rx="12" fill="#dcfce7"/>
+    <text x="1464" y="760" font-size="11" font-weight="700" fill="#15803d" text-anchor="middle">RISOLTO</text>
+
+    <!-- 7 -->
+    <rect x="70" y="809" width="1500" height="104" rx="8" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+    <text x="90" y="839" font-weight="600" fill="#0f172a">Densità contestata in due sensi opposti:</text>
+    <text x="90" y="860" font-style="italic">«troppo vuota, con pochi avvisi»</text>
+    <text x="90" y="881" font-style="italic">«troppe scritte e troppi alert».</text>
+    <text x="690" y="839" font-size="12" fill="#64748b">Leonardo · P1</text>
+    <text x="690" y="860" font-size="12" fill="#64748b">Alessandra · P1</text>
+    <text x="690" y="885" font-size="12" font-weight="700" fill="#b45309">2/5 · media</text>
+    <text x="800" y="839" font-weight="600" fill="#b45309">Non mediata: la densità è diventata condizionale.</text>
+    <text x="800" y="860">Il pannello rosso compare solo quando c'è davvero un problema; il</text>
+    <text x="800" y="881">riquadro ridondante con le navi previste è stato eliminato.</text>
+    <rect x="1408" y="849" width="112" height="24" rx="12" fill="#fef3c7"/>
+    <text x="1464" y="866" font-size="11" font-weight="700" fill="#b45309" text-anchor="middle">AFFRONTATO</text>
+  </g>
+
+  <!-- suggerimento diventato funzionalità -->
+  <rect x="70" y="929" width="1500" height="76" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+  <rect x="90" y="947" width="188" height="24" rx="12" fill="#7c3aed"/>
+  <text x="184" y="964" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">PROPOSTA DA UN UTENTE</text>
+  <text x="298" y="964" font-size="13.5" fill="#0f172a">Zack: «essendo una demo, finiti i test non resta nulla da provare: serve un simula ritardo».</text>
+  <text x="90" y="991" font-size="13.5" fill="#4c1d95">→ È nata così la scheda <tspan font-weight="700">Simulazioni ed emergenze</tspan>, con «Simula ritardo nave» e «Ripristina pianificazione»: riservata all'amministrazione, perché genera scenari che il coordinatore deve poi risolvere.</text>
+</svg>

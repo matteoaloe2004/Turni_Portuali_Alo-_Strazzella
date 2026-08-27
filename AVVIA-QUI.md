@@ -76,6 +76,12 @@ accanto c'è scritto perché: "In riposo obbligatorio", "Patente scaduta".
 **5. Applica la soluzione, poi ricarica la pagina.** Il turno è ancora lì: sta sul
 server, non nel browser.
 
+**5b. Ora disfa.** Clicca il turno appena creato sul tabellone: si apre la sua scheda,
+con l'eventuale collocazione alternativa e il pulsante *Annulla questo turno*. La
+conferma dice cosa succederà, con i nomi veri. Confermando, la lavorazione ricompare
+in *Lavorazioni da assegnare* e la si può ricollocare: nessuna assegnazione è
+definitiva, e niente sparisce.
+
 **6. Apri una seconda finestra ed entra come Elena.** Assegna qualcosa da una delle
 due: compare in tempo reale anche nell'altra, con l'avviso di chi l'ha fatto.
 

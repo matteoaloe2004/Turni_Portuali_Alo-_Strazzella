@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1640 1010" width="1640" height="1010" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+  <rect width="1640" height="1010" fill="#ffffff"/>
+
+  <text x="70" y="66" font-size="32" font-weight="700" fill="#0f172a">Test di usabilità · voci dei partecipanti</text>
+  <text x="70" y="98" font-size="17" fill="#475569">Console di pianificazione turni portuali · Aloè / Strazzella</text>
+
+  <rect x="70" y="122" width="1500" height="52" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+  <g font-size="13" fill="#64748b">
+    <text x="94" y="145" font-weight="700" fill="#475569">METODO</text>
+    <text x="94" y="164">Think aloud · un partecipante alla volta · osservazione diretta durante l'uso</text>
+    <text x="700" y="145" font-weight="700" fill="#475569">PARTECIPANTI</text>
+    <text x="700" y="164">5 · su Prototipo 1 e Prototipo 2</text>
+    <text x="1010" y="145" font-weight="700" fill="#475569">DATA</text>
+    <text x="1010" y="164">______________</text>
+    <text x="1240" y="145" font-weight="700" fill="#475569">COPERTURA ATTESA</text>
+    <text x="1240" y="164">~85% dei problemi (L≈31%)</text>
+  </g>
+
+  <defs>
+    <g id="c1"><rect width="480" height="330" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/><rect width="480" height="4" rx="2" fill="#2563eb"/></g>
+  </defs>
+
+  <!-- ============ P1 Leonardo ============ -->
+  <g transform="translate(70,196)">
+    <use href="#c1"/>
+    <text x="24" y="34" font-size="15" font-weight="700" fill="#0f172a">Leonardo</text>
+    <rect x="380" y="20" width="80" height="22" rx="11" fill="#e0e7ff"/>
+    <text x="420" y="36" font-size="11" font-weight="700" fill="#4338ca" text-anchor="middle">PROTOTIPO 1</text>
+    <text x="24" y="56" font-size="12" fill="#94a3b8">partecipante 1</text>
+
+    <text x="24" y="86" font-size="12" font-weight="700" fill="#047857">HA FUNZIONATO</text>
+    <text x="24" y="108" font-size="13" fill="#334155">La board pulita gli è piaciuta.</text>
+
+    <text x="24" y="140" font-size="12" font-weight="700" fill="#b91c1c">SI È BLOCCATO SU</text>
+    <text x="24" y="162" font-size="13" fill="#334155">Saputo che esistevano patenti, qualifiche e</text>
+    <text x="24" y="181" font-size="13" fill="#334155">tempi di riposo, non sapeva dove vederli: non</text>
+    <text x="24" y="200" font-size="13" fill="#334155">ha intuito di aprire la scheda della persona.</text>
+    <text x="24" y="226" font-size="13" fill="#334155">Spaesato nel collocare le navi: non sapeva</text>
+    <text x="24" y="245" font-size="13" fill="#334155">quale fosse l'orario migliore dentro la</text>
+    <text x="24" y="264" font-size="13" fill="#334155">finestra a disposizione.</text>
+
+    <line x1="24" y1="282" x2="456" y2="282" stroke="#f1f5f9"/>
+    <text x="24" y="302" font-size="12" font-style="italic" fill="#64748b">«Troppo vuota, con pochi avvisi.» Il rosso acceso</text>
+    <text x="24" y="319" font-size="12" font-style="italic" fill="#64748b">del ritardo dava forse troppa priorità.</text>
+  </g>
+
+  <!-- ============ P2 Alessandra ============ -->
+  <g transform="translate(580,196)">
+    <use href="#c1"/>
+    <text x="24" y="34" font-size="15" font-weight="700" fill="#0f172a">Alessandra</text>
+    <rect x="380" y="20" width="80" height="22" rx="11" fill="#e0e7ff"/>
+    <text x="420" y="36" font-size="11" font-weight="700" fill="#4338ca" text-anchor="middle">PROTOTIPO 1</text>
+    <text x="24" y="56" font-size="12" fill="#94a3b8">partecipante 2</text>
+
+    <text x="24" y="86" font-size="12" font-weight="700" fill="#047857">HA FUNZIONATO</text>
+    <text x="24" y="108" font-size="13" fill="#334155">Si è trovata subito a suo agio e ha capito</text>
+    <text x="24" y="127" font-size="13" fill="#334155">come funzionava.</text>
+
+    <text x="24" y="159" font-size="12" font-weight="700" fill="#b91c1c">SI È BLOCCATA SU</text>
+    <text x="24" y="181" font-size="13" fill="#334155">Gestione dell'account: non sapeva come</text>
+    <text x="24" y="200" font-size="13" fill="#334155">cambiare la password, ha dovuto chiedere.</text>
+    <text x="24" y="226" font-size="13" fill="#334155">Non poteva vedere il giorno successivo per</text>
+    <text x="24" y="245" font-size="13" fill="#334155">anticipare gli scarichi futuri.</text>
+
+    <line x1="24" y1="282" x2="456" y2="282" stroke="#f1f5f9"/>
+    <text x="24" y="302" font-size="12" font-style="italic" fill="#64748b">Si è lamentata di «troppe scritte e troppi alert»:</text>
+    <text x="24" y="319" font-size="12" font-style="italic" fill="#64748b">l'opposto di quanto detto da Leonardo.</text>
+  </g>
+
+  <!-- ============ P3 Marco ============ -->
+  <g transform="translate(1090,196)">
+    <use href="#c1"/>
+    <text x="24" y="34" font-size="15" font-weight="700" fill="#0f172a">Marco</text>
+    <rect x="380" y="20" width="80" height="22" rx="11" fill="#dcfce7"/>
+    <text x="420" y="36" font-size="11" font-weight="700" fill="#15803d" text-anchor="middle">PROTOTIPO 2</text>
+    <text x="24" y="56" font-size="12" fill="#94a3b8">partecipante 3</text>
+
+    <text x="24" y="86" font-size="12" font-weight="700" fill="#047857">HA FUNZIONATO</text>
+    <text x="24" y="108" font-size="13" fill="#334155">Interfaccia chiara e amichevole: ha capito</text>
+    <text x="24" y="127" font-size="13" fill="#334155">subito cosa doveva fare. Il feedback in alto</text>
+    <text x="24" y="146" font-size="13" fill="#334155">a destra gli è servito.</text>
+
+    <text x="24" y="178" font-size="12" font-weight="700" fill="#b91c1c">SI È BLOCCATO SU</text>
+    <text x="24" y="200" font-size="13" fill="#334155">Non vedeva patenti, ruoli e reperibilità degli</text>
+    <text x="24" y="219" font-size="13" fill="#334155">operatori: questo lo mandava in confusione.</text>
+    <text x="24" y="245" font-size="13" fill="#334155">Spaesato nell'assegnare: non capiva se un</text>
+    <text x="24" y="264" font-size="13" fill="#334155">operatore fosse migliore di un altro.</text>
+
+    <line x1="24" y1="282" x2="456" y2="282" stroke="#f1f5f9"/>
+    <text x="24" y="302" font-size="12" font-style="italic" fill="#64748b">Stesso problema di Leonardo su un prototipo</text>
+    <text x="24" y="319" font-size="12" font-style="italic" fill="#64748b">diverso: il vincolo invisibile è strutturale.</text>
+  </g>
+
+  <!-- ============ P4 Alessandra ============ -->
+  <g transform="translate(70,546)">
+    <use href="#c1"/>
+    <rect width="480" height="4" rx="2" fill="#b91c1c"/>
+    <text x="24" y="34" font-size="15" font-weight="700" fill="#0f172a">Alessandra</text>
+    <rect x="380" y="20" width="80" height="22" rx="11" fill="#dcfce7"/>
+    <text x="420" y="36" font-size="11" font-weight="700" fill="#15803d" text-anchor="middle">PROTOTIPO 2</text>
+    <text x="24" y="56" font-size="12" fill="#94a3b8">partecipante 4 · poca dimestichezza con il computer</text>
+
+    <text x="24" y="86" font-size="12" font-weight="700" fill="#047857">HA FUNZIONATO</text>
+    <text x="24" y="108" font-size="13" fill="#334155">Ha capito subito cosa fare: prendere e</text>
+    <text x="24" y="127" font-size="13" fill="#334155">trascinare. Gli avvisi accanto alle ore</text>
+    <text x="24" y="146" font-size="13" fill="#334155">operative le dicevano subito la disponibilità.</text>
+
+    <text x="24" y="178" font-size="12" font-weight="700" fill="#b91c1c">SI È BLOCCATA SU</text>
+    <text x="24" y="200" font-size="13" fill="#334155">Trascinava senza capire il perché, né se il</text>
+    <text x="24" y="219" font-size="13" fill="#334155">movimento fosse corretto.</text>
+    <text x="24" y="245" font-size="13" font-weight="600" fill="#b91c1c">L'allerta rossa della nave in ritardo l'ha</text>
+    <text x="24" y="264" font-size="13" font-weight="600" fill="#b91c1c">bloccata: le scritte non la guidavano.</text>
+
+    <line x1="24" y1="282" x2="456" y2="282" stroke="#f1f5f9"/>
+    <rect x="24" y="292" width="150" height="22" rx="11" fill="#fee2e2"/>
+    <text x="99" y="308" font-size="11" font-weight="700" fill="#b91c1c" text-anchor="middle">TASK NON COMPLETATO</text>
+    <text x="186" y="308" font-size="12" font-style="italic" fill="#64748b">unico blocco totale del test</text>
+  </g>
+
+  <!-- ============ P5 Zack ============ -->
+  <g transform="translate(580,546)">
+    <use href="#c1"/>
+    <text x="24" y="34" font-size="15" font-weight="700" fill="#0f172a">Zack</text>
+    <rect x="352" y="20" width="108" height="22" rx="11" fill="#f1f5f9"/>
+    <text x="406" y="36" font-size="11" font-weight="700" fill="#64748b" text-anchor="middle">PROTOTIPO ___</text>
+    <text x="24" y="56" font-size="12" fill="#94a3b8">partecipante 5 · molto esperto con il computer</text>
+
+    <text x="24" y="86" font-size="12" font-weight="700" fill="#047857">HA FUNZIONATO</text>
+    <text x="24" y="108" font-size="13" fill="#334155">Si è trovato subito a suo agio.</text>
+
+    <text x="24" y="140" font-size="12" font-weight="700" fill="#b91c1c">SI È BLOCCATO SU</text>
+    <text x="24" y="162" font-size="13" fill="#334155">Inserite le prime navi, non poteva metterne</text>
+    <text x="24" y="181" font-size="13" fill="#334155">altre nei giorni successivi.</text>
+    <text x="24" y="207" font-size="13" fill="#334155">Ha iniziato a cliccare ovunque, aprendo le</text>
+    <text x="24" y="226" font-size="13" fill="#334155">schede delle navi e delle persone.</text>
+    <text x="24" y="252" font-size="13" fill="#334155">Manca una parte amministrativa per gestire</text>
+    <text x="24" y="271" font-size="13" fill="#334155">gli utenti.</text>
+
+    <line x1="24" y1="284" x2="456" y2="284" stroke="#f1f5f9"/>
+    <text x="24" y="302" font-size="12" font-weight="700" fill="#7c3aed">HA PROPOSTO</text>
+    <text x="24" y="321" font-size="12" font-style="italic" fill="#64748b">finiti i test non resta nulla da provare: serve un «simula ritardo».</text>
+  </g>
+
+  <!-- ============ SINTESI ============ -->
+  <g transform="translate(1090,546)">
+    <rect width="480" height="330" rx="12" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+    <rect width="480" height="4" rx="2" fill="#b45309"/>
+    <text x="24" y="34" font-size="14" font-weight="700" fill="#b45309">EMERSI DA PIÙ DI UN PARTECIPANTE</text>
+    <text x="24" y="54" font-size="11" fill="#a16207">si correggono per primi</text>
+
+    <text x="24" y="84" font-size="13" font-weight="700" fill="#78350f">1 · Vincoli dell'operatore invisibili</text>
+    <text x="24" y="103" font-size="12" fill="#78350f">patente, qualifica, riposo, reperibilità</text>
+    <text x="360" y="103" font-size="12" font-weight="700" fill="#b91c1c">2/5 · alta</text>
+
+    <text x="24" y="133" font-size="13" font-weight="700" fill="#78350f">2 · Nessun criterio per scegliere</text>
+    <text x="24" y="152" font-size="12" fill="#78350f">quale operatore, quale orario</text>
+    <text x="360" y="152" font-size="12" font-weight="700" fill="#b91c1c">2/5 · alta</text>
+
+    <text x="24" y="182" font-size="13" font-weight="700" fill="#78350f">3 · Un solo giorno alla volta</text>
+    <text x="24" y="201" font-size="12" fill="#78350f">impossibile pianificare in avanti</text>
+    <text x="360" y="201" font-size="12" font-weight="700" fill="#b91c1c">2/5 · alta</text>
+
+    <text x="24" y="231" font-size="13" font-weight="700" fill="#78350f">4 · Manca la gestione degli utenti</text>
+    <text x="24" y="250" font-size="12" fill="#78350f">password e amministrazione</text>
+    <text x="360" y="250" font-size="12" font-weight="700" fill="#b45309">2/5 · media</text>
+
+    <text x="24" y="280" font-size="13" font-weight="700" fill="#78350f">5 · Densità contestata in due sensi</text>
+    <text x="24" y="299" font-size="12" fill="#78350f">«troppo vuota» / «troppe scritte»</text>
+    <text x="360" y="299" font-size="12" font-weight="700" fill="#b45309">2/5 · media</text>
+
+    <text x="24" y="321" font-size="11" font-style="italic" fill="#92400e">+ 1 blocco totale su 5 (nave in ritardo): gravità alta anche a 1/5.</text>
+  </g>
+
+  <text x="70" y="960" font-size="12" fill="#94a3b8">Osservazioni raccolte durante l'uso e trascritte subito dopo la sessione. Le frasi fra virgolette sono parole dei partecipanti; il resto è osservazione del conduttore.</text>
+  <text x="70" y="982" font-size="12" fill="#94a3b8">Le due opinioni opposte sulla densità non sono state mediate: la contraddizione è il dato, e ha portato a rendere la densità condizionale invece che fissa.</text>
+</svg>

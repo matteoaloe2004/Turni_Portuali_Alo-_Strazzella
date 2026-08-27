@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1640 1060" width="1640" height="1060" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+  <rect width="1640" height="1060" fill="#ffffff"/>
+
+  <!-- ===== Titolo ===== -->
+  <text x="80" y="72" font-size="34" font-weight="700" fill="#0f172a">Processo a Doppio Rombo</text>
+  <text x="80" y="106" font-size="18" fill="#475569">Console di pianificazione turni portuali · traccia 3 · Aloè / Strazzella</text>
+
+  <!-- ===== Etichette dei due rombi ===== -->
+  <rect x="80" y="140" width="700" height="34" rx="17" fill="#dbeafe"/>
+  <text x="430" y="163" font-size="16" font-weight="700" fill="#1d4ed8" text-anchor="middle">ROMBO 1 · IL PROBLEMA GIUSTO</text>
+  <rect x="860" y="140" width="700" height="34" rx="17" fill="#d1fae5"/>
+  <text x="1210" y="163" font-size="16" font-weight="700" fill="#047857" text-anchor="middle">ROMBO 2 · LA SOLUZIONE GIUSTA</text>
+
+  <!-- ===== Rombo 1 ===== -->
+  <path d="M 80 350 L 430 210 L 780 350 L 430 490 Z" fill="#eff6ff" stroke="#2563eb" stroke-width="2.5"/>
+  <line x1="430" y1="210" x2="430" y2="490" stroke="#93c5fd" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="250" y="345" font-size="19" font-weight="700" fill="#1d4ed8" text-anchor="middle">SCOPRI</text>
+  <text x="250" y="368" font-size="14" fill="#2563eb" text-anchor="middle">diverge</text>
+  <text x="610" y="345" font-size="19" font-weight="700" fill="#1d4ed8" text-anchor="middle">DEFINISCI</text>
+  <text x="610" y="368" font-size="14" fill="#2563eb" text-anchor="middle">converge</text>
+
+  <!-- ===== Rombo 2 ===== -->
+  <path d="M 860 350 L 1210 210 L 1560 350 L 1210 490 Z" fill="#ecfdf5" stroke="#047857" stroke-width="2.5"/>
+  <line x1="1210" y1="210" x2="1210" y2="490" stroke="#6ee7b7" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="1030" y="345" font-size="19" font-weight="700" fill="#047857" text-anchor="middle">SVILUPPA</text>
+  <text x="1030" y="368" font-size="14" fill="#059669" text-anchor="middle">diverge</text>
+  <text x="1390" y="345" font-size="19" font-weight="700" fill="#047857" text-anchor="middle">CONSEGNA</text>
+  <text x="1390" y="368" font-size="14" fill="#059669" text-anchor="middle">converge</text>
+
+  <!-- ===== Enunciato del problema, alla vita fra i due rombi ===== -->
+  <rect x="786" y="288" width="68" height="124" rx="8" fill="#b45309"/>
+  <text x="820" y="330" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle" transform="rotate(90 820 350)">ENUNCIATO</text>
+  <path d="M 780 350 L 786 350 M 854 350 L 860 350" stroke="#b45309" stroke-width="2.5"/>
+
+  <rect x="560" y="530" width="520" height="86" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="2"/>
+  <text x="820" y="558" font-size="13" font-weight="700" fill="#b45309" text-anchor="middle">IL PROBLEMA REALE, DOPO LA CONVERGENZA</text>
+  <text x="820" y="583" font-size="16" font-style="italic" fill="#0f172a" text-anchor="middle">«Il coordinatore non fatica a inserire i turni:</text>
+  <text x="820" y="605" font-size="16" font-style="italic" fill="#0f172a" text-anchor="middle">fatica a capire in fretta chi può coprire un buco.»</text>
+
+  <!-- ===== Colonna SCOPRI ===== -->
+  <text x="100" y="672" font-size="15" font-weight="700" fill="#1d4ed8">SCOPRI · osservazione</text>
+  <line x1="100" y1="684" x2="390" y2="684" stroke="#bfdbfe" stroke-width="2"/>
+  <text x="100" y="712" font-size="14" fill="#334155">• Il problema dato era «un gestionale</text>
+  <text x="112" y="734" font-size="14" fill="#334155">per assegnare i turni»: un sintomo.</text>
+  <text x="100" y="762" font-size="14" fill="#334155">• Osservazione del contesto portuale:</text>
+  <text x="112" y="784" font-size="14" fill="#334155">turni decisi sotto pressione, con</text>
+  <text x="112" y="806" font-size="14" fill="#334155">vincoli di legge non negoziabili.</text>
+  <text x="100" y="834" font-size="14" fill="#334155">• Emergono due ruoli distinti, non uno.</text>
+
+  <!-- ===== Colonna DEFINISCI ===== -->
+  <text x="440" y="672" font-size="15" font-weight="700" fill="#1d4ed8">DEFINISCI · sintesi</text>
+  <line x1="440" y1="684" x2="740" y2="684" stroke="#bfdbfe" stroke-width="2"/>
+  <text x="440" y="712" font-size="14" fill="#334155">• Personas:</text>
+  <text x="452" y="734" font-size="14" fill="#334155">Marco Rossi, coordinatore di turno</text>
+  <text x="452" y="756" font-size="14" fill="#334155">Elena, sicurezza e personale</text>
+  <text x="440" y="784" font-size="14" fill="#334155">• Vincoli di dominio fissati: riposo 11h,</text>
+  <text x="452" y="806" font-size="14" fill="#334155">tetto 40h, finestra di attracco.</text>
+  <text x="440" y="834" font-size="14" fill="#334155">• Scenario guida: la nave in ritardo.</text>
+
+  <!-- ===== Colonna SVILUPPA ===== -->
+  <text x="880" y="672" font-size="15" font-weight="700" fill="#047857">SVILUPPA · ideazione e prototipi</text>
+  <line x1="880" y1="684" x2="1170" y2="684" stroke="#a7f3d0" stroke-width="2"/>
+  <text x="880" y="712" font-size="14" fill="#334155">• Sketch e wireframe delle due viste.</text>
+  <text x="880" y="740" font-size="14" fill="#334155">• Mockup Figma delle parti principali.</text>
+  <text x="880" y="768" font-size="14" fill="#334155">• Alternative valutate per il tabellone:</text>
+  <text x="892" y="790" font-size="14" fill="#334155">tabella · calendario · Gantt.</text>
+  <text x="880" y="818" font-size="14" fill="#334155">• Idea del DSS: non decide al posto tuo,</text>
+  <text x="892" y="840" font-size="14" fill="#334155">propone e motiva.</text>
+
+  <!-- ===== Colonna CONSEGNA ===== -->
+  <text x="1220" y="672" font-size="15" font-weight="700" fill="#047857">CONSEGNA · verifica e rilascio</text>
+  <line x1="1220" y1="684" x2="1520" y2="684" stroke="#a7f3d0" stroke-width="2"/>
+  <text x="1220" y="712" font-size="14" fill="#334155">• Gantt scelto: mapping naturale</text>
+  <text x="1232" y="734" font-size="14" fill="#334155">tempo → asse orizzontale.</text>
+  <text x="1220" y="762" font-size="14" fill="#334155">• Implementazione ASP.NET MVC + EF</text>
+  <text x="1232" y="784" font-size="14" fill="#334155">+ Vue + SignalR.</text>
+  <text x="1220" y="812" font-size="14" fill="#334155">• Valutazione ispettiva + test con 5 utenti.</text>
+  <text x="1220" y="840" font-size="14" fill="#334155">• Correzioni e nuova iterazione.</text>
+
+  <!-- ===== Fascia inferiore: il ciclo UCD ===== -->
+  <rect x="80" y="888" width="1480" height="120" rx="12" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+  <text x="110" y="920" font-size="14" font-weight="700" fill="#475569">LE QUATTRO FASI DEL DESIGN ANTROPOCENTRICO, IN ITERAZIONE</text>
+
+  <g font-size="15" font-weight="600" fill="#0f172a">
+    <rect x="150" y="940" width="200" height="46" rx="23" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="250" y="969" text-anchor="middle">Osservazione</text>
+    <rect x="450" y="940" width="200" height="46" rx="23" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="550" y="969" text-anchor="middle">Ideazione</text>
+    <rect x="750" y="940" width="200" height="46" rx="23" fill="#d1fae5" stroke="#047857" stroke-width="1.5"/>
+    <text x="850" y="969" text-anchor="middle">Prototipo</text>
+    <rect x="1050" y="940" width="200" height="46" rx="23" fill="#d1fae5" stroke="#047857" stroke-width="1.5"/>
+    <text x="1150" y="969" text-anchor="middle">Verifica</text>
+  </g>
+
+  <g stroke="#94a3b8" stroke-width="2" fill="none">
+    <path d="M 355 963 L 440 963" marker-end="url(#freccia)"/>
+    <path d="M 655 963 L 740 963" marker-end="url(#freccia)"/>
+    <path d="M 955 963 L 1040 963" marker-end="url(#freccia)"/>
+    <path d="M 1255 963 L 1310 963 L 1310 1000 L 250 1000 L 250 992" marker-end="url(#freccia)"/>
+  </g>
+  <text x="1330" y="968" font-size="13" font-style="italic" fill="#64748b">itera</text>
+
+  <defs>
+    <marker id="freccia" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+</svg>

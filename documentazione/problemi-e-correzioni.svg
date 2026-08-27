@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1640 1180" width="1640" height="1180" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+  <rect width="1640" height="1180" fill="#ffffff"/>
+
+  <text x="70" y="70" font-size="32" font-weight="700" fill="#0f172a">Problemi rilevati e correzioni</text>
+  <text x="70" y="102" font-size="17" fill="#475569">Da V1 a V3 · Console di pianificazione turni portuali · Aloè / Strazzella</text>
+
+  <!-- legenda fonti -->
+  <g font-size="12" font-weight="700">
+    <rect x="1010" y="48" width="182" height="26" rx="13" fill="#dbeafe"/>
+    <text x="1101" y="66" fill="#1d4ed8" text-anchor="middle">DECISIONE DI PROGETTO</text>
+    <rect x="1204" y="48" width="192" height="26" rx="13" fill="#ede9fe"/>
+    <text x="1300" y="66" fill="#6d28d9" text-anchor="middle">VALUTAZIONE ISPETTIVA</text>
+    <rect x="1408" y="48" width="162" height="26" rx="13" fill="#f1f5f9"/>
+    <text x="1489" y="66" fill="#64748b" text-anchor="middle">TEST CON UTENTI</text>
+  </g>
+  <text x="1010" y="94" font-size="12" fill="#94a3b8">fonte dell'evidenza per ogni riga</text>
+
+  <!-- intestazione tabella -->
+  <rect x="70" y="130" width="1500" height="40" rx="8" fill="#0f172a"/>
+  <g font-size="13" font-weight="700" fill="#ffffff">
+    <text x="90" y="156">PROBLEMA RILEVATO</text>
+    <text x="700" y="156">VERSIONE</text>
+    <text x="830" y="156">COME È STATO RISOLTO</text>
+    <text x="1420" y="156">FONTE</text>
+  </g>
+
+  <!-- ============ RIGHE ============ -->
+  <g font-size="14" fill="#334155">
+
+    <!-- R1 -->
+    <rect x="70" y="178" width="1500" height="96" rx="8" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="90" y="208" font-weight="600" fill="#0f172a">Il tabellone aveva una riga per dipendente:</text>
+    <text x="90" y="230">due navi sulla stessa banchina non producevano</text>
+    <text x="90" y="252">nessun segnale visibile di collisione.</text>
+    <rect x="700" y="196" width="96" height="26" rx="13" fill="#fee2e2"/>
+    <text x="748" y="214" font-size="12" font-weight="700" fill="#b91c1c" text-anchor="middle">V1 → V2</text>
+    <text x="830" y="208" font-weight="600" fill="#047857">Righe del Gantt = banchine.</text>
+    <text x="830" y="230">Il vincolo scarso è il molo, non la persona: le collisioni</text>
+    <text x="830" y="252">si leggono dove avvengono davvero.</text>
+    <circle cx="1450" cy="226" r="7" fill="#2563eb"/>
+
+    <!-- R2 -->
+    <rect x="70" y="286" width="1500" height="96" rx="8" fill="#ffffff" stroke="#e2e8f0"/>
+    <text x="90" y="316" font-weight="600" fill="#0f172a">Il sistema proponeva una sola soluzione,</text>
+    <text x="90" y="338">senza dire da dove veniva. Chi la riceveva</text>
+    <text x="90" y="360">poteva solo accettarla o ignorarla.</text>
+    <rect x="700" y="304" width="96" height="26" rx="13" fill="#fef3c7"/>
+    <text x="748" y="322" font-size="12" font-weight="700" fill="#b45309" text-anchor="middle">V2 → V3</text>
+    <text x="830" y="316" font-weight="600" fill="#047857">N alternative in lista, ognuna con punteggio,</text>
+    <text x="830" y="338">vantaggi e compromessi espliciti.</text>
+    <text x="830" y="360" font-style="italic" fill="#64748b">Il DSS supporta la decisione, non la sostituisce.</text>
+    <circle cx="1450" cy="334" r="7" fill="#2563eb"/>
+
+    <!-- R3 -->
+    <rect x="70" y="394" width="1500" height="96" rx="8" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="90" y="424" font-weight="600" fill="#0f172a">Gli operatori non idonei venivano oscurati:</text>
+    <text x="90" y="446">sparivano dalla vista senza che si potesse</text>
+    <text x="90" y="468">capire il motivo dell'esclusione.</text>
+    <rect x="700" y="412" width="96" height="26" rx="13" fill="#fef3c7"/>
+    <text x="748" y="430" font-size="12" font-weight="700" fill="#b45309" text-anchor="middle">V2 → V3</text>
+    <text x="830" y="424" font-weight="600" fill="#047857">Attenuati e non nascosti, con il motivo scritto accanto</text>
+    <text x="830" y="446">(«In riposo obbligatorio», «Patente scaduta»).</text>
+    <text x="830" y="468" font-style="italic" fill="#64748b">Il perché di un'esclusione è informazione operativa.</text>
+    <circle cx="1450" cy="442" r="7" fill="#2563eb"/>
+
+    <!-- R4 -->
+    <rect x="70" y="502" width="1500" height="96" rx="8" fill="#ffffff" stroke="#e2e8f0"/>
+    <text x="90" y="532" font-weight="600" fill="#0f172a">Il tabellone e l'elenco delle lavorazioni</text>
+    <text x="90" y="554">si potevano usare solo col mouse: da tastiera</text>
+    <text x="90" y="576">non erano raggiungibili.</text>
+    <rect x="700" y="520" width="96" height="26" rx="13" fill="#dcfce7"/>
+    <text x="748" y="538" font-size="12" font-weight="700" fill="#15803d" text-anchor="middle">V3</text>
+    <text x="830" y="532" font-weight="600" fill="#047857">Assegnazione completabile in 5 Tab · Invio · 4 Tab · Invio,</text>
+    <text x="830" y="554">con l'esito annunciato al lettore di schermo.</text>
+    <text x="830" y="576" font-style="italic" fill="#64748b">Misurato: 3,9 secondi, senza mai toccare il mouse.</text>
+    <circle cx="1450" cy="550" r="7" fill="#7c3aed"/>
+
+    <!-- R5 -->
+    <rect x="70" y="610" width="1500" height="96" rx="8" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="90" y="640" font-weight="600" fill="#0f172a">«Nessuna alternativa applicabile» era una</text>
+    <text x="90" y="662">strada senza uscita: nessun motivo, e due</text>
+    <text x="90" y="684">consigli che non si potevano seguire da lì.</text>
+    <rect x="700" y="628" width="96" height="26" rx="13" fill="#dcfce7"/>
+    <text x="748" y="646" font-size="12" font-weight="700" fill="#15803d" text-anchor="middle">V3</text>
+    <text x="830" y="640" font-weight="600" fill="#047857">Il motivo persona per persona, più due vie d'uscita reali:</text>
+    <text x="830" y="662">segnare sul tabellone chi occupa la finestra, o rinviare.</text>
+    <text x="830" y="684" font-style="italic" fill="#64748b">Un sistema che risponde sempre è un sistema che a un certo punto mente.</text>
+    <circle cx="1450" cy="658" r="7" fill="#7c3aed"/>
+
+    <!-- R6 -->
+    <rect x="70" y="718" width="1500" height="96" rx="8" fill="#ffffff" stroke="#e2e8f0"/>
+    <text x="90" y="748" font-weight="600" fill="#0f172a">L'ordine di operatori, turni e lavorazioni</text>
+    <text x="90" y="770">cambiava dopo un ripristino: chi si orientava</text>
+    <text x="90" y="792">a memoria perdeva il riferimento.</text>
+    <rect x="700" y="736" width="96" height="26" rx="13" fill="#dcfce7"/>
+    <text x="748" y="754" font-size="12" font-weight="700" fill="#15803d" text-anchor="middle">V3</text>
+    <text x="830" y="748" font-weight="600" fill="#047857">Ordinamento esplicito nella query di stato.</text>
+    <text x="830" y="770">Conta soprattutto per l'elenco testuale, che è l'equivalente</text>
+    <text x="830" y="792">accessibile del tabellone.</text>
+    <circle cx="1450" cy="766" r="7" fill="#7c3aed"/>
+
+    <!-- R7 — aperto -->
+    <rect x="70" y="826" width="1500" height="74" rx="8" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+    <text x="90" y="856" font-weight="600" fill="#0f172a">Su schermo da 375 px, 30 bersagli su 39 sono</text>
+    <text x="90" y="878">più bassi di 44 px.</text>
+    <rect x="700" y="844" width="96" height="26" rx="13" fill="#fef3c7"/>
+    <text x="748" y="862" font-size="12" font-weight="700" fill="#b45309" text-anchor="middle">APERTO</text>
+    <text x="830" y="856" font-weight="600" fill="#b45309">Non ancora corretto.</text>
+    <text x="830" y="878">Il touch non ha hover e non ha precisione: entrambe le cose vanno compensate.</text>
+    <circle cx="1450" cy="862" r="7" fill="#7c3aed"/>
+  </g>
+
+  <!-- ============ Voci degli utenti — da compilare ============ -->
+  <line x1="70" y1="930" x2="1570" y2="930" stroke="#e2e8f0" stroke-width="2"/>
+  <text x="70" y="966" font-size="18" font-weight="700" fill="#0f172a">Voci dei partecipanti</text>
+  <rect x="322" y="948" width="222" height="24" rx="12" fill="#f1f5f9"/>
+  <text x="433" y="965" font-size="12" font-weight="700" fill="#64748b" text-anchor="middle">DA COMPILARE DOPO IL TEST</text>
+  <text x="70" y="992" font-size="14" fill="#64748b">Test con 5 partecipanti, think aloud, un task per volta. Trascrivere qui la citazione più significativa di ciascuno.</text>
+
+  <g>
+    <rect x="70" y="1012" width="480" height="132" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="7 5"/>
+    <text x="94" y="1042" font-size="13" font-weight="700" fill="#94a3b8">PARTECIPANTE 1 · profilo</text>
+    <text x="94" y="1072" font-size="15" fill="#cbd5e1">«</text>
+    <line x1="112" y1="1076" x2="524" y2="1076" stroke="#e2e8f0"/>
+    <line x1="94" y1="1104" x2="524" y2="1104" stroke="#e2e8f0"/>
+    <text x="94" y="1132" font-size="12" fill="#94a3b8">task: ______   completato: ______   tempo: ______</text>
+
+    <rect x="580" y="1012" width="480" height="132" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="7 5"/>
+    <text x="604" y="1042" font-size="13" font-weight="700" fill="#94a3b8">PARTECIPANTE 2 · profilo</text>
+    <text x="604" y="1072" font-size="15" fill="#cbd5e1">«</text>
+    <line x1="622" y1="1076" x2="1034" y2="1076" stroke="#e2e8f0"/>
+    <line x1="604" y1="1104" x2="1034" y2="1104" stroke="#e2e8f0"/>
+    <text x="604" y="1132" font-size="12" fill="#94a3b8">task: ______   completato: ______   tempo: ______</text>
+
+    <rect x="1090" y="1012" width="480" height="132" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="7 5"/>
+    <text x="1114" y="1042" font-size="13" font-weight="700" fill="#94a3b8">PARTECIPANTE 3 · profilo</text>
+    <text x="1114" y="1072" font-size="15" fill="#cbd5e1">«</text>
+    <line x1="1132" y1="1076" x2="1544" y2="1076" stroke="#e2e8f0"/>
+    <line x1="1114" y1="1104" x2="1544" y2="1104" stroke="#e2e8f0"/>
+    <text x="1114" y="1132" font-size="12" fill="#94a3b8">task: ______   completato: ______   tempo: ______</text>
+  </g>
+</svg>

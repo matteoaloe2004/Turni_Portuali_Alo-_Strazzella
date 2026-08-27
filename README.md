@@ -7,6 +7,7 @@ Elaborato per il corso di **Laboratorio di Interfaccia Uomo-Macchina**, traccia 
 (*Pianificazione turni*) — Aloè, Strazzella.
 
 > Per far partire il progetto: **[AVVIA-QUI.md](AVVIA-QUI.md)**
+> Materiale di progettazione (mockup Figma, processo, valutazione): **[documentazione/](documentazione/README.md)**
 
 ---
 
@@ -80,12 +81,20 @@ decisionale e la validazione dei comandi.
   o col tabulatore) compare sul tabellone lo slot dove finirebbe il turno.
 - **Sempre una via d'uscita.** Se il motore non trova nulla, il turno resta
   segnalato sul tabellone e si può riprendere quando si vuole.
+- **Ogni assegnazione si può disfare.** Cliccando un turno sul tabellone — anche uno
+  regolare — si apre la sua scheda: da lì si riassegna, se il motore trova una
+  collocazione diversa, oppure si annulla. Annullando, **la lavorazione torna sempre
+  fra quelle da assegnare**: il turno era una decisione, la nave da scaricare no.
 - **Niente informazioni affidate al solo colore.** Ritardi e conflitti hanno
   un'etichetta scritta accanto al colore.
 - **Tutto raggiungibile da tastiera**, tabellone compreso, con un nome parlato per
   ogni turno e le conferme annunciate in una regione `aria-live`.
-- **Le azioni distruttive chiedono conferma**, e la conferma dice cosa andrà perso
-  invece di limitarsi a "sei sicuro?".
+- **Le azioni distruttive chiedono conferma** — ripristino, svuotamento del registro e
+  annullamento di un turno — e la conferma dice cosa succederà, con i nomi veri:
+  *"il turno di MCL Athena sparirà dal tabellone, Luigi tornerà libero per quelle ore,
+  la lavorazione tornerà fra quelle da assegnare di Oggi"*, invece di "sei sicuro?".
+  Il pulsante che l'ha aperta resta disabilitato e il focus si sposta sulla conferma,
+  così chi naviga da tastiera non lo perde.
 - **I messaggi non usano la parola errore**, non mostrano codici e propongono
   sempre come uscirne.
 
