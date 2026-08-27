@@ -54,8 +54,8 @@ namespace Template.Services.PianificazioneTurni
     }
 
     /// <summary>
-    /// Annulla un turno e, se era nato da un task del backlog, rimette il task fra
-    /// quelli da assegnare.
+    /// Annulla un turno e rimette sempre la lavorazione fra quelle da assegnare: il
+    /// lavoro da fare non sparisce solo perché il turno è stato disfatto.
     /// </summary>
     public class AnnullaTurnoCommand
     {
@@ -219,24 +219,45 @@ namespace Template.Services.Shared
 
             var nomeNave = turno.Nome;
             var operatore = turno.Operatore;
-            var eraDaBacklog = turno.TaskOrigineId.HasValue;
 
-            if (eraDaBacklog)
+            // Annullare un turno disfa la collocazione, non la nave da scaricare: la
+            // lavorazione torna sempre fra quelle da assegnare, così si può ricomporre.
+            // Chi nasce dal backlog ritrova il proprio task; i turni del seed non ne hanno
+            // uno, e glielo si ricostruisce dal turno stesso.
+            var tasks = await _dbContext.TasksDaAssegnare.ToListAsync();
+            var taskOrigine = turno.TaskOrigineId.HasValue
+                ? tasks.FirstOrDefault(t => t.Id == turno.TaskOrigineId.Value)
+                : null;
+
+            if (taskOrigine != null)
             {
-                var task = await _dbContext.TasksDaAssegnare.FirstOrDefaultAsync(t => t.Id == turno.TaskOrigineId.Value);
-                if (task != null)
+                taskOrigine.Assegnato = false;
+            }
+            else
+            {
+                _dbContext.TasksDaAssegnare.Add(new TaskDaAssegnare
                 {
-                    task.Assegnato = false;
-                }
+                    Id = ProssimoIdTask(tasks),
+                    Nome = turno.Nome,
+                    CompetenzaRichiesta = turno.RuoloRichiesto,
+                    DurataOre = turno.DurataOre,
+                    // Giorno di arrivo della nave, non quello in cui il turno era finito:
+                    // è la convenzione del backlog e quella su cui ragiona il solver.
+                    Giorno = turno.EtaGiorno,
+                    Assegnato = false,
+                    EtaGiorno = turno.EtaGiorno,
+                    EtaOra = turno.EtaOra,
+                    EtdGiorno = turno.EtdGiorno,
+                    EtdOra = turno.EtdOra
+                });
             }
 
             _dbContext.Turni.Remove(turno);
             await _dbContext.SaveChangesAsync();
             await RiallineaOreSettimanali();
 
-            var tornaNelBacklog = eraDaBacklog ? " La lavorazione è tornata nel backlog." : string.Empty;
-
-            return EsitoOperazioneDTO.Ok($"Turno di {nomeNave} annullato: {operatore} torna libero.{tornaNelBacklog}");
+            return EsitoOperazioneDTO.Ok(
+                $"Turno di {nomeNave} annullato: {operatore} torna libero e la lavorazione è tornata fra quelle da assegnare.");
         }
 
         // ---------------------------------------------------------------
@@ -416,6 +437,11 @@ namespace Template.Services.Shared
         private static int ProssimoIdTurno(List<Turno> turni)
         {
             return turni.Count == 0 ? 1 : turni.Max(t => t.Id) + 1;
+        }
+
+        private static int ProssimoIdTask(List<TaskDaAssegnare> tasks)
+        {
+            return tasks.Count == 0 ? 1 : tasks.Max(t => t.Id) + 1;
         }
 
         private static string FormattaOra(double ora)

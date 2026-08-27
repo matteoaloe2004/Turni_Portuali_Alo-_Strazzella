@@ -109,9 +109,10 @@ namespace PianificazioneTurni {
 
         public serverNonRaggiungibile: boolean;
 
-        // Conferme in linea per le due azioni distruttive, al posto di confirm().
+        // Conferme in linea per le azioni distruttive, al posto di confirm().
         public confermaRipristinoAperta: boolean;
         public confermaSvuotamentoAperta: boolean;
+        public confermaAnnullamentoAperta: boolean;
 
         /** Chi sta guardando la console: serve a distinguere le proprie modifiche da quelle altrui. */
         public coordinatoreCorrente: string;
@@ -160,6 +161,7 @@ namespace PianificazioneTurni {
             this.serverNonRaggiungibile = false;
             this.confermaRipristinoAperta = false;
             this.confermaSvuotamentoAperta = false;
+            this.confermaAnnullamentoAperta = false;
             this.coordinatoreCorrente = '';
             this.puoAmministrare = false;
 

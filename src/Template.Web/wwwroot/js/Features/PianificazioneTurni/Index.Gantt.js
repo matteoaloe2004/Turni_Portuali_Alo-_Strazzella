@@ -105,15 +105,14 @@ var PianificazioneTurni;
             'gantt-block-normal': stato === 'regolare'
         };
     };
-    /** Un blocco in crisi (ritardo, collisione, da rivedere) apre il modale di
-     *  risoluzione; gli altri aprono la scheda della nave. */
+    /** Ogni blocco apre il modale del proprio turno, qualunque sia lo stato: il turno è
+     *  l'oggetto su cui si agisce, quindi il clic sull'oggetto deve offrirne le azioni.
+     *  Il modale si presenta come risoluzione se il turno è in crisi e come revisione
+     *  (riassegna o annulla) se è regolare: senza questa seconda porta un'assegnazione
+     *  sbagliata non era più disfabile. La scheda della nave resta raggiungibile da
+     *  dentro il modale. */
     PianificazioneTurni.IndexVueModel.prototype.handleBlockClick = function (t) {
-        if (this.statoTurno(t) === 'regolare' || this.statoTurno(t) === 'oltre-mezzanotte') {
-            this.apriDettagliNave(t.nome);
-        }
-        else {
-            this.apriModale(t);
-        }
+        this.apriModale(t);
     };
     // ---- Barre di carico ---------------------------------------------------------
     // oreMassime a 0 o assente darebbe NaN o Infinity: senza limite contrattuale noto la

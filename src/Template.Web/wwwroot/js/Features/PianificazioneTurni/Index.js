@@ -51,6 +51,7 @@ var PianificazioneTurni;
             this.serverNonRaggiungibile = false;
             this.confermaRipristinoAperta = false;
             this.confermaSvuotamentoAperta = false;
+            this.confermaAnnullamentoAperta = false;
             this.coordinatoreCorrente = '';
             this.puoAmministrare = false;
             this.leggiSeedIniziale();

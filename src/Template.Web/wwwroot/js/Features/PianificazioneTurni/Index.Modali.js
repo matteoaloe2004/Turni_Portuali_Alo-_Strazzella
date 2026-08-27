@@ -38,17 +38,30 @@ var PianificazioneTurni;
             dopoLaChiusura();
         }
     }
+    /** Stato del modale del turno da azzerare a ogni chiusura, da qualunque via passi.
+     *  Tenerlo in un posto solo evita che aggiungere una conferma significhi ricordarsi
+     *  di spegnerla in quattro punti diversi. */
+    function ripulisciStatoModaleTurno(self) {
+        self.turnoInRitardo = null;
+        self.soluzioneOttimale = null;
+        self.modalInstance = null;
+        self.formError = '';
+        self.confermaAnnullamentoAperta = false;
+    }
     const ID_MODALE_CONFLITTO = 'conflittoModal';
     const ID_MODALE_OPERATORE = 'dettagliOperatoreModal';
     const ID_MODALE_NAVE = 'dettagliNaveModal';
     // ---- Modale di risoluzione conflitto --------------------------------------
+    /** Si apre su qualunque turno: in crisi per risolverlo, regolare per rivederlo.
+     *  In `modalitaTurnoAperto` c'è quale delle due situazioni la view deve raccontare. */
     PianificazioneTurni.IndexVueModel.prototype.apriModale = async function (turno) {
         const self = this;
-        if (!turno.requiresResolution && !turno.isDelayed && !this.isBloccoInCollisione(turno))
+        if (!turno)
             return;
         self.banchinaSelezione = turno.banchina || '';
         self.operatoreSelezione = '';
         self.formError = '';
+        self.confermaAnnullamentoAperta = false;
         self.turnoInRitardo = turno;
         self.orarioSelezioneRiassegnazione = turno.startOra + (turno.isDelayed ? turno.ritardoOre : 0);
         self.soluzioneOttimale = null;
@@ -147,54 +160,125 @@ var PianificazioneTurni;
         const nuovoOperatore = self.operatoreSelezione;
         const banchina = self.banchinaSelezione;
         const orario = self.orarioSelezioneRiassegnazione;
-        chiudiModaleBootstrap(ID_MODALE_CONFLITTO, () => {
-            self.turnoInRitardo = null;
-            self.soluzioneOttimale = null;
-            self.modalInstance = null;
-            self.formError = '';
-        });
+        chiudiModaleBootstrap(ID_MODALE_CONFLITTO, () => ripulisciStatoModaleTurno(self));
         self.selezionaGiorno(giornoTarget);
         this.inviaNotificaSimulata('SMS', nuovoOperatore, `Turno assegnato: nave ${nomeNave}, ${banchina}, ${self.getNomeGiorno(giornoTarget)} dalle ${self.fmtOra(orario)}.`);
         if (vecchioOperatore && vecchioOperatore !== nuovoOperatore) {
             this.inviaNotificaSimulata('SMS', vecchioOperatore, `Il tuo turno del ${self.getNomeGiorno(giornoTarget)} per la nave ${nomeNave} è stato riassegnato.`);
         }
     };
+    /** Primo passo: apre la conferma, non annulla nulla. */
+    PianificazioneTurni.IndexVueModel.prototype.chiediAnnullamentoTurno = function () {
+        this.confermaAnnullamentoAperta = true;
+        // Il pulsante che ha aperto la conferma resta disabilitato finché la conferma è
+        // aperta: senza spostare il focus, chi naviga da tastiera lo perde e finisce
+        // fuori dal modale.
+        window.setTimeout(() => {
+            const rifiuta = document.getElementById('rifiuta-annullamento');
+            if (rifiuta)
+                rifiuta.focus();
+        }, 0);
+    };
+    PianificazioneTurni.IndexVueModel.prototype.annullaRichiestaAnnullamento = function () {
+        this.confermaAnnullamentoAperta = false;
+    };
+    /** Secondo passo: esegue. Ci si arriva solo dalla conferma, mai da un clic singolo. */
     PianificazioneTurni.IndexVueModel.prototype.annullaTurnoCorrente = async function () {
         const self = this;
         const turno = self.turnoInRitardo;
         if (!turno)
             return;
+        // Serviranno dopo la risposta, quando applicaStato() ha già sostituito i turni e
+        // questo non c'è più.
+        const nomeNave = turno.nome;
+        const operatore = turno.operatore;
+        const giorno = turno.giorno;
         const esito = await self.inviaComando('/Turni/AnnullaTurno', { TurnoId: turno.id });
-        if (!esito || !esito.riuscita)
+        if (!esito || !esito.riuscita) {
+            // Il motivo è già nel toast: si richiude la conferma e il modale resta aperto.
+            self.confermaAnnullamentoAperta = false;
+            return;
+        }
+        chiudiModaleBootstrap(ID_MODALE_CONFLITTO, () => ripulisciStatoModaleTurno(self));
+        this.inviaNotificaSimulata('SMS', operatore, `Turno annullato: nave ${nomeNave}, ${self.getNomeGiorno(giorno)}. Non devi presentarti.`);
+    };
+    /** Dal turno alla scheda della nave: il secondo modale si apre solo quando il primo
+     *  ha finito di chiudersi, come già fa il salto verso la scheda operatore. */
+    PianificazioneTurni.IndexVueModel.prototype.apriDettagliNaveDalTurno = function () {
+        const self = this;
+        const nave = self.turnoInRitardo ? self.turnoInRitardo.nome : '';
+        if (!nave)
             return;
         chiudiModaleBootstrap(ID_MODALE_CONFLITTO, () => {
-            self.turnoInRitardo = null;
-            self.soluzioneOttimale = null;
-            self.modalInstance = null;
-            self.formError = '';
+            ripulisciStatoModaleTurno(self);
+            this.apriDettagliNave(nave);
         });
     };
+    // ---- Come si presenta il modale ------------------------------------------
+    /** Risolvere una crisi o rivedere un turno che sta bene: cambia l'intestazione, il
+     *  modo di proporre l'alternativa e le vie d'uscita offerte. */
+    Object.defineProperty(PianificazioneTurni.IndexVueModel.prototype, 'modalitaTurnoAperto', {
+        enumerable: true,
+        configurable: true,
+        get: function () {
+            const turno = this.turnoInRitardo;
+            if (!turno)
+                return 'revisione';
+            if (turno.isDelayed)
+                return 'ritardo';
+            if (turno.requiresResolution || this.isBloccoInCollisione(turno))
+                return 'conflitto';
+            return 'revisione';
+        }
+    });
+    /** Il DSS ragiona senza il turno aperto, quindi la collocazione dove il turno già sta
+     *  gli risulta libera e su un turno regolare è spesso proprio quella che riproporrebbe.
+     *  Presentarla come alternativa sarebbe una scelta finta: va detto invece che non c'è
+     *  niente di meglio. */
+    Object.defineProperty(PianificazioneTurni.IndexVueModel.prototype, 'soluzioneCoincideConLaCollocazioneAttuale', {
+        enumerable: true,
+        configurable: true,
+        get: function () {
+            const self = this;
+            const sol = self.soluzioneOttimale;
+            const turno = self.turnoInRitardo;
+            if (!sol || !turno)
+                return false;
+            return sol.moloSuggerito === turno.banchina
+                && sol.operatoreSuggerito === turno.operatore
+                && sol.giornoSuggerito === turno.giorno
+                && Math.abs(sol.orarioSuggerito - turno.startOra) < 0.01;
+        }
+    });
+    /** Cosa succede annullando: la conferma deve dire questo, non «sei sicuro?». Vale per
+     *  qualunque turno, perché il comando rimette sempre la lavorazione nel backlog. */
+    Object.defineProperty(PianificazioneTurni.IndexVueModel.prototype, 'effettiAnnullamentoTurno', {
+        enumerable: true,
+        configurable: true,
+        get: function () {
+            const self = this;
+            const turno = self.turnoInRitardo;
+            if (!turno)
+                return '';
+            return [
+                `il turno di ${turno.nome} sparirà dal tabellone`,
+                `${turno.operatore} tornerà libero per quelle ore`,
+                `la lavorazione tornerà fra quelle da assegnare di ${self.getNomeGiorno(turno.etaGiorno)}, `
+                    + 'e potrai ricollocarla da lì'
+            ].join(', ') + '.';
+        }
+    });
     /** Chiude il modale quando il DSS non trova nulla, lasciando il turno segnalato sul
      *  Gantt per riprenderlo a mano. */
     PianificazioneTurni.IndexVueModel.prototype.rinunciaAllaSoluzioneAutomatica = function () {
         const self = this;
         const nomeNave = self.turnoInRitardo ? self.turnoInRitardo.nome : 'Il turno';
-        chiudiModaleBootstrap(ID_MODALE_CONFLITTO, () => {
-            self.turnoInRitardo = null;
-            self.soluzioneOttimale = null;
-            self.modalInstance = null;
-            self.formError = '';
-        });
+        chiudiModaleBootstrap(ID_MODALE_CONFLITTO, () => ripulisciStatoModaleTurno(self));
         PianificazioneTurni.mostraMessaggio('attenzione', `${nomeNave} resta segnalata sul Gantt: la gestisci a mano quando vuoi, cliccando di nuovo il suo blocco.`);
     };
     PianificazioneTurni.IndexVueModel.prototype.annullaModale = function () {
         const self = this;
-        chiudiModaleBootstrap(ID_MODALE_CONFLITTO, () => {
-            self.turnoInRitardo = null;
-            self.soluzioneOttimale = null;
-            self.modalInstance = null;
-            self.formError = '';
-        });
+        chiudiModaleBootstrap(ID_MODALE_CONFLITTO, () => ripulisciStatoModaleTurno(self));
     };
     // ---- Scheda operatore ------------------------------------------------------
     PianificazioneTurni.IndexVueModel.prototype.apriDettagliOperatore = function (op) {
