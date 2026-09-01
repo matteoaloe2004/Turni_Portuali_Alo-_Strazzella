@@ -396,10 +396,10 @@ var PianificazioneTurni;
             for (const candidato of alternativi) {
                 if (soluzioni.length >= MAX_SOLUZIONI)
                     break;
-                const slot = trovaSlotLibero(this, task, candidato.op, task.giorno);
+                const slot = trovaSlotLibero(this, task, candidato.op, self.giornoSelezionato);
                 if (!slot)
                     continue;
-                soluzioni.push(costruisciSoluzioneAlternativa(task, candidato.op, candidato.score, slot, soluzioni.length));
+                soluzioni.push(costruisciSoluzioneAlternativa(task, candidato.op, candidato.score, slot, soluzioni.length, self.giornoSelezionato));
             }
             return soluzioni;
         }
@@ -432,7 +432,7 @@ var PianificazioneTurni;
             compromessi: compromessi
         };
     }
-    function costruisciSoluzioneAlternativa(task, op, score, slot, indice) {
+    function costruisciSoluzioneAlternativa(task, op, score, slot, indice, giorno) {
         const vantaggi = [];
         const compromessi = [];
         if (op.reperibile)
@@ -454,7 +454,7 @@ var PianificazioneTurni;
             molo: slot.banchina,
             orario: slot.orario,
             operatore: op.nome,
-            giorno: task.giorno,
+            giorno: giorno,
             score: score,
             consigliata: false,
             vantaggi: vantaggi.length > 0 ? vantaggi : ['Nessun conflitto'],
@@ -469,7 +469,7 @@ var PianificazioneTurni;
     };
     PianificazioneTurni.IndexVueModel.prototype.isTaskSelezionatoVisibileOggi = function () {
         const self = this;
-        return !!self.selectedTask && self.selectedTask.giorno === self.giornoSelezionato;
+        return PianificazioneTurni.taskVisibileNelGiorno(self.selectedTask, self.giornoSelezionato);
     };
     /** Porzione della finestra ETA/ETD che cade nel giorno visualizzato, in ore locali.
      *  La finestra vive sull'asse assoluto e può sfondare la mezzanotte. */

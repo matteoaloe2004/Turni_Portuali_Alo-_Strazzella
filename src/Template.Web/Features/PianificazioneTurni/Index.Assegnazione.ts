@@ -472,11 +472,11 @@ namespace PianificazioneTurni {
             for (const candidato of alternativi) {
                 if (soluzioni.length >= MAX_SOLUZIONI) break;
 
-                const slot = trovaSlotLibero(this, task, candidato.op, task.giorno);
+                const slot = trovaSlotLibero(this, task, candidato.op, self.giornoSelezionato);
                 if (!slot) continue;
 
                 soluzioni.push(costruisciSoluzioneAlternativa(
-                    task, candidato.op, candidato.score, slot, soluzioni.length));
+                    task, candidato.op, candidato.score, slot, soluzioni.length, self.giornoSelezionato));
             }
 
             return soluzioni;
@@ -511,7 +511,7 @@ namespace PianificazioneTurni {
         };
     }
 
-    function costruisciSoluzioneAlternativa(task: any, op: any, score: number, slot: any, indice: number): any {
+    function costruisciSoluzioneAlternativa(task: any, op: any, score: number, slot: any, indice: number, giorno: number): any {
         const vantaggi: string[] = [];
         const compromessi: string[] = [];
 
@@ -531,7 +531,7 @@ namespace PianificazioneTurni {
             molo: slot.banchina,
             orario: slot.orario,
             operatore: op.nome,
-            giorno: task.giorno,
+            giorno: giorno,
             score: score,
             consigliata: false,
             vantaggi: vantaggi.length > 0 ? vantaggi : ['Nessun conflitto'],
@@ -548,7 +548,7 @@ namespace PianificazioneTurni {
 
     IndexVueModel.prototype.isTaskSelezionatoVisibileOggi = function (this: IndexVueModel): boolean {
         const self = this as any;
-        return !!self.selectedTask && self.selectedTask.giorno === self.giornoSelezionato;
+        return taskVisibileNelGiorno(self.selectedTask, self.giornoSelezionato);
     };
 
     /** Porzione della finestra ETA/ETD che cade nel giorno visualizzato, in ore locali.

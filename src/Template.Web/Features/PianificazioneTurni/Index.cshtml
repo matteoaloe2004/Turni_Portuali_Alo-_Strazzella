@@ -163,10 +163,12 @@
                         var lista = this.soluzioniDSSTask;
                         return lista && lista.length > 0 ? (lista[this.indiceDSSCorrente] || null) : null;
                     },
+                    // Una lavorazione compare nel giorno suo e, se la finestra della nave
+                    // ci arriva con spazio a sufficienza, anche in quello successivo.
                     tasksDaAssegnareGiorno: function () {
                         var giorno = Number(this.giornoSelezionato);
                         return (this.tasksDaAssegnare || []).filter(function (t) {
-                            return Number(t.giorno) === giorno;
+                            return PianificazioneTurni.taskVisibileNelGiorno(t, giorno);
                         });
                     }
                 })

@@ -430,7 +430,7 @@ namespace PianificazioneTurni {
         }
 
         public getTasksDelGiorno(): any[] {
-            return this.tasksDaAssegnare.filter(t => t.giorno === this.giornoSelezionato);
+            return this.tasksDaAssegnare.filter(t => taskVisibileNelGiorno(t, this.giornoSelezionato));
         }
 
         public isElementoFiltrato(t: any): boolean {

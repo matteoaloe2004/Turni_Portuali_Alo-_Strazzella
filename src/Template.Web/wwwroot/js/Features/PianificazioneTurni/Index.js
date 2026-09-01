@@ -298,7 +298,7 @@ var PianificazioneTurni;
             return this.operatori.filter(op => this.isOperatoreFiltrato(op));
         }
         getTasksDelGiorno() {
-            return this.tasksDaAssegnare.filter(t => t.giorno === this.giornoSelezionato);
+            return this.tasksDaAssegnare.filter(t => PianificazioneTurni.taskVisibileNelGiorno(t, this.giornoSelezionato));
         }
         isElementoFiltrato(t) {
             if (!this.filtroRicerca)

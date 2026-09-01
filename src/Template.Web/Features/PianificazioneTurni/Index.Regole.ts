@@ -108,6 +108,45 @@ namespace PianificazioneTurni {
         return op.ruolo === competenzaRichiesta;
     }
 
+    // ---- Finestra di attracco su piu' giorni --------------------------------
+
+    /**
+     * Porzione della finestra di attracco che cade dentro un singolo giorno, in ore
+     * locali. La finestra vive sull'asse assoluto Giorno*24 + Ora e puo' sfondare la
+     * mezzanotte: una nave che attracca oggi alle 12 e riparte domani alle 16 lascia
+     * spazio utile in entrambe le giornate. Restituisce null se il giorno non ne tocca
+     * nessuna parte.
+     */
+    export function finestraTaskNelGiorno(task: any, giorno: number): { inizio: number; fine: number } | null {
+        if (!task) return null;
+
+        const offsetGiorno = giorno * 24.0;
+        const etaAssoluto = (task.etaGiorno ?? task.giorno) * 24.0 + (task.etaOra ?? ORA_INIZIO_GIORNATA);
+        const etdAssoluto = (task.etdGiorno ?? task.giorno) * 24.0 + (task.etdOra ?? ORA_FINE_GIORNATA);
+
+        const inizio = Math.max(offsetGiorno + ORA_INIZIO_GIORNATA, etaAssoluto) - offsetGiorno;
+        const fine = Math.min(offsetGiorno + ORA_FINE_GIORNATA, etdAssoluto) - offsetGiorno;
+
+        return fine > inizio ? { inizio, fine } : null;
+    }
+
+    /**
+     * Una lavorazione compare sempre nel backlog del proprio giorno, e in quello del
+     * giorno successivo quando la finestra della nave arriva fin la' e lascia spazio
+     * all'intera durata. Oltre il giorno +1 non si va: e' lo stesso limite di
+     * slittamento che applicano trovaSlotLibero e il solver sul server.
+     */
+    export function taskVisibileNelGiorno(task: any, giorno: number): boolean {
+        if (!task) return false;
+
+        const scartoGiorni = giorno - task.giorno;
+        if (scartoGiorni === 0) return true;
+        if (scartoGiorni !== 1) return false;
+
+        const finestra = finestraTaskNelGiorno(task, giorno);
+        return finestra !== null && finestra.fine - finestra.inizio >= task.durataOre;
+    }
+
     // ---- Dialogo con il server ---------------------------------------------
 
     export interface RispostaServer<T> {

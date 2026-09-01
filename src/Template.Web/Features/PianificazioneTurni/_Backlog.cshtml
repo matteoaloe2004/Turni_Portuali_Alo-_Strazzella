@@ -32,6 +32,12 @@
                             <i class="fa-solid fa-ship text-secondary me-2" aria-hidden="true"></i>{{ task.nome }}
                         </span>
                         <span class="d-block text-secondary">{{ getTaskDock(task) }}</span>
+                        @* La nave puo' restare in banchina oltre la mezzanotte: qui la
+                           lavorazione compare anche nel giorno dopo, e va detto di chi e'. *@
+                        <span v-if="task.giorno !== giornoSelezionato"
+                              class="badge bg-secondary-subtle text-secondary border border-secondary-subtle mt-1">
+                            <i class="fa-regular fa-calendar me-1" aria-hidden="true"></i>Lavorazione di {{ getNomeGiorno(task.giorno) }}
+                        </span>
                     </span>
                     <span class="role-badge" v-bind:class="'role-' + task.competenzaRichiesta">
                         Richiede: {{ task.competenzaRichiesta }}

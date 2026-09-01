@@ -94,6 +94,44 @@ var PianificazioneTurni;
         return op.ruolo === competenzaRichiesta;
     }
     PianificazioneTurni.haCompetenza = haCompetenza;
+    // ---- Finestra di attracco su piu' giorni --------------------------------
+    /**
+     * Porzione della finestra di attracco che cade dentro un singolo giorno, in ore
+     * locali. La finestra vive sull'asse assoluto Giorno*24 + Ora e puo' sfondare la
+     * mezzanotte: una nave che attracca oggi alle 12 e riparte domani alle 16 lascia
+     * spazio utile in entrambe le giornate. Restituisce null se il giorno non ne tocca
+     * nessuna parte.
+     */
+    function finestraTaskNelGiorno(task, giorno) {
+        var _a, _b, _c, _d;
+        if (!task)
+            return null;
+        const offsetGiorno = giorno * 24.0;
+        const etaAssoluto = ((_a = task.etaGiorno) !== null && _a !== void 0 ? _a : task.giorno) * 24.0 + ((_b = task.etaOra) !== null && _b !== void 0 ? _b : PianificazioneTurni.ORA_INIZIO_GIORNATA);
+        const etdAssoluto = ((_c = task.etdGiorno) !== null && _c !== void 0 ? _c : task.giorno) * 24.0 + ((_d = task.etdOra) !== null && _d !== void 0 ? _d : PianificazioneTurni.ORA_FINE_GIORNATA);
+        const inizio = Math.max(offsetGiorno + PianificazioneTurni.ORA_INIZIO_GIORNATA, etaAssoluto) - offsetGiorno;
+        const fine = Math.min(offsetGiorno + PianificazioneTurni.ORA_FINE_GIORNATA, etdAssoluto) - offsetGiorno;
+        return fine > inizio ? { inizio, fine } : null;
+    }
+    PianificazioneTurni.finestraTaskNelGiorno = finestraTaskNelGiorno;
+    /**
+     * Una lavorazione compare sempre nel backlog del proprio giorno, e in quello del
+     * giorno successivo quando la finestra della nave arriva fin la' e lascia spazio
+     * all'intera durata. Oltre il giorno +1 non si va: e' lo stesso limite di
+     * slittamento che applicano trovaSlotLibero e il solver sul server.
+     */
+    function taskVisibileNelGiorno(task, giorno) {
+        if (!task)
+            return false;
+        const scartoGiorni = giorno - task.giorno;
+        if (scartoGiorni === 0)
+            return true;
+        if (scartoGiorni !== 1)
+            return false;
+        const finestra = finestraTaskNelGiorno(task, giorno);
+        return finestra !== null && finestra.fine - finestra.inizio >= task.durataOre;
+    }
+    PianificazioneTurni.taskVisibileNelGiorno = taskVisibileNelGiorno;
     /** Distingue "il server ha risposto di no" da "il server non ha risposto". */
     async function inviaAlServer(url, corpo) {
         try {
