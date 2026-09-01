@@ -90,17 +90,23 @@
                 <legend class="visually-hidden">Alternative proposte per {{ selectedTask.nome }}</legend>
 
                 <div class="d-flex flex-column gap-2">
+                    @* Punteggio 0 = il server rifiuterebbe questa collocazione: la si
+                       mostra col motivo, ma non la si puo' scegliere. *@
                     <label v-for="(sol, index) in soluzioniDSSTask" :key="index"
                            class="dss-option p-3 d-flex align-items-start gap-2"
-                           v-bind:class="{ 'dss-option-selected': indiceDSSCorrente === index }">
+                           v-bind:class="{ 'dss-option-selected': indiceDSSCorrente === index, 'opacity-75': sol.score === 0 }">
                         <input type="radio" name="soluzioneDSS" class="form-check-input mt-1 flex-shrink-0"
                                v-bind:checked="indiceDSSCorrente === index"
+                               v-bind:disabled="sol.score === 0"
                                v-on:change="soluzioneDSSSelezionataIndex = index">
                         <span class="flex-grow-1">
                             <span class="d-flex align-items-center flex-wrap gap-2 mb-1">
                                 <strong class="text-dark">{{ sol.molo }} · {{ fmtOra(sol.orario) }} · {{ sol.operatore }}</strong>
                                 <span v-if="sol.consigliata" class="badge bg-success">Consigliata</span>
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+                                <span v-if="sol.score === 0" class="badge bg-danger">
+                                    Non applicabile
+                                </span>
+                                <span v-else class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
                                     Compatibilità {{ sol.score }}%
                                 </span>
                             </span>
@@ -111,7 +117,15 @@
                     </label>
 
                     @* Riepilogo dell'effetto della scelta prima di applicarla. *@
-                    <p v-if="soluzioneDSSCorrente" class="dss-riepilogo p-2 mb-0 mt-1 text-secondary">
+                    <p v-if="soluzioneDSSCorrente && soluzioneDSSCorrente.score === 0"
+                       class="dss-riepilogo p-2 mb-0 mt-1 text-danger" role="alert">
+                        <i class="fa-solid fa-ban me-1" aria-hidden="true"></i>
+                        Questa collocazione sarebbe rifiutata<span
+                            v-if="soluzioneDSSCorrente.motiviBloccanti.length > 0">:
+                            {{ soluzioneDSSCorrente.motiviBloccanti.join(', ').toLowerCase() }}</span>.
+                        Scegline un'altra, oppure libera la fascia spostando il turno che la occupa.
+                    </p>
+                    <p v-else-if="soluzioneDSSCorrente" class="dss-riepilogo p-2 mb-0 mt-1 text-secondary">
                         <i class="fa-regular fa-comment-dots me-1" aria-hidden="true"></i>
                         La lavorazione sarà assegnata a
                         <strong>{{ soluzioneDSSCorrente.operatore }}</strong>
@@ -126,7 +140,7 @@
                             Lascia perdere
                         </button>
                         <button type="button" class="btn btn-primary btn-sm flex-grow-1 fw-bold"
-                                v-bind:disabled="!soluzioneDSSCorrente || operazioneInCorso"
+                                v-bind:disabled="!soluzioneDSSCorrente || operazioneInCorso || soluzioneDSSCorrente.score === 0"
                                 v-on:click="applicaSoluzioneDSSSelezionata(soluzioneDSSCorrente)">
                             <i class="fa-solid" v-bind:class="operazioneInCorso ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'" aria-hidden="true"></i>
                             {{ operazioneInCorso ? 'Sto assegnando…' : 'Applica questa soluzione' }}

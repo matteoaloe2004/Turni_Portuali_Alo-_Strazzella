@@ -241,20 +241,36 @@ var PianificazioneTurni;
         // `sol` può essere undefined se la lista si è ricalcolata e accorciata dopo la scelta.
         if (!this.selectedTask || !sol)
             return;
+        // Punteggio 0 = il server rifiuterebbe: l'interfaccia lo blocca gia', qui si
+        // evita che una lista ricalcolata sotto il click porti a un errore inutile.
+        if (sol.score === 0) {
+            const motivi = (sol.motiviBloccanti || []).join(', ').toLowerCase();
+            PianificazioneTurni.mostraMessaggio('attenzione', motivi
+                ? `Non posso applicarla: ${motivi}.`
+                : 'Non posso applicarla: violerebbe un vincolo di pianificazione.');
+            return;
+        }
         await assegnaSulServer(this, sol.operatore, sol.molo, sol.orario, sol.giorno);
     };
     // ---- Dettaglio dei conflitti ----------------------------------------------
-    PianificazioneTurni.IndexVueModel.prototype.getDettaglioConflittoOperatore = function (op) {
-        var _a;
+    PianificazioneTurni.IndexVueModel.prototype.getDettaglioConflittoOperatore = function (op, collocazione) {
         const self = this;
         if (!self.turnoInRitardo && !self.selectedTask)
             return { warnings: [], successes: [] };
         const t = self.turnoInRitardo || self.selectedTask;
-        // Per un turno in riassegnazione l'orario è quello scelto nel modale; per un task
-        // del backlog è l'ETA della nave. `??` e non `||`: un ETA a mezzanotte vale 0.
-        const oraInizio = self.turnoInRitardo
-            ? self.orarioSelezioneRiassegnazione
-            : ((_a = t.etaOra) !== null && _a !== void 0 ? _a : PianificazioneTurni.ORA_INIZIO_GIORNATA);
+        // Quando il chiamante sa dove il turno finirebbe (una proposta del DSS porta
+        // giorno, ora e molo) i conflitti si misurano esattamente li'. Senza, si stima:
+        // per un turno in riassegnazione l'orario e' quello scelto nel modale, per un
+        // task l'inizio utile della finestra di attracco nel giorno che si sta guardando.
+        const giorno = collocazione
+            ? collocazione.giorno
+            : (self.turnoInRitardo ? t.giorno : self.giornoSelezionato);
+        const finestraNelGiorno = self.turnoInRitardo ? null : PianificazioneTurni.finestraTaskNelGiorno(t, giorno);
+        const oraInizio = collocazione
+            ? collocazione.ora
+            : (self.turnoInRitardo
+                ? self.orarioSelezioneRiassegnazione
+                : (finestraNelGiorno ? finestraNelGiorno.inizio : PianificazioneTurni.ORA_INIZIO_GIORNATA));
         const warnings = [];
         const successes = [];
         const competenzaRichiesta = t.competenzaRichiesta || t.ruoloRichiesto || 'Gruista';
@@ -270,13 +286,15 @@ var PianificazioneTurni;
             warnings.push('RIPOSO_OBBLIGATORIO');
         if (op.oreSettimanali + t.durataOre > op.oreMassime)
             warnings.push('LIMITE_ORE_SUPERATO');
-        const banchina = self.turnoInRitardo ? self.banchinaSelezione : (t.banchina || '');
+        const banchina = collocazione
+            ? collocazione.banchina
+            : (self.turnoInRitardo ? self.banchinaSelezione : (t.banchina || ''));
         if (banchina && !PianificazioneTurni.abilitatoAllaBanchina(op, banchina))
             warnings.push('NON_ABILITATO');
         // Si esclude solo il turno che si sta spostando: task e turni hanno id indipendenti
         // che partono entrambi da 1, quindi l'id di un task non identifica nessun turno.
         const idDaEscludere = self.turnoInRitardo ? t.id : null;
-        const inizioCand = t.giorno * 24.0 + oraInizio;
+        const inizioCand = giorno * 24.0 + oraInizio;
         const fineCand = inizioCand + t.durataOre;
         let sovrapposto = false;
         let riposoCorto = false;
@@ -324,14 +342,16 @@ var PianificazioneTurni;
         }
         return parti.join(' ');
     };
-    PianificazioneTurni.IndexVueModel.prototype.getOperatoreCompatibilityScore = function (op, task) {
+    PianificazioneTurni.IndexVueModel.prototype.getOperatoreCompatibilityScore = function (op, task, collocazione) {
         const riferimento = task || this.selectedTask;
         if (!riferimento)
             return 100;
         if (this.isOperatoreIncompatibile(op))
             return 0;
-        const conflitto = this.getDettaglioConflittoOperatore(op);
-        // Vincoli che rendono l'operatore inutilizzabile, non solo meno adatto.
+        const conflitto = this.getDettaglioConflittoOperatore(op, collocazione);
+        // Zero vuol dire una cosa sola: il server rifiuterebbe questa collocazione.
+        // Sono gli stessi tre vincoli che ValidaCollocazione tratta come bloccanti,
+        // mentre ore oltre il contratto e molo non abilitato restano compromessi.
         if (conflitto.warnings.indexOf('RIPOSO_OBBLIGATORIO') !== -1)
             return 0;
         if (conflitto.warnings.indexOf('RIPOSO_INSUFFICIENTE') !== -1)
@@ -387,19 +407,35 @@ var PianificazioneTurni;
             // decrescente, scartando chi non ha uno slot libero.
             // Stesso filtro che il comando applica sul server: patente scaduta e riposo
             // obbligatorio escludono l'operatore, quindi non deve comparire fra le proposte.
+            // Lo slot va cercato PRIMA del punteggio: i conflitti vanno misurati dove il
+            // turno finirebbe, non sull'ETA della nave, altrimenti una proposta valida si
+            // porta dietro l'allarme di un'altra fascia oraria (e l'ordinamento segue un
+            // punteggio che non c'entra con la collocazione mostrata).
             const alternativi = self.operatori
                 .filter((op) => !self.isOperatoreIncompatibile(op))
                 .filter((op) => !self.soluzioneTaskSuggerita || op.nome !== self.soluzioneTaskSuggerita.operatoreSuggerito)
-                .map((op) => ({ op, score: this.getOperatoreCompatibilityScore(op, task) }))
+                .map((op) => ({ op, slot: trovaSlotLibero(this, task, op, self.giornoSelezionato) }))
+                .filter((c) => c.slot !== null)
+                .map((c) => {
+                const collocazione = {
+                    giorno: self.giornoSelezionato,
+                    ora: c.slot.orario,
+                    banchina: c.slot.banchina
+                };
+                return {
+                    op: c.op,
+                    slot: c.slot,
+                    collocazione,
+                    conflitto: this.getDettaglioConflittoOperatore(c.op, collocazione),
+                    score: this.getOperatoreCompatibilityScore(c.op, task, collocazione)
+                };
+            })
                 .sort((a, b) => b.score - a.score);
             const MAX_SOLUZIONI = 3;
             for (const candidato of alternativi) {
                 if (soluzioni.length >= MAX_SOLUZIONI)
                     break;
-                const slot = trovaSlotLibero(this, task, candidato.op, self.giornoSelezionato);
-                if (!slot)
-                    continue;
-                soluzioni.push(costruisciSoluzioneAlternativa(task, candidato.op, candidato.score, slot, soluzioni.length, self.giornoSelezionato));
+                soluzioni.push(costruisciSoluzioneAlternativa(task, candidato.op, candidato.score, candidato.slot, soluzioni.length, self.giornoSelezionato, candidato.conflitto.warnings));
             }
             return soluzioni;
         }
@@ -408,6 +444,11 @@ var PianificazioneTurni;
         const op = self.operatori.find((o) => o.nome === sol.operatoreSuggerito);
         const vantaggi = [];
         const compromessi = [];
+        const collocazione = {
+            giorno: sol.giornoSuggerito,
+            ora: sol.orarioSuggerito,
+            banchina: sol.moloSuggerito
+        };
         if (op && op.reperibile)
             compromessi.push('Costo maggiore (reperibile)');
         else
@@ -416,8 +457,10 @@ var PianificazioneTurni;
             vantaggi.push(`Criterio: ${sol.motivoScelta}`);
         if (PianificazioneTurni.abilitatoAllaBanchina(op, sol.moloSuggerito))
             vantaggi.push('Abilitato al molo');
-        else
-            compromessi.push('Deroga sull\'abilitazione al molo');
+        const conflitto = op
+            ? self.getDettaglioConflittoOperatore(op, collocazione)
+            : { warnings: [], successes: [] };
+        aggiungiVincoliNonRispettati(compromessi, conflitto.warnings);
         return {
             titolo: 'Soluzione A (consigliata dal sistema)',
             molo: sol.moloSuggerito,
@@ -426,13 +469,33 @@ var PianificazioneTurni;
             giorno: sol.giornoSuggerito,
             // Stesso calcolo della card dell'operatore: un punteggio fisso qui faceva
             // leggere due numeri diversi per la stessa persona.
-            score: op ? self.getOperatoreCompatibilityScore(op, task) : 100,
+            score: op ? self.getOperatoreCompatibilityScore(op, task, collocazione) : 100,
+            motiviBloccanti: motiviBloccanti(conflitto.warnings),
             consigliata: true,
             vantaggi: vantaggi.length > 0 ? vantaggi : ['Nessun conflitto'],
             compromessi: compromessi
         };
     }
-    function costruisciSoluzioneAlternativa(task, op, score, slot, indice, giorno) {
+    /** I tre vincoli che il server tratta come bloccanti in ValidaCollocazione: se uno
+     *  di questi c'e', la proposta non e' "meno buona", e' irricevibile. */
+    const VINCOLI_BLOCCANTI = [
+        'RIPOSO_OBBLIGATORIO', 'RIPOSO_INSUFFICIENTE', 'SOVRAPPOSIZIONE_ORARIA'
+    ];
+    function etichettaVincolo(w) {
+        const etichetta = CONFLICT_WARNING_LABELS[w];
+        return etichetta.charAt(0).toUpperCase() + etichetta.slice(1);
+    }
+    /** I vincoli non rispettati vanno detti per nome: "viola un vincolo" lascia chi
+     *  pianifica senza sapere che cosa deve andare a controllare. */
+    function aggiungiVincoliNonRispettati(compromessi, warnings) {
+        for (const w of warnings) {
+            compromessi.push(etichettaVincolo(w));
+        }
+    }
+    function motiviBloccanti(warnings) {
+        return warnings.filter(w => VINCOLI_BLOCCANTI.indexOf(w) !== -1).map(etichettaVincolo);
+    }
+    function costruisciSoluzioneAlternativa(task, op, score, slot, indice, giorno, warnings) {
         const vantaggi = [];
         const compromessi = [];
         if (op.reperibile)
@@ -441,14 +504,9 @@ var PianificazioneTurni;
             vantaggi.push('Minor costo (operatore di linea)');
         if (PianificazioneTurni.abilitatoAllaBanchina(op, slot.banchina))
             vantaggi.push('Abilitato al molo');
-        else
-            compromessi.push('Non abilitato a questo molo');
-        if (op.oreSettimanali + task.durataOre > op.oreMassime)
-            compromessi.push('Supera le ore contrattuali');
-        else
+        if (op.oreSettimanali + task.durataOre <= op.oreMassime)
             vantaggi.push('Ore residue sufficienti');
-        if (score === 0)
-            compromessi.push('Viola un vincolo: da validare a mano');
+        aggiungiVincoliNonRispettati(compromessi, warnings);
         return {
             titolo: `Soluzione ${String.fromCharCode(65 + indice)} (alternativa)`,
             molo: slot.banchina,
@@ -456,6 +514,7 @@ var PianificazioneTurni;
             operatore: op.nome,
             giorno: giorno,
             score: score,
+            motiviBloccanti: motiviBloccanti(warnings),
             consigliata: false,
             vantaggi: vantaggi.length > 0 ? vantaggi : ['Nessun conflitto'],
             compromessi: compromessi
