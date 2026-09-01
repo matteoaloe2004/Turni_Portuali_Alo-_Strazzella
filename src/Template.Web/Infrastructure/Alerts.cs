@@ -174,7 +174,11 @@ namespace Template.Web.Infrastructure
 
                 foreach (var a in alerts)
                 {
-                    var t = $@"Toastify({{close: true,gravity:'bottom',position:'left', className:'onit-toastify onit-toastify-{a.Level}',text:'{a.Value}',duration:{a.MillisecondsAutoDismiss}}}).showToast();";
+                    // Il testo finisce dentro una stringa JS: va codificato, altrimenti
+                    // un apostrofo (o del contenuto inserito dall'utente) rompe lo script.
+                    var testo = System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(a.Value ?? string.Empty);
+
+                    var t = $@"Toastify({{close: true,gravity:'bottom',position:'left', className:'onit-toastify onit-toastify-{a.Level}',text:'{testo}',duration:{a.MillisecondsAutoDismiss}}}).showToast();";
                     s.AppendLine(t);
                 }
 

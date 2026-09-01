@@ -63,13 +63,15 @@ namespace Template.Web.Areas.Admin.Users
         [HttpPost]
         public virtual async Task<IActionResult> Edit(EditViewModel model)
         {
+            var isNuovoUtente = model.Id.HasValue == false;
+
             if (ModelState.IsValid)
             {
                 try
                 {
                     model.Id = await _sharedService.Handle(model.ToAddOrUpdateUserCommand());
 
-                    Alerts.AddSuccess(this, "Informazioni aggiornate");
+                    Alerts.AddSuccess(this, isNuovoUtente ? "Utente creato" : "Informazioni aggiornate");
 
                     // Esempio lancio di un evento SignalR
                     await _publisher.Publish(new NewMessageEvent
@@ -78,6 +80,8 @@ namespace Template.Web.Areas.Admin.Users
                         IdUser = model.Id.Value,
                         IdMessage = Guid.NewGuid()
                     });
+
+                    return RedirectToAction(Actions.Edit(model.Id));
                 }
                 catch (Exception e)
                 {
@@ -85,22 +89,48 @@ namespace Template.Web.Areas.Admin.Users
                 }
             }
 
-            if (ModelState.IsValid == false)
-            {
-                Alerts.AddError(this, "Errore in aggiornamento");
-            }
+            Alerts.AddError(this, isNuovoUtente ? "Errore in inserimento" : "Errore in aggiornamento");
 
-            return RedirectToAction(Actions.Edit(model.Id));
+            // Ritorno la view (e non un redirect) per non perdere i dati gia' digitati
+            return View(model);
         }
 
         [HttpPost]
         public virtual async Task<IActionResult> Delete(Guid id)
         {
-            // Query to delete user
+            var idUtenteCorrente = GetIdUtenteCorrente();
 
-            Alerts.AddSuccess(this, "Utente cancellato");
+            if (idUtenteCorrente == id)
+            {
+                Alerts.AddError(this, "Non puoi eliminare l'utente con cui hai effettuato l'accesso");
 
-            return RedirectToAction(Actions.Index());
+                return RedirectToAction(Actions.Edit(id));
+            }
+
+            try
+            {
+                await _sharedService.Handle(new DeleteUserCommand
+                {
+                    Id = id,
+                });
+
+                Alerts.AddSuccess(this, "Utente cancellato");
+
+                return RedirectToAction(Actions.Index());
+            }
+            catch (Exception e)
+            {
+                Alerts.AddError(this, e.Message);
+
+                return RedirectToAction(Actions.Edit(id));
+            }
+        }
+
+        private Guid GetIdUtenteCorrente()
+        {
+            var claim = HttpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            return Guid.TryParse(claim, out var id) ? id : Guid.Empty;
         }
     }
 }

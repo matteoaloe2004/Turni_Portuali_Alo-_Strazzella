@@ -57,26 +57,32 @@
                     <form autocomplete="off" method="post" class="onit-form-sm" action="@Url.Action(MVC.Admin.Users.Edit())" id="edit-form">
                         <!-- Enables form submit on Enter -->
                         <input id="edit-form-submitter" class="d-none" type="submit" />
-                        
+                        <input type="hidden" asp-for="Id" />
+
+                        @if (ViewData.ModelState.IsValid == false)
+                        {
+                            <div asp-validation-summary="All" class="alert alert-danger small mb-3"></div>
+                        }
+
                         <div class="row g-3">
                             <div class="col-12">
                                 <label asp-for="Email" class="form-label fw-semibold text-secondary small mb-1">Indirizzo Email</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-envelope"></i></span>
-                                    <input class="form-control" asp-for="Email" placeholder="esempio@email.com">
+                                    <input class="form-control" asp-for="Email" type="email" required maxlength="200" placeholder="esempio@email.com">
                                 </div>
                                 <span asp-validation-for="Email" class="text-danger small mt-1 d-block"></span>
                             </div>
 
                             <div class="col-md-6">
                                 <label asp-for="FirstName" class="form-label fw-semibold text-secondary small mb-1">Nome</label>
-                                <input class="form-control" asp-for="FirstName" placeholder="Nome">
+                                <input class="form-control" asp-for="FirstName" required minlength="2" maxlength="100" placeholder="Nome">
                                 <span asp-validation-for="FirstName" class="text-danger small mt-1 d-block"></span>
                             </div>
 
                             <div class="col-md-6">
                                 <label asp-for="LastName" class="form-label fw-semibold text-secondary small mb-1">Cognome</label>
-                                <input class="form-control" asp-for="LastName" placeholder="Cognome">
+                                <input class="form-control" asp-for="LastName" required minlength="2" maxlength="100" placeholder="Cognome">
                                 <span asp-validation-for="LastName" class="text-danger small mt-1 d-block"></span>
                             </div>
 
@@ -84,7 +90,7 @@
                                 <label asp-for="NickName" class="form-label fw-semibold text-secondary small mb-1">Nickname (Nome visualizzato)</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-user-tag"></i></span>
-                                    <input class="form-control" asp-for="NickName" placeholder="Inserisci un nickname...">
+                                    <input class="form-control" asp-for="NickName" required minlength="2" maxlength="100" placeholder="Inserisci un nickname...">
                                 </div>
                                 <span asp-validation-for="NickName" class="text-danger small mt-1 d-block"></span>
                             </div>
@@ -95,8 +101,12 @@
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-lock"></i></span>
-                                    <input type="password" class="form-control" asp-for="Password" placeholder="@(Model.Id == null ? "Inserisci una password iniziale..." : "Lascia vuoto per mantenere quella attuale...")" autocomplete="new-password">
+                                    <input type="password" class="form-control" asp-for="Password"
+                                           minlength="@Template.Web.Areas.Admin.Users.EditViewModel.PASSWORD_MIN_LENGTH"
+                                           required="@(Model.Id == null)"
+                                           placeholder="@(Model.Id == null ? "Inserisci una password iniziale..." : "Lascia vuoto per mantenere quella attuale...")" autocomplete="new-password">
                                 </div>
+                                <div class="form-text small">Minimo @Template.Web.Areas.Admin.Users.EditViewModel.PASSWORD_MIN_LENGTH caratteri.</div>
                                 <span asp-validation-for="Password" class="text-danger small mt-1 d-block"></span>
                             </div>
 

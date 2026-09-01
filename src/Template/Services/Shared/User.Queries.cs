@@ -110,7 +110,13 @@ namespace Template.Services.Shared
 
             if (string.IsNullOrWhiteSpace(qry.Filter) == false)
             {
-                queryable = queryable.Where(x => x.Email.Contains(qry.Filter, StringComparison.OrdinalIgnoreCase));
+                var filtro = qry.Filter.Trim();
+
+                // La pagina dichiara la ricerca su Email, Nome e Cognome
+                queryable = queryable.Where(x =>
+                    (x.Email != null && x.Email.Contains(filtro, StringComparison.OrdinalIgnoreCase))
+                    || (x.FirstName != null && x.FirstName.Contains(filtro, StringComparison.OrdinalIgnoreCase))
+                    || (x.LastName != null && x.LastName.Contains(filtro, StringComparison.OrdinalIgnoreCase)));
             }
 
             return new UsersIndexDTO
