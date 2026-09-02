@@ -110,33 +110,5 @@
     <circle cx="1450" cy="862" r="7" fill="#7c3aed"/>
   </g>
 
-  <!-- ============ Voci degli utenti — da compilare ============ -->
-  <line x1="70" y1="930" x2="1570" y2="930" stroke="#e2e8f0" stroke-width="2"/>
-  <text x="70" y="966" font-size="18" font-weight="700" fill="#0f172a">Voci dei partecipanti</text>
-  <rect x="322" y="948" width="222" height="24" rx="12" fill="#f1f5f9"/>
-  <text x="433" y="965" font-size="12" font-weight="700" fill="#64748b" text-anchor="middle">DA COMPILARE DOPO IL TEST</text>
-  <text x="70" y="992" font-size="14" fill="#64748b">Test con 5 partecipanti, think aloud, un task per volta. Trascrivere qui la citazione più significativa di ciascuno.</text>
 
-  <g>
-    <rect x="70" y="1012" width="480" height="132" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="7 5"/>
-    <text x="94" y="1042" font-size="13" font-weight="700" fill="#94a3b8">PARTECIPANTE 1 · profilo</text>
-    <text x="94" y="1072" font-size="15" fill="#cbd5e1">«</text>
-    <line x1="112" y1="1076" x2="524" y2="1076" stroke="#e2e8f0"/>
-    <line x1="94" y1="1104" x2="524" y2="1104" stroke="#e2e8f0"/>
-    <text x="94" y="1132" font-size="12" fill="#94a3b8">task: ______   completato: ______   tempo: ______</text>
-
-    <rect x="580" y="1012" width="480" height="132" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="7 5"/>
-    <text x="604" y="1042" font-size="13" font-weight="700" fill="#94a3b8">PARTECIPANTE 2 · profilo</text>
-    <text x="604" y="1072" font-size="15" fill="#cbd5e1">«</text>
-    <line x1="622" y1="1076" x2="1034" y2="1076" stroke="#e2e8f0"/>
-    <line x1="604" y1="1104" x2="1034" y2="1104" stroke="#e2e8f0"/>
-    <text x="604" y="1132" font-size="12" fill="#94a3b8">task: ______   completato: ______   tempo: ______</text>
-
-    <rect x="1090" y="1012" width="480" height="132" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="7 5"/>
-    <text x="1114" y="1042" font-size="13" font-weight="700" fill="#94a3b8">PARTECIPANTE 3 · profilo</text>
-    <text x="1114" y="1072" font-size="15" fill="#cbd5e1">«</text>
-    <line x1="1132" y1="1076" x2="1544" y2="1076" stroke="#e2e8f0"/>
-    <line x1="1114" y1="1104" x2="1544" y2="1104" stroke="#e2e8f0"/>
-    <text x="1114" y="1132" font-size="12" fill="#94a3b8">task: ______   completato: ______   tempo: ______</text>
-  </g>
 </svg>
