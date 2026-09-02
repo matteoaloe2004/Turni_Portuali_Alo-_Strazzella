@@ -6,40 +6,29 @@ lavoratori portuali e la risoluzione dei conflitti generati dai ritardi delle na
 Elaborato per il corso di **Laboratorio di Interfaccia Uomo-Macchina**, traccia 3
 (*Pianificazione turni*) — Aloè, Strazzella.
 
-> Per far partire il progetto: **[AVVIA-QUI.md](AVVIA-QUI.md)**
-> Materiale di progettazione (mockup Figma, processo, valutazione): **[documentazione/](documentazione/README.md)**
+> **Mockup Figma:** [Gestione Turni Portuale](https://www.figma.com/design/0S4a1ERsyN2PjAxRbxvrqZ/Gestione-Turni-Portuale?node-id=0-1&t=G2k0YprMbRFiwrFc-1)
+> **Progettazione, test di usabilità e valutazione:** [documentazione/Documentazione.md](documentazione/Documentazione.md)
+> **Avvio, credenziali e giro di prova:** [AVVIA-QUI.md](AVVIA-QUI.md)
 
 ---
 
-## Il problema, come lo abbiamo inquadrato
+## Il problema
 
 La traccia chiede di comporre la turnazione degli addetti alla ricezione merci.
 Osservando il lavoro reale abbiamo spostato il centro del problema: comporre il
-piano non è la parte difficile, **ricomporlo quando salta lo è**. Una nave arriva
-in ritardo e il coordinatore deve rifare gli incastri di corsa, rispettando
-contratti, abilitazioni di banchina e riposi obbligatori.
+piano non è la parte difficile, **ricomporlo quando salta lo è**. Una nave arriva in
+ritardo e il coordinatore deve rifare gli incastri di corsa, rispettando contratti,
+abilitazioni di banchina e riposi obbligatori.
 
-Da qui le due persone del progetto: **Marco**, che compone i turni sotto pressione,
-ed **Elena**, che presidia le regole entro cui Marco lavora.
-
-## Le due interfacce
-
-Il ruolo non cambia solo i permessi, cambia cosa la console mostra.
-
-- **Coordinatore di turno** — tabellone, backlog, risorse, registro comunicazioni.
-- **Amministrazione** — in più la scheda *Simulazioni ed emergenze*, con i vincoli
-  contrattuali e gli strumenti di prova.
-
-La separazione è fatta con il tag helper `asp-roles="Admin"`, che non emette
-nemmeno il markup riservato, ed è **verificata anche sul server** con
-`[Authorize(Roles = "Admin")]`: nascondere un comando nella pagina non lo protegge.
+Da qui la console: non un gestionale di inserimento dati, ma uno strumento che in
+pochi secondi dice **chi può coprire un buco, e a quale costo**.
 
 ## I sette criteri del motore decisionale
 
-Quando una nave accumula ritardo o si crea una collisione, il motore cerca la
-soluzione **meno invasiva possibile**, scorrendo i criteri in ordine e fermandosi
-al primo che funziona. Non cerca l'ottimo assoluto: cerca il minimo scostamento
-dal piano già concordato.
+È la base su cui poggia tutto il resto. Quando una nave accumula ritardo o si crea
+una collisione, il motore cerca la soluzione **meno invasiva possibile**: scorre i
+criteri in ordine e si ferma al primo che funziona. Non cerca l'ottimo assoluto,
+cerca il minimo scostamento dal piano già concordato.
 
 1. **Riassegnazione standard** — stesso giorno, operatore di linea, ruolo e
    abilitazione corretti, entro le ore contrattuali.
@@ -56,93 +45,31 @@ dal piano già concordato.
 Ogni proposta arriva accompagnata dal criterio che l'ha generata, così il
 coordinatore sa sempre *quanto* sta derogando e perché.
 
-## Vincoli sempre attivi
-
-Valgono per chiunque e non sono disattivabili dall'interfaccia:
-
-- riposo di almeno **11 ore** fra due turni della stessa persona
-- nessuna sovrapposizione sulla stessa banchina o sullo stesso operatore
-- turni solo dentro la finestra di attracco della nave (ETA/ETD)
-- nessun turno a chi ha la patente scaduta o è in riposo obbligatorio
-- tetto di legge a **40 ore** settimanali
-
-Stanno tutti in un posto solo, `RegolePianificazione.cs`, condiviso fra il motore
+Alcuni vincoli non li deroga nessun criterio: riposo di almeno 11 ore fra due turni
+della stessa persona, nessuna sovrapposizione sullo stesso operatore o sulla stessa
+banchina, turni solo dentro la finestra di attracco della nave, tetto di legge di 40
+ore settimanali, niente turni a chi ha la patente scaduta o è in riposo obbligatorio.
+Stanno in un posto solo, `RegolePianificazione.cs`, condiviso fra il motore
 decisionale e la validazione dei comandi.
 
-## Scelte di interazione
+## Come avviarlo
 
-- **Prevenzione dell'errore con la spiegazione.** I pulsanti non assegnabili sono
-  disabilitati *e* accompagnati dal motivo: "In riposo obbligatorio", "Patente
-  scaduta". Disabilitare senza dire perché lascia l'utente a indovinare.
-- **L'effetto prima dell'azione.** Prima di confermare, una frase in italiano dice
-  cosa succederà: *"La lavorazione sarà assegnata a Elena al Molo Est, oggi alle
-  10:30."*
-- **Supporto visivo all'incastro.** Passando su un operatore compatibile (col mouse
-  o col tabulatore) compare sul tabellone lo slot dove finirebbe il turno.
-- **Sempre una via d'uscita.** Se il motore non trova nulla, il turno resta
-  segnalato sul tabellone e si può riprendere quando si vuole.
-- **Ogni assegnazione si può disfare.** Cliccando un turno sul tabellone — anche uno
-  regolare — si apre la sua scheda: da lì si riassegna, se il motore trova una
-  collocazione diversa, oppure si annulla. Annullando, **la lavorazione torna sempre
-  fra quelle da assegnare**: il turno era una decisione, la nave da scaricare no.
-- **Niente informazioni affidate al solo colore.** Ritardi e conflitti hanno
-  un'etichetta scritta accanto al colore.
-- **Tutto raggiungibile da tastiera**, tabellone compreso, con un nome parlato per
-  ogni turno e le conferme annunciate in una regione `aria-live`.
-- **Le azioni distruttive chiedono conferma** — ripristino, svuotamento del registro e
-  annullamento di un turno — e la conferma dice cosa succederà, con i nomi veri:
-  *"il turno di MCL Athena sparirà dal tabellone, Luigi tornerà libero per quelle ore,
-  la lavorazione tornerà fra quelle da assegnare di Oggi"*, invece di "sei sicuro?".
-  Il pulsante che l'ha aperta resta disabilitato e il focus si sposta sulla conferma,
-  così chi naviga da tastiera non lo perde.
-- **I messaggi non usano la parola errore**, non mostrano codici e propongono
-  sempre come uscirne.
-
-## Lavoro condiviso
-
-La turnazione si compone su più siti in parallelo, quindi più coordinatori possono
-essere collegati insieme. Ogni modifica viene propagata agli altri via **SignalR**:
-l'evento porta solo l'avviso, non i dati, e chi lo riceve rilegge lo stato dal
-server. Se la connessione cade la console lo dice, e continua a funzionare — le
-modifiche passano comunque dal server.
-
-## Come è fatto
-
-**Backend** — ASP.NET Core MVC su .NET 8, Entity Framework Core con database in
-memoria, SignalR. I comandi di scrittura passano tutti da handler sul
-`SharedService` (`Handle(comando)`), come nell'esempio del template del corso; il
-controller riceve, delega e risponde. Il server è l'unica fonte di verità: rilegge
-dal database e rivalida prima di scrivere, senza fidarsi di ciò che il client
-crede libero.
-
-**Frontend** — Vue 2 con TypeScript, Bootstrap 5 e CSS personalizzato. La view è
-divisa in una partial per sezione; il foglio di stile della feature sta in
-`wwwroot/css/pianificazione-turni.css`. Le regole di dominio lato client
-(`Index.Regole.ts`) rispecchiano le costanti del server.
-
-**Form Razor** — la sezione dei vincoli contrattuali usa tag helper, model binding,
-DataAnnotations, antiforgery e il pattern Post-Redirect-Get: è l'unico punto in cui
-serve un'operazione ponderata invece di una chiamata reattiva.
+Serve **.NET 8 SDK** ([download](https://dotnet.microsoft.com/download/dotnet/8.0)).
 
 ```
-src/
-  Template/                                 dominio e servizi
-    Services/PianificazioneTurni/
-      RegolePianificazione.cs               le regole, in un posto solo
-      PianificazioneTurni.Commands.cs       i comandi di scrittura
-      PianificazioneTurni.Queries.cs        lo stato della pianificazione
-    Services/Shared/
-      CalcolaMigliorAlternativaQuery.cs     il motore a sette criteri
-  Template.Web/
-    Features/PianificazioneTurni/           controller, view, partial, TypeScript
-    SignalR/                                hub ed eventi
-    wwwroot/css/pianificazione-turni.css
+cd src/Template.Web
+dotnet run
 ```
 
-## Dati di prova
+Poi <http://localhost:5178>. Da Visual Studio o Rider: apri `src/Template.sln`,
+progetto di avvio `Template.Web`, F5.
 
-Il database è in memoria: si ricrea a ogni avvio e non lascia nulla sul disco.
-Il seed contiene 10 operatori, 8 turni e 6 lavorazioni da assegnare — pochi di
-proposito, ma scelti in modo che ogni regola abbia il suo caso: un reperibile, un
-operatore in riposo obbligatorio, una patente scaduta, una in scadenza, un jolly
-abilitato a tutte le banchine e uno vicino al limite orario.
+Il database è in memoria: si ricrea a ogni avvio con i dati di prova e non lascia
+nulla sul disco.
+
+| Utente | Password | Ruolo |
+|---|---|---|
+| `marco.rossi@portodiesempio.it` | `Portuale2026` | coordinatore di turno |
+| `amministrazione@portodiesempio.it` | `Portuale2026` | amministrazione |
+
+Giro di prova guidato e risoluzione problemi: **[AVVIA-QUI.md](AVVIA-QUI.md)**.
