@@ -274,11 +274,3 @@ verificabili e non soltanto dichiarate.
 | [`dal-test-alle-correzioni.svg`](dal-test-alle-correzioni.svg) | da quello che i partecipanti hanno trovato a quello che il prototipo fa oggi |
 | `immagini/` | i ritagli usati in questa pagina |
 
----
-
-## Da completare prima della consegna
-
-- **Data del test** e **tabella riassuntiva** dei risultati in `test-usabilita.md`:
-  la griglia è compilata su carta, i dati vanno riportati nel file.
-- Le **voci dei partecipanti** nel riquadro finale di `problemi-e-correzioni.svg`, che
-  è ancora vuoto, e i due reperti **R4** e **R5** da aggiungere all'elenco.
