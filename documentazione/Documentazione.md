@@ -272,5 +272,5 @@ verificabili e non soltanto dichiarate.
 | [`problemi-e-correzioni.svg`](problemi-e-correzioni.svg) | i problemi da V1 a V3, con la fonte dell'evidenza per ogni riga |
 | [`voci-partecipanti.svg`](voci-partecipanti.svg) | le citazioni dei partecipanti al test |
 | [`dal-test-alle-correzioni.svg`](dal-test-alle-correzioni.svg) | da quello che i partecipanti hanno trovato a quello che il prototipo fa oggi |
-| `immagini/` | i ritagli usati in questa pagina |
+| `immagini/` | i ritagli usati in questa pagina  |
 
