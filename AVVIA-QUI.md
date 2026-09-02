@@ -1,31 +1,13 @@
-# Console di pianificazione turni portuali — copia pronta all'uso
+# Console di pianificazione turni portuali — come avviarlo
 
-Questa è una copia completa e autonoma del progetto, con la revisione già applicata.
-Non tocca in nessun modo la cartella originale.
+**Serve .NET 8 SDK** ([download](https://dotnet.microsoft.com/download/dotnet/8.0)).
+Se `dotnet --version` non risponde, manca quello.
 
-Le librerie JavaScript (`node_modules`) sono già dentro, quindi icone, Bootstrap e
-SignalR funzionano anche senza collegamento a internet. Mancano solo i pacchetti
-NuGet, che si scaricano al primo avvio.
+Al primo avvio serve una connessione a internet: si scaricano i pacchetti NuGet e
+le librerie JavaScript (Bootstrap, Vue, SignalR, icone FontAwesome). Dal secondo
+avvio in poi parte offline.
 
 ---
-
-## Avvio in un colpo solo
-
-**Windows** — doppio clic su `avvia-windows.bat`
-
-**macOS o Linux** — doppio clic su `avvia-mac-linux.command`
-(la prima volta, se il Mac si rifiuta di aprirlo: tasto destro → Apri, oppure da
-Terminale `chmod +x avvia-mac-linux.command`)
-
-Lo script scarica i pacchetti, compila e apre il browser su
-<http://localhost:5178>. Il primo avvio richiede un paio di minuti; i successivi
-sono immediati.
-
-Per fermarlo: `Ctrl+C` nella finestra del terminale.
-
-## Avvio da Visual Studio o Rider
-
-Apri `src/Template.sln`, imposta `Template.Web` come progetto di avvio e premi F5.
 
 ## Avvio da riga di comando
 
@@ -34,8 +16,22 @@ cd src/Template.Web
 dotnet run
 ```
 
-**Serve .NET 8 SDK.** Se `dotnet --version` non risponde, scaricalo da
-<https://dotnet.microsoft.com/download/dotnet/8.0>.
+Poi <http://localhost:5178>. Il primo avvio richiede un paio di minuti; i
+successivi sono immediati. Per fermarlo: `Ctrl+C` nel terminale.
+
+## Avvio da Visual Studio o Rider
+
+Apri `src/Template.sln`, imposta `Template.Web` come progetto di avvio e premi F5.
+
+## Le librerie JavaScript
+
+Non serve lanciare `npm install` a mano: la cartella `node_modules` non è nel
+repository, e al primo build il progetto la ripristina da sé (target `NpmInstall`
+in `Template.Web.csproj`). Se npm non è installato la compilazione va avanti
+comunque, con un avviso: l'applicazione funziona in tutto tranne le icone.
+
+Serve solo in `src/Template.Web`. Il progetto `src/Template` è una libreria C# e
+non ha dipendenze JavaScript.
 
 ---
 
@@ -107,8 +103,11 @@ Invio sui blocchi del tabellone.
 **Errori di ripristino pacchetti** — serve una connessione a internet al primo
 avvio, per scaricare le librerie da NuGet.
 
-**La pagina si apre ma senza icone** — la cartella `src/Template.Web/node_modules`
-non è arrivata. Rimedio: `cd src/Template.Web` e `npm install`.
+**La pagina si apre ma senza icone** — il ripristino automatico di
+`src/Template.Web/node_modules` non è andato a buon fine (in genere perché manca
+Node.js: `npm --version` non risponde). Installa Node.js, oppure lancialo a mano
+con `cd src/Template.Web` e `npm install`. Tutto il resto dell'applicazione
+funziona anche così.
 
 **La porta 5178 è occupata** — cambia `applicationUrl` in
 `src/Template.Web/Properties/launchSettings.json`, oppure avvia con

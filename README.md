@@ -64,6 +64,10 @@ dotnet run
 Poi <http://localhost:5178>. Da Visual Studio o Rider: apri `src/Template.sln`,
 progetto di avvio `Template.Web`, F5.
 
+`npm install` non serve: `node_modules` non è versionato e il progetto lo
+ripristina al primo build. Se Node.js non è installato la compilazione prosegue
+con un avviso e mancano solo le icone.
+
 Il database è in memoria: si ricrea a ogni avvio con i dati di prova e non lascia
 nulla sul disco.
 
