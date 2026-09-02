@@ -147,5 +147,27 @@ namespace Template.Services.PianificazioneTurni
         {
             return turni.Where(t => t.Operatore == operatore).Sum(t => t.DurataOre);
         }
+
+        /// <summary>
+        /// Restituisce null se il turno sta dentro il tetto contrattuale dell'operatore,
+        /// altrimenti il motivo in chiaro da mostrare a chi pianifica.
+        /// <paramref name="derogaOre"/> è il monte ore in più che una proposta del DSS ha
+        /// dichiarato: a mano vale zero, quindi il tetto contrattuale fa da limite.
+        /// </summary>
+        public static string MotivoSforamentoOre(Operatore op, double durataOre, double giaPianificate, double derogaOre)
+        {
+            // Tetto non impostato: non si inventa un limite, si lascia passare come prima.
+            if (op == null || op.OreMassime <= 0) return null;
+
+            var totale = giaPianificate + durataOre;
+            if (totale <= op.OreMassime + derogaOre) return null;
+
+            if (derogaOre > 0)
+            {
+                return $"{op.Nome} arriverebbe a {totale:0.#} ore: il suo tetto contrattuale è di {op.OreMassime:0.#} e la deroga dichiarata di {derogaOre:0.#} ore non basta a coprirle.";
+            }
+
+            return $"{op.Nome} arriverebbe a {totale:0.#} ore questa settimana e il suo tetto contrattuale è di {op.OreMassime:0.#}: ne ha già {giaPianificate:0.#} pianificate e questo turno ne aggiunge {durataOre:0.#}. Scegli un altro operatore, oppure fai alzare il tetto dall'amministrazione.";
+        }
     }
 }

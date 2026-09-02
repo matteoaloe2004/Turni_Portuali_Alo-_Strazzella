@@ -144,7 +144,10 @@ var PianificazioneTurni;
             NuovaFasciaOraria: self.orarioSelezioneRiassegnazione,
             NuovaBanchina: self.banchinaSelezione,
             NuovoOperatore: self.operatoreSelezione,
-            Giorno: giornoTarget
+            Giorno: giornoTarget,
+            // La deroga sulle ore vale solo se stiamo applicando la proposta cosi' com'e':
+            // una collocazione ritoccata a mano torna a rispettare il tetto contrattuale.
+            DerogaOreAmmessa: stiamoApplicandoLaProposta ? (sol.derogaOreApplicata || 0) : 0
         });
         if (!esito) {
             // Il server non ha risposto: il modale resta aperto e non si perde la scelta fatta.

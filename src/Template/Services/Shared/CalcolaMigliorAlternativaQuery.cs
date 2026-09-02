@@ -37,6 +37,14 @@ namespace Template.Services.Shared
 
         public int GiornoSuggerito { get; set; }
         public string MotivoScelta { get; set; }
+
+        /// <summary>
+        /// Ore di deroga che questa proposta si porta dietro: quanto il criterio che l'ha
+        /// generata sfora il tetto contrattuale dell'operatore, zero se resta dentro.
+        /// Il comando la richiede per accettare la collocazione, così una deroga passa
+        /// solo se il DSS l'ha davvero dichiarata.
+        /// </summary>
+        public double DerogaOreApplicata { get; set; }
     }
 
     public partial class SharedService
@@ -195,6 +203,16 @@ namespace Template.Services.Shared
             return CercaUltimaRisorsa(turno, giorno, orarioArrivo, altriTurni, tuttiGliOperatori, possibileDomani);
         }
 
+        /// <summary>
+        /// Di quante ore questa collocazione sfora il tetto contrattuale: è la deroga che
+        /// la proposta deve dichiarare al comando per essere accettata. Zero se ci sta.
+        /// </summary>
+        private static double DerogaNecessaria(Operatore op, double durataOre)
+        {
+            if (op.OreMassime <= 0) return 0;
+            return Math.Max(0, op.OreSettimanali + durataOre - op.OreMassime);
+        }
+
         private async Task<List<Operatore>> CaricaOperatoriConOreAsync(List<Turno> turniDiRiferimento, Func<Operatore, bool> filtro)
         {
             var operatori = (await _dbContext.Operatori.AsNoTracking().ToListAsync()).Where(filtro).ToList();
@@ -288,7 +306,8 @@ namespace Template.Services.Shared
                             OperatoreSuggerito = op.Nome,
                             OreSettimanaliOperatore = op.OreSettimanali + turno.DurataOre,
                             OreMassimeOperatore = op.OreMassime,
-                            GiornoSuggerito = giornoTarget
+                            GiornoSuggerito = giornoTarget,
+                            DerogaOreApplicata = DerogaNecessaria(op, turno.DurataOre)
                         });
                     }
                 }
@@ -358,7 +377,8 @@ namespace Template.Services.Shared
                                 OreSettimanaliOperatore = op.OreSettimanali + turno.DurataOre,
                                 OreMassimeOperatore = op.OreMassime,
                                 GiornoSuggerito = giornoTarget,
-                                MotivoScelta = $"Risoluzione di Emergenza (Assegnazione forzata di ultima risorsa, Giorno +{offset})"
+                                MotivoScelta = $"Risoluzione di Emergenza (Assegnazione forzata di ultima risorsa, Giorno +{offset})",
+                                DerogaOreApplicata = DerogaNecessaria(op, turno.DurataOre)
                             };
                         }
                     }

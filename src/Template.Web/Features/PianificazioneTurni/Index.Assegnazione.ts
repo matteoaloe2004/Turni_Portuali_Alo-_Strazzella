@@ -19,6 +19,10 @@ namespace PianificazioneTurni {
         giorno: number;
         ora: number;
         banchina: string;
+
+        /** Ore di deroga che la proposta del DSS ha dichiarato. Assente = nessuna
+         *  deroga, quindi il tetto contrattuale vale come limite. */
+        derogaOre?: number;
     }
 
     export interface IndexVueModel {
@@ -27,7 +31,7 @@ namespace PianificazioneTurni {
         selectTask(task: any): Promise<void>;
         caricaSoluzioneTaskSuggerita(taskId: number): Promise<void>;
         assegnaTask(op: any): Promise<void>;
-        motivoIncompatibilita(op: any): string | null;
+        motivoIncompatibilita(op: any, derogaOre?: number): string | null;
         isOperatoreIncompatibile(op: any): boolean;
         getIncompatibilitaMotivo(op: any): string;
         getDettaglioConflittoOperatore(op: any, collocazione?: Collocazione): ConflittoOperatore;
@@ -75,7 +79,7 @@ namespace PianificazioneTurni {
 
     /** Unico punto in cui si decide se un operatore può prendere il task selezionato:
      *  null se può, altrimenti il motivo. Le due funzioni sotto ne derivano. */
-    IndexVueModel.prototype.motivoIncompatibilita = function (this: IndexVueModel, op: any): string | null {
+    IndexVueModel.prototype.motivoIncompatibilita = function (this: IndexVueModel, op: any, derogaOre?: number): string | null {
         const self = this as any;
         if (!self.selectedTask) return null;
 
@@ -84,12 +88,26 @@ namespace PianificazioneTurni {
         if (!haCompetenza(op, competenzaRichiesta)) return `Serve un ${competenzaRichiesta}`;
         if (patenteScaduta(op)) return 'Patente scaduta';
         if (op.inRiposoObbligatorio) return 'In riposo obbligatorio';
+
+        // Il tetto contrattuale e' un vincolo della persona, non della collocazione:
+        // sta qui accanto a patente e riposo, e il comando lo rifiuta allo stesso modo.
+        if (oltreIlTettoContrattuale(op, self.selectedTask.durataOre, derogaOre)) {
+            const totale = op.oreSettimanali + self.selectedTask.durataOre;
+            return `Arriverebbe a ${self.fmtDurata(totale)} sulle ${self.fmtDurata(op.oreMassime)} del contratto`;
+        }
         return null;
     };
 
     IndexVueModel.prototype.isOperatoreIncompatibile = function (this: IndexVueModel, op: any): boolean {
         return this.motivoIncompatibilita(op) !== null;
     };
+
+    /** Vero se aggiungere il turno porterebbe l'operatore oltre le sue ore contrattuali,
+     *  contando l'eventuale deroga dichiarata. Tetto a zero = nessun limite noto. */
+    function oltreIlTettoContrattuale(op: any, durataOre: number, derogaOre?: number): boolean {
+        if (!op || !(op.oreMassime > 0)) return false;
+        return op.oreSettimanali + durataOre > op.oreMassime + (derogaOre || 0);
+    }
 
     IndexVueModel.prototype.getIncompatibilitaMotivo = function (this: IndexVueModel, op: any): string {
         return this.motivoIncompatibilita(op) || '';
@@ -268,7 +286,7 @@ namespace PianificazioneTurni {
 
     /** Chiede al server di assegnare il task: la validazione è la sua, qui si mostra
      *  solo il messaggio che torna indietro. */
-    async function assegnaSulServer(vm: IndexVueModel, operatoreNome: string, banchina: string, startOra: number, giorno: number): Promise<void> {
+    async function assegnaSulServer(vm: IndexVueModel, operatoreNome: string, banchina: string, startOra: number, giorno: number, derogaOre?: number): Promise<void> {
         const self = vm as any;
         const task = self.selectedTask;
         if (!task) return;
@@ -278,7 +296,8 @@ namespace PianificazioneTurni {
             Operatore: operatoreNome,
             Banchina: banchina,
             StartOra: startOra,
-            Giorno: giorno
+            Giorno: giorno,
+            DerogaOreAmmessa: derogaOre || 0
         });
 
         if (!esito || !esito.riuscita) return;
@@ -323,7 +342,7 @@ namespace PianificazioneTurni {
             return;
         }
 
-        await assegnaSulServer(this, sol.operatore, sol.molo, sol.orario, sol.giorno);
+        await assegnaSulServer(this, sol.operatore, sol.molo, sol.orario, sol.giorno, sol.derogaOre);
     };
 
     // ---- Dettaglio dei conflitti ----------------------------------------------
@@ -361,7 +380,9 @@ namespace PianificazioneTurni {
 
         if (patenteScaduta(op)) warnings.push('PATENTE_NON_VALIDA');
         if (op.inRiposoObbligatorio) warnings.push('RIPOSO_OBBLIGATORIO');
-        if (op.oreSettimanali + t.durataOre > op.oreMassime) warnings.push('LIMITE_ORE_SUPERATO');
+        if (oltreIlTettoContrattuale(op, t.durataOre, collocazione && collocazione.derogaOre)) {
+            warnings.push('LIMITE_ORE_SUPERATO');
+        }
 
         const banchina = collocazione
             ? collocazione.banchina
@@ -429,19 +450,23 @@ namespace PianificazioneTurni {
     IndexVueModel.prototype.getOperatoreCompatibilityScore = function (this: IndexVueModel, op: any, task: any, collocazione?: Collocazione): number {
         const riferimento = task || (this as any).selectedTask;
         if (!riferimento) return 100;
-        if (this.isOperatoreIncompatibile(op)) return 0;
+
+        // La deroga della proposta va passata anche qui: senza, una collocazione che il
+        // DSS ha dichiarato in straordinario risulterebbe non applicabile.
+        const derogaOre = collocazione && collocazione.derogaOre;
+        if (this.motivoIncompatibilita(op, derogaOre) !== null) return 0;
 
         const conflitto = this.getDettaglioConflittoOperatore(op, collocazione);
 
         // Zero vuol dire una cosa sola: il server rifiuterebbe questa collocazione.
-        // Sono gli stessi tre vincoli che ValidaCollocazione tratta come bloccanti,
-        // mentre ore oltre il contratto e molo non abilitato restano compromessi.
+        // Sono i vincoli che ValidaCollocazione tratta come bloccanti; il molo non
+        // abilitato resta invece un compromesso.
         if (conflitto.warnings.indexOf('RIPOSO_OBBLIGATORIO') !== -1) return 0;
         if (conflitto.warnings.indexOf('RIPOSO_INSUFFICIENTE') !== -1) return 0;
         if (conflitto.warnings.indexOf('SOVRAPPOSIZIONE_ORARIA') !== -1) return 0;
+        if (conflitto.warnings.indexOf('LIMITE_ORE_SUPERATO') !== -1) return 0;
 
         let punteggio = 100;
-        if (conflitto.warnings.indexOf('LIMITE_ORE_SUPERATO') !== -1) punteggio -= 30;
         if (conflitto.warnings.indexOf('NON_ABILITATO') !== -1) punteggio -= 20;
 
         // Quasi al limite contrattuale: utilizzabile, ma non è la scelta migliore.
@@ -541,7 +566,8 @@ namespace PianificazioneTurni {
         const collocazione: Collocazione = {
             giorno: sol.giornoSuggerito,
             ora: sol.orarioSuggerito,
-            banchina: sol.moloSuggerito
+            banchina: sol.moloSuggerito,
+            derogaOre: sol.derogaOreApplicata || 0
         };
 
         if (op && op.reperibile) compromessi.push('Costo maggiore (reperibile)');
@@ -563,6 +589,7 @@ namespace PianificazioneTurni {
             orario: sol.orarioSuggerito,
             operatore: sol.operatoreSuggerito,
             giorno: sol.giornoSuggerito,
+            derogaOre: sol.derogaOreApplicata || 0,
             // Stesso calcolo della card dell'operatore: un punteggio fisso qui faceva
             // leggere due numeri diversi per la stessa persona.
             score: op ? self.getOperatoreCompatibilityScore(op, task, collocazione) : 100,
@@ -573,10 +600,11 @@ namespace PianificazioneTurni {
         };
     }
 
-    /** I tre vincoli che il server tratta come bloccanti in ValidaCollocazione: se uno
+    /** I vincoli che il server tratta come bloccanti in ValidaCollocazione: se uno
      *  di questi c'e', la proposta non e' "meno buona", e' irricevibile. */
     const VINCOLI_BLOCCANTI: ConflictWarning[] = [
-        'RIPOSO_OBBLIGATORIO', 'RIPOSO_INSUFFICIENTE', 'SOVRAPPOSIZIONE_ORARIA'
+        'RIPOSO_OBBLIGATORIO', 'RIPOSO_INSUFFICIENTE', 'SOVRAPPOSIZIONE_ORARIA',
+        'LIMITE_ORE_SUPERATO'
     ];
 
     function etichettaVincolo(w: ConflictWarning): string {

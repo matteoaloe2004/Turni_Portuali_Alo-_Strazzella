@@ -42,6 +42,13 @@ namespace Template.Services.PianificazioneTurni
         public string Banchina { get; set; }
         public double StartOra { get; set; }
         public int Giorno { get; set; }
+
+        /// <summary>
+        /// Ore in più rispetto al tetto contrattuale che questa assegnazione può usare.
+        /// Vale zero quando il coordinatore assegna a mano: la deroga la porta soltanto
+        /// una proposta del DSS che l'ha dichiarata nel proprio criterio.
+        /// </summary>
+        public double DerogaOreAmmessa { get; set; }
     }
 
     public class SpostaTurnoCommand
@@ -51,6 +58,9 @@ namespace Template.Services.PianificazioneTurni
         public string NuovaBanchina { get; set; }
         public string NuovoOperatore { get; set; }
         public int? Giorno { get; set; }
+
+        /// <summary>Come in <see cref="AssegnaTaskCommand.DerogaOreAmmessa"/>.</summary>
+        public double DerogaOreAmmessa { get; set; }
     }
 
     /// <summary>
@@ -119,7 +129,7 @@ namespace Template.Services.Shared
                 task.Nome, task.CompetenzaRichiesta, task.DurataOre,
                 task.EtaGiorno, task.EtaOra, task.EtdGiorno, task.EtdOra,
                 operatore, cmd.Banchina, cmd.StartOra, cmd.Giorno,
-                turniEsistenti);
+                turniEsistenti, cmd.DerogaOreAmmessa);
 
             if (motivo != null)
             {
@@ -183,7 +193,7 @@ namespace Template.Services.Shared
                 turno.Nome, turno.RuoloRichiesto, turno.DurataOre,
                 turno.EtaGiorno, turno.EtaOra, turno.EtdGiorno, turno.EtdOra,
                 operatore, cmd.NuovaBanchina, cmd.NuovaFasciaOraria, giorno,
-                altriTurni);
+                altriTurni, cmd.DerogaOreAmmessa);
 
             if (motivo != null)
             {
@@ -361,7 +371,7 @@ namespace Template.Services.Shared
             string nomeNave, string ruoloRichiesto, double durataOre,
             int etaGiorno, double etaOra, int etdGiorno, double etdOra,
             Operatore operatore, string banchina, double startOra, int giorno,
-            List<Turno> altriTurni)
+            List<Turno> altriTurni, double derogaOreAmmessa)
         {
             if (string.IsNullOrWhiteSpace(banchina))
             {
@@ -409,6 +419,16 @@ namespace Template.Services.Shared
             if (motivoOperatore != null)
             {
                 return $"{operatore.Nome} non è disponibile: il turno {motivoOperatore}.";
+            }
+
+            // Tetto contrattuale: `altriTurni` non contiene mai il turno che si sta
+            // creando o spostando, quindi le ore già pianificate si sommano a questo
+            // turno senza contarlo due volte.
+            var giaPianificate = RegolePianificazione.OrePianificate(operatore.Nome, altriTurni);
+            var motivoOre = RegolePianificazione.MotivoSforamentoOre(operatore, durataOre, giaPianificate, derogaOreAmmessa);
+            if (motivoOre != null)
+            {
+                return motivoOre;
             }
 
             return null;
