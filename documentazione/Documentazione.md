@@ -136,10 +136,17 @@ Tre scelte, tutte funzionali prima che estetiche:
   poco luminosi.
 - **Componenti** — pensati per il *poka-yoke*: le card operatore e i blocchi del
   tabellone cambiano forma per suggerire in tempo reale la compatibilità di
-  un'assegnazione; i badge di ruolo rendono la qualifica riconoscibile a colpo d'occhio.
+  un'assegnazione.
 
 Nessuna informazione è affidata al solo colore: ritardi e conflitti hanno sempre
 un'etichetta scritta accanto.
+
+**Il ruolo non è un colore, è un pittogramma.** Gruista, mulettista e stivatore avevano
+in origine tre tinte diverse. Le abbiamo tolte: sul tabellone il colore deve poter dire
+*«si può»* e *«non si può»*, e se dice anche *«stivatore»* smette di dire l'una cosa e
+l'altra. La qualifica è passata a un badge grigio con un pittogramma del mestiere — si
+riconosce comunque a colpo d'occhio, ma senza consumare uno dei pochi significati che il
+colore può portare senza ambiguità.
 
 ---
 
@@ -187,19 +194,90 @@ persona, e le collisioni devono leggersi dove avvengono davvero.
 
 **Idoneità: attenuare, non nascondere.** In V2 il tabellone oscurava le righe dei non
 idonei, lasciando visibili solo i candidati assegnabili. Nel prototipo restano visibili
-ma attenuati, con il motivo esplicito («In riposo obbligatorio», «Patente scaduta») e
-il pulsante *Assegna* disabilitato. Nascondere una persona toglie al coordinatore
-l'informazione più utile — *perché* non è utilizzabile: se Davide è in riposo
-obbligatorio, il pianificatore deve saperlo per decidere se attivare un reperibile o
-far slittare il turno, non trovarsi davanti una lista misteriosamente corta.
-L'attenuazione conserva la visibilità dello stato del sistema (Nielsen #1) senza
-rinunciare alla prevenzione dell'errore (Nielsen #5).
+ma attenuati, con il motivo esplicito accanto («In riposo obbligatorio», «Patente
+scaduta»). Nascondere una persona toglie al coordinatore l'informazione più utile —
+*perché* non è utilizzabile: se Davide è in riposo obbligatorio, il pianificatore deve
+saperlo per decidere se attivare un reperibile o far slittare il turno, non trovarsi
+davanti una lista misteriosamente corta. L'attenuazione conserva la visibilità dello
+stato del sistema (Nielsen #1) senza rinunciare alla prevenzione dell'errore (Nielsen #5).
 
-**Supporto visivo all'incastro.** Passando il mouse su un operatore idoneo — o
-raggiungendolo col tabulatore — sul tabellone compare uno *slot fantasma* nella
-posizione esatta in cui il turno cadrebbe, dentro la finestra ETA/ETD tratteggiata.
-L'incastro si vede **prima** di essere compiuto, e si vede sulla banchina, dove nasce
-il conflitto.
+L'organico ha una **scheda propria**, separata dalla maschera di lavoro. È una scheda di
+consultazione — «con chi posso contare oggi» — e non ha nessun pulsante *Assegna*: non
+c'è nessuna lavorazione selezionata a cui assegnare. Scegliere la persona è compito delle
+proposte del DSS, dove la scelta si vede insieme al suo effetto sul tabellone. Tenere le
+due cose separate ha liberato la maschera di lavoro, che ora ospita solo i due oggetti del
+compito: le lavorazioni in attesa e il tabellone.
+
+#### Le anteprime: vedere dove c'è posto senza scegliere niente
+
+Una prima versione mostrava dove sarebbe caduto il turno **passando il mouse** su un
+candidato: rispondeva a *«dove finirebbe questo turno?»*, ma solo dopo che una
+lavorazione era già stata scelta, e solo finché si teneva il mouse fermo. La domanda che
+il coordinatore si fa entrando è un'altra, e viene prima: *«dove c'è posto, questa
+settimana?»*.
+
+Per questo il tabellone mostra, **senza che si selezioni nulla e senza dover puntare
+niente**, un blocco tratteggiato
+per ogni lavorazione ancora da assegnare, nel primo molo e nella prima ora liberi dentro
+la sua finestra di attracco. Le anteprime si collocano una dopo l'altra tenendo conto di
+quelle già disposte, così non si accavallano tutte sullo stesso slot raccontando una
+disponibilità che non c'è.
+
+L'asse copre l'intera settimana — 168 ore in continuo — e il selettore dei giorni fa
+scorrere il tabellone invece di filtrarlo: la settimana è sempre tutta lì, e non serve
+«entrare» in un giorno alla volta per scoprire dove ci sarebbe spazio. È il principio del
+*riconoscimento piuttosto che ricordo* (Nielsen #6) applicato alla capienza del porto.
+
+#### Una nave, più persone: la squadra
+
+Uno scarico non lo fa una persona sola. Una lavorazione dichiara **quante persone le
+servono**, e il turno singolo diventa un caso particolare della squadra (`n = 1`).
+
+La squadra non è un'entità a sé: è l'insieme dei turni nati dalla stessa lavorazione, sullo
+stesso molo e nella stessa fascia. Il primo assegnato fissa dove e quando; per i successivi
+il sistema non cerca più uno slot ma solo la persona, e propone l'*affiancamento alla
+squadra già sul posto*.
+
+Due conseguenze, entrambe volute:
+
+- **La copertura parziale non è un successo.** Finché mancano persone la lavorazione
+  **resta nell'elenco** con il conteggio (`1/2`), e sul tabellone il posto scoperto è
+  occupato da una corsia tratteggiata *«Manca · Gruista»*, cliccabile per completare la
+  squadra. Una nave a metà equipaggio non deve poter sparire dalla vista solo perché
+  qualcuno ci è già stato messo.
+- **Annullare non distrugge.** Togliendo una persona da una squadra completa la
+  lavorazione ritorna in elenco con la copertura giusta, e il posto vacante ricompare
+  dov'era. Nessuna assegnazione è definitiva, e niente si perde per strada.
+
+#### Le proposte a lato, non in mezzo
+
+Le alternative del DSS erano nate sotto l'elenco delle lavorazioni: aprendosi spingevano
+il tabellone in basso proprio mentre serviva guardarlo. Portate in una colonna della
+griglia, lo restringevano a ogni selezione — la tela larga oltre cinquemila pixel si
+ridisegnava sotto gli occhi.
+
+Ora entrano da destra in un **pannello laterale sovrapposto**, senza velo scuro: il
+tabellone resta della sua dimensione, visibile e utilizzabile accanto alle proposte. Non è
+un ritorno al Prototipo 1 — quello fu scartato perché la modale **oscurava** il contesto e
+obbligava a ricordarlo a memoria; qui il contesto non viene né coperto né spostato.
+
+#### Che cosa dice la percentuale
+
+Accanto a ogni proposta c'è un numero, e deve essere **leggibile come una somma di
+rinunce**, non come un voto. Si parte da cento e si sottrae per ogni compromesso che la
+collocazione impone, con i pesi ordinati come i criteri del motore: un operatore a
+chiamata costa più di uno di linea, far aspettare la nave al giorno dopo costa più che
+usare un reperibile, uno straordinario dichiarato costa più di uno slittamento, e la
+deroga di qualifica — mandare qualcuno su un molo per cui non è abilitato — costa più
+di uno straordinario. Il carico contrattuale entra in proporzione: è il criterio con cui
+il motore stesso rompe la parità, e serve a distinguere due candidati identici in tutto
+il resto.
+
+Ogni sottrazione compare a parole nella riga sotto: se il numero scende, accanto c'è
+scritto perché. **Zero non appartiene a questa scala** — è riservato alle collocazioni
+che il server rifiuterebbe, marcate *Non applicabile* e non selezionabili. La distinzione
+è quella fra «si può fare, ma costa» e «non si può fare», e confonderle toglierebbe a chi
+pianifica l'informazione più importante delle due.
 
 #### Gli altri due ambienti
 
@@ -258,7 +336,10 @@ verificabili e non soltanto dichiarate.
 | Il motore a sette criteri, che deroga solo quando i criteri meno invasivi hanno già fallito e dichiara sempre quale ha usato | `src/Template/Services/Shared/CalcolaMigliorAlternativaQuery.cs` |
 | Nessun comando si fida del client: rilettura dal database e rivalidazione prima di scrivere | `src/Template/Services/PianificazioneTurni/PianificazioneTurni.Commands.cs` |
 | Separazione dei due ambienti, in pagina e sul server | `src/Template.Web/Features/PianificazioneTurni/Index.cshtml`, `TurniController.cs` |
-| Attenuazione con il motivo, slot fantasma, conferme in due passi | `src/Template.Web/Features/PianificazioneTurni/_Risorse.cshtml`, `_Gantt.cshtml`, `_ModaleConflitto.cshtml` |
+| Attenuazione con il motivo, conferme in due passi | `src/Template.Web/Features/PianificazioneTurni/_TabRisorse.cshtml`, `_ModaleConflitto.cshtml` |
+| La squadra come insieme di turni fratelli: il fabbisogno sulla lavorazione, la copertura ricavata dai turni, il primo assegnato che fissa molo e ora | `src/Template/Services/Shared/TaskDaAssegnare.cs`, `PianificazioneTurni.Commands.cs`, `CalcolaMigliorAlternativaQuery.cs` (`AffiancaAllaSquadraAsync`) |
+| Anteprime di tutta la settimana senza selezionare nulla, e la corsia tratteggiata del posto ancora scoperto | `src/Template.Web/Features/PianificazioneTurni/Index.Gantt.ts` (`anteprimeSettimana`, `postiVacantiPerBanchina`) |
+| Le proposte a lato senza spostare il tabellone, aperte e chiuse seguendo la lavorazione scelta | `src/Template.Web/Features/PianificazioneTurni/_PannelloDSS.cshtml`, `Index.Modali.ts` (`sincronizzaPannelloDSS`) |
 
 ---
 

@@ -43,8 +43,15 @@ var PianificazioneTurni;
         return false;
     }
     PianificazioneTurni.riposoInsufficiente = riposoInsufficiente;
-    function banchinaOccupata(banchina, inizioCand, fineCand, turni) {
+    /** Una banchina regge una nave alla volta, con un'eccezione: la squadra. Piu'
+     *  operatori sulla stessa lavorazione stanno sullo stesso molo nella stessa fascia e
+     *  non si intralciano. `taskOrigineId` e' la lavorazione di riferimento: i turni che
+     *  ne fanno parte non contano come occupazione. Stesse regole di
+     *  RegolePianificazione.BanchinaOccupata lato server. */
+    function banchinaOccupata(banchina, inizioCand, fineCand, turni, taskOrigineId) {
+        const haRiferimento = taskOrigineId !== null && taskOrigineId !== undefined;
         return turni.some(altro => altro.banchina === banchina &&
+            !(haRiferimento && altro.taskOrigineId === taskOrigineId) &&
             siSovrappongono(inizioCand, fineCand, inizioAssoluto(altro), fineAssoluta(altro)));
     }
     PianificazioneTurni.banchinaOccupata = banchinaOccupata;

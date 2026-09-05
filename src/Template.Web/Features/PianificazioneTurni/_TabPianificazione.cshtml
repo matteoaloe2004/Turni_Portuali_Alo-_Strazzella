@@ -1,18 +1,25 @@
-@* Maschera di lavoro. L'ordine segue il compito: si sceglie una lavorazione, si
-   guarda chi è idoneo, si incastra sul tabellone. Risorse e tabellone restano
-   affiancati perché l'anteprima dello slot va vista mentre si sceglie l'operatore. *@
+@* Maschera di lavoro: il tabellone in cima, le lavorazioni in attesa sotto. In alto
+   sta il contesto — dove sono le navi, quali banchine sono libere — e sotto la coda di
+   lavoro da smaltire: si guarda il porto, poi si sceglie cosa collocarci.
+   Il tabellone non cambia mai dimensione: le proposte del DSS entrano da destra in un
+   pannello laterale (_PannelloDSS.cshtml, montato in Index.cshtml) invece di prendersi
+   una colonna della griglia, cosi' selezionare una lavorazione non fa ridisegnare la
+   tela larga 5500px proprio mentre la si sta leggendo.
+   La panoramica del personale sta nella scheda Risorse e idoneita': qui accanto
+   servirebbe solo a scegliere una persona, e a quello pensano le proposte del DSS. *@
 
-<div class="row g-4 mb-4">
+@* Le due righe si spartiscono l'altezza della finestra: il tabellone prende quella che
+   avanza, le lavorazioni tengono la loro e chiudono la pagina in fondo. Senza, il
+   tabellone restava alto quanto le sue quattro banchine e sotto al backlog rimaneva una
+   fascia vuota. *@
+<div class="row g-3 mb-3 riga-tabellone">
     <div class="col-12 d-flex flex-column">
-        <partial name="~/Features/PianificazioneTurni/_Backlog.cshtml" />
+        <partial name="~/Features/PianificazioneTurni/_Gantt.cshtml" />
     </div>
 </div>
 
-<div class="row g-4 mb-4">
-    <div class="col-xl-3 col-lg-4 col-12 d-flex flex-column">
-        <partial name="~/Features/PianificazioneTurni/_Risorse.cshtml" />
-    </div>
-    <div class="col-xl-9 col-lg-8 col-12 d-flex flex-column">
-        <partial name="~/Features/PianificazioneTurni/_Gantt.cshtml" />
+<div class="row g-3 riga-backlog">
+    <div class="col-12">
+        <partial name="~/Features/PianificazioneTurni/_Backlog.cshtml" />
     </div>
 </div>

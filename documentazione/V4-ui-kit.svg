@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1640 1060" width="1640" height="1060" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+  <rect width="1640" height="1060" fill="#ffffff"/>
+
+  <!-- ===== Titolo ===== -->
+  <text x="80" y="72" font-size="34" font-weight="700" fill="#0f172a">Linguaggio visivo</text>
+  <text x="80" y="106" font-size="18" fill="#475569">Tre scelte, tutte funzionali prima che estetiche.</text>
+  <text x="80" y="136" font-size="13" font-weight="600" fill="#94a3b8" letter-spacing="1.2">V4 · PROTOTIPO IMPLEMENTATO — GESTIONE TURNI PORTUALI</text>
+
+  <!-- ===== Colonna 1 · Tipografia ===== -->
+  <rect x="80" y="180" width="470" height="470" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="112" y="224" font-size="22" font-weight="700" fill="#0f172a">Tipografia</text>
+  <line x1="112" y1="240" x2="518" y2="240" stroke="#e2e8f0"/>
+  <text x="112" y="278" font-size="17" font-weight="700" fill="#0f172a">Outfit</text>
+  <text x="112" y="304" font-size="16" fill="#475569">Titoli e intestazioni: gerarchia</text>
+  <text x="112" y="328" font-size="16" fill="#475569">visiva pulita e ben strutturata.</text>
+  <text x="112" y="378" font-size="17" font-weight="700" fill="#0f172a">Inter</text>
+  <text x="112" y="404" font-size="16" fill="#475569">Corpo e tabelle. La gestione</text>
+  <text x="112" y="428" font-size="16" fill="#475569">tabulare dei numeri permette</text>
+  <text x="112" y="452" font-size="16" fill="#475569">di scandire orari e turni senza</text>
+  <text x="112" y="476" font-size="16" fill="#475569">affaticamento.</text>
+  <rect x="112" y="510" width="406" height="52" rx="8" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="132" y="543" font-size="19" fill="#0f172a" letter-spacing="1">07:00 · 10:30 · 18:00 · 2h 30min</text>
+  <text x="112" y="592" font-size="14" fill="#94a3b8">Cifre a larghezza fissa: le colonne</text>
+  <text x="112" y="612" font-size="14" fill="#94a3b8">di orari restano incolonnate.</text>
+
+  <!-- ===== Colonna 2 · Colori ===== -->
+  <rect x="585" y="180" width="470" height="470" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="617" y="224" font-size="22" font-weight="700" fill="#0f172a">Colori</text>
+  <line x1="617" y1="240" x2="1023" y2="240" stroke="#e2e8f0"/>
+  <text x="617" y="278" font-size="16" fill="#475569">Il colore è riservato a ciò che</text>
+  <text x="617" y="302" font-size="16" fill="#475569">richiede un'azione. Ruolo, canale</text>
+  <text x="617" y="326" font-size="16" fill="#475569">e categoria restano grigi.</text>
+
+  <rect x="617" y="352" width="20" height="20" rx="5" fill="#2563eb"/>
+  <text x="649" y="368" font-size="16" fill="#0f172a">Blu — guida l'azione, segna la scelta</text>
+  <rect x="617" y="390" width="20" height="20" rx="5" fill="#b45309"/>
+  <text x="649" y="406" font-size="16" fill="#0f172a">Ambra — previene: ritardo, avviso</text>
+  <rect x="617" y="428" width="20" height="20" rx="5" fill="#b91c1c"/>
+  <text x="649" y="444" font-size="16" fill="#0f172a">Rosso — conflitto, azione distruttiva</text>
+  <rect x="617" y="466" width="20" height="20" rx="5" fill="#64748b"/>
+  <text x="649" y="482" font-size="16" fill="#0f172a">Grigio — tutto ciò che non è un'azione</text>
+
+  <rect x="617" y="512" width="406" height="106" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="637" y="542" font-size="15" font-weight="700" fill="#0f172a">Contrasto AA</text>
+  <text x="637" y="566" font-size="15" fill="#475569">I colori di stato sono scuri per reggere</text>
+  <text x="637" y="588" font-size="15" fill="#475569">anche come testo: la console si legge</text>
+  <text x="637" y="610" font-size="15" fill="#475569">su monitor poco luminosi.</text>
+
+  <!-- ===== Colonna 3 · Componenti ===== -->
+  <rect x="1090" y="180" width="470" height="470" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="1122" y="224" font-size="22" font-weight="700" fill="#0f172a">Componenti</text>
+  <line x1="1122" y1="240" x2="1528" y2="240" stroke="#e2e8f0"/>
+  <text x="1122" y="278" font-size="17" font-weight="700" fill="#0f172a">Poka-yoke</text>
+  <text x="1122" y="304" font-size="16" fill="#475569">Le card e i blocchi del tabellone</text>
+  <text x="1122" y="328" font-size="16" fill="#475569">cambiano forma per suggerire in</text>
+  <text x="1122" y="352" font-size="16" fill="#475569">tempo reale la compatibilità di</text>
+  <text x="1122" y="376" font-size="16" fill="#475569">un'assegnazione.</text>
+
+  <text x="1122" y="426" font-size="17" font-weight="700" fill="#0f172a">Badge di ruolo</text>
+  <rect x="1122" y="444" width="150" height="30" rx="6" fill="#f8f9fa" stroke="#e2e8f0"/>
+  <rect x="1130" y="450" width="18" height="18" rx="4" fill="#cbd5e1"/>
+  <text x="1158" y="464" font-size="14" fill="#475569">GRUISTA</text>
+  <rect x="1284" y="444" width="150" height="30" rx="6" fill="#f8f9fa" stroke="#e2e8f0"/>
+  <rect x="1292" y="450" width="18" height="18" rx="4" fill="#cbd5e1"/>
+  <text x="1320" y="464" font-size="14" fill="#475569">MULETTISTA</text>
+  <text x="1122" y="506" font-size="16" fill="#475569">La qualifica è un pittogramma su</text>
+  <text x="1122" y="530" font-size="16" fill="#475569">fondo grigio, non una tinta. Il ruolo</text>
+  <text x="1122" y="554" font-size="16" fill="#475569">resta riconoscibile a colpo d'occhio</text>
+  <text x="1122" y="578" font-size="16" fill="#475569">senza consumare uno dei pochi</text>
+  <text x="1122" y="602" font-size="16" fill="#475569">significati che il colore può portare</text>
+  <text x="1122" y="626" font-size="16" fill="#475569">senza ambiguità.</text>
+
+  <!-- ===== Regola che attraversa tutto ===== -->
+  <rect x="80" y="700" width="1480" height="120" rx="14" fill="#eff6ff" stroke="#bfdbfe"/>
+  <text x="112" y="742" font-size="20" font-weight="700" fill="#1d4ed8">Nessuna informazione è affidata al solo colore</text>
+  <text x="112" y="776" font-size="17" fill="#1e40af">Ritardi e conflitti hanno sempre un'etichetta scritta accanto; la squadra incompleta ha la parola «Manca» oltre alla</text>
+  <text x="112" y="802" font-size="17" fill="#1e40af">corsia tratteggiata; una proposta rifiutata dice «Non applicabile» oltre a valere zero.</text>
+
+  <!-- ===== Nota sul cambiamento ===== -->
+  <rect x="80" y="852" width="1480" height="112" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="112" y="892" font-size="16" font-weight="700" fill="#0f172a">Cosa è cambiato dalla V3</text>
+  <text x="112" y="922" font-size="16" fill="#475569">Gruista, mulettista e stivatore avevano tre tinte diverse. Le abbiamo tolte: il colore che dice anche «stivatore» smette</text>
+  <text x="112" y="946" font-size="16" fill="#475569">di dire «si può» e «non si può», ed erano quelle le due cose che sul tabellone contano davvero.</text>
+</svg>

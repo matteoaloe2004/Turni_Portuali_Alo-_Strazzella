@@ -1,7 +1,14 @@
-@* Il tabellone: una riga per banchina, le 24 ore in orizzontale. *@
+@* Il tabellone: una riga per banchina, e in orizzontale tutte le 168 ore della
+   settimana su un asse continuo. Non filtra piu' per giorno — scegliere un giorno
+   sposta la tela su quel giorno invece di nascondere gli altri, cosi' si vede dove sta
+   il lavoro nei sette giorni senza entrare in ognuno.
+
+   Un solo contenitore scorre, con le etichette delle banchine ancorate a sinistra e la
+   fascia delle ore ancorata in alto: due contenitori separati si disallineerebbero
+   appena si scorre. *@
 
 <div class="p-2 mb-3 rounded shadow-sm" style="border: 1px solid var(--color-border); background-color: var(--color-surface);">
-    <div class="d-flex gap-2 overflow-x-auto" role="group" aria-label="Scegli il giorno da visualizzare">
+    <div class="d-flex gap-2 overflow-x-auto" role="group" aria-label="Vai al giorno sul tabellone">
         <button v-for="g in giorniSettimana" :key="g.index"
                 type="button" class="btn calendar-btn"
                 v-bind:aria-current="giornoSelezionato === g.index ? 'date' : false"
@@ -20,92 +27,138 @@
 
 <section class="gantt-container flex-grow-1 d-flex flex-column" aria-labelledby="titolo-gantt">
     <h2 id="titolo-gantt" class="visually-hidden">
-        Tabellone dei turni per {{ getNomeGiorno(giornoSelezionato) }}
+        Tabellone dei turni della settimana, per banchina e ora
     </h2>
 
-    <div class="gantt-hour-row border-bottom flex-shrink-0 d-flex">
-        <div class="fw-bold text-secondary d-flex align-items-center px-3"
-             style="width: 140px; min-width: 140px; flex-shrink: 0; font-size: var(--fs-xs);">
-            Banchine
-        </div>
-        <div class="gantt-hour-row-track position-relative flex-grow-1">
-            <span v-for="h in oreTimeline" :key="h" class="gantt-hour-tick text-secondary"
-                  style="font-size: var(--fs-xs); font-weight: 600;"
-                  v-bind:style="{ left: tickLeft(h) }">{{ fmtTick(h) }}</span>
-        </div>
-    </div>
+    <div id="gantt-scorrevole" class="gantt-scorrevole custom-scrollbar">
+        <div class="gantt-tela" v-bind:style="{ width: larghezzaTela }">
 
-    <div class="gantt-body flex-grow-1 overflow-y-auto custom-scrollbar">
-        <div v-for="b in banchine" :key="b"
-             class="gantt-row border-bottom position-relative d-flex align-items-center"
-             style="min-height: 52px;">
+            @* --- Fascia dei giorni e delle ore, ancorata in alto ---------------- *@
+            <div class="gantt-intestazione">
+                <div class="gantt-etichetta gantt-etichetta-intestazione fw-bold text-secondary d-flex align-items-center px-3">
+                    Banchine
+                </div>
 
-            <div class="gantt-row-label px-3 d-flex align-items-center"
-                 style="width: 140px; min-width: 140px; height: 100%; flex-shrink: 0; border-right: 1px solid var(--color-border);">
-                <span class="fw-bold text-dark" style="font-size: var(--fs-xs);">{{ b }}</span>
+                <div class="gantt-traccia position-relative" v-bind:style="{ width: larghezzaTraccia }">
+                    @* Il giorno: senza questa fascia, in 168 ore non si capisce dove
+                       finisce una giornata e comincia la successiva. *@
+                    <div class="gantt-fascia-giorni">
+                        <button v-for="g in intestazioniGiorni" :key="'giorno' + g.giorno"
+                                type="button"
+                                class="gantt-giorno-blocco"
+                                v-bind:class="{ 'gantt-giorno-attivo': g.giorno === giornoSelezionato }"
+                                v-bind:style="{ left: g.left, width: g.width }"
+                                v-bind:aria-label="'Vai a ' + g.nome + ' ' + g.dataStr"
+                                v-on:click="selezionaGiorno(g.giorno)">
+                            <span class="fw-bold">{{ g.nome }}</span>
+                            <span class="text-secondary ms-1">{{ g.dataStr }}</span>
+                        </button>
+                    </div>
+
+                    <div class="gantt-fascia-ore">
+                        <span v-for="h in oreSettimana" :key="'ora' + h" class="gantt-hour-tick text-secondary"
+                              style="font-size: var(--fs-xs); font-weight: 600;"
+                              v-bind:style="{ left: tickLeft(h) }">{{ fmtTick(h) }}</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="gantt-row-track position-relative flex-grow-1" style="height: 100%;">
-                <div v-for="h in oreTimeline" :key="'linea' + h" class="gantt-vline"
-                     v-bind:style="{ left: tickLeft(h) }" aria-hidden="true"></div>
+            @* --- Una riga per banchina ------------------------------------------ *@
+            <div v-for="b in banchine" :key="b"
+                 class="gantt-row border-bottom d-flex align-items-stretch"
+                 v-bind:style="{ minHeight: altezzaRigaBanchina(b) + 'px' }">
 
-                @* Finestra di attracco della nave selezionata. *@
-                <div v-if="isTaskSelezionatoVisibileOggi()" class="gantt-task-window"
-                     v-bind:style="{ left: getTaskWindowLeft(), width: getTaskWindowWidth() }"
-                     aria-hidden="true"></div>
+                <div class="gantt-etichetta px-3 d-flex align-items-center">
+                    <span class="fw-bold text-dark" style="font-size: var(--fs-xs);">{{ b }}</span>
+                </div>
 
-                @* Slot suggerito: compare quando un operatore compatibile è sotto il
-                   mouse o ha il focus. *@
-                <button v-if="slotFantasma && slotFantasma.banchina === b"
-                        type="button"
-                        class="gantt-block gantt-block-fantasma"
-                        v-bind:style="{
-                            left: blockLeft({ startOra: slotFantasma.orario, giorno: giornoSelezionato, isDelayed: false, ritardoOre: 0 }),
-                            width: blockWidth({ durataOre: selectedTask.durataOre })
-                        }"
-                        v-on:click.stop="assegnaSlotFantasma()">
-                    <span class="gantt-block-title fw-bold">
-                        <i class="fa-regular fa-hand-pointer me-1" aria-hidden="true"></i>Slot libero
-                    </span>
-                    <span class="visually-hidden">
-                        Assegna {{ selectedTask.nome }} a {{ slotFantasma.operatoreNome }} al {{ b }} alle {{ fmtOra(slotFantasma.orario) }}
-                    </span>
-                </button>
+                <div class="gantt-traccia gantt-row-track position-relative"
+                     v-bind:style="{ width: larghezzaTraccia }">
 
-                @* Turni assegnati: descrizioneTurno() include anche lo stato, così il
-                   conflitto non resta affidato al solo colore. *@
-                <button v-for="t in getTurniPerBanchina(b)" :key="t.id"
-                        type="button"
-                        class="gantt-block d-flex flex-column justify-content-center"
-                        v-bind:class="[getBlockClass(t), {
-                            'gantt-block-evidenziato': operatoreInAnteprima && t.operatore === operatoreInAnteprima,
-                            'gantt-block-bloccante': mostraBloccanti && turniCheBloccano.indexOf(t.id) !== -1
-                        }]"
-                        v-bind:style="{
-                            left: blockLeft(t),
-                            width: blockWidth(t),
-                            opacity: isElementoFiltrato(t) ? 1 : 0.25
-                        }"
-                        v-bind:title="descrizioneTurno(t)"
-                        v-bind:aria-label="descrizioneTurno(t)"
-                        v-on:click.stop="handleBlockClick(t)">
-                    <span class="gantt-block-title fw-bold text-truncate">
-                        {{ t.nome }}
-                    </span>
-                    <span class="gantt-block-sub text-truncate">
-                        <i class="fa-solid fa-user me-1" aria-hidden="true"></i>{{ t.operatore }}
-                        <span v-if="statoTurno(t) !== 'regolare'" class="gantt-block-stato ms-1">
-                            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-                            {{ statoTurno(t) === 'ritardo' ? '+' + fmtDurata(t.ritardoOre) : etichettaStatoTurno(t) }}
+                    @* Griglia: linea sottile a ogni ora, marcata a mezzanotte. *@
+                    <div v-for="h in oreSettimana" :key="'linea' + h"
+                         class="gantt-vline"
+                         v-bind:class="{ 'gantt-vline-midnight': h % 24 === 0 }"
+                         v-bind:style="{ left: tickLeft(h) }" aria-hidden="true"></div>
+
+                    @* Finestra di attracco della nave selezionata. *@
+                    <div v-if="isTaskSelezionatoVisibileOggi()" class="gantt-task-window"
+                         v-bind:style="{ left: getTaskWindowLeft(), width: getTaskWindowWidth() }"
+                         aria-hidden="true"></div>
+
+                    @* Anteprime di tutte le lavorazioni ancora da assegnare: dove ognuna
+                       potrebbe andare, senza dover prima selezionarla. Cliccarne una la
+                       seleziona, quindi sono anche una scorciatoia al pannello del DSS. *@
+                    <button v-for="a in anteprimePerBanchina(b)" :key="'anteprima' + a.taskId"
+                            type="button"
+                            class="gantt-block gantt-block-anteprima d-flex flex-column justify-content-center"
+                            v-bind:class="{ 'gantt-block-anteprima-attiva': anteprimaTaskInEvidenza === a.taskId || (selectedTask && selectedTask.id === a.taskId) }"
+                            v-bind:style="stileAnteprima(a)"
+                            v-bind:aria-label="'Da assegnare: ' + a.nome + ', ' + fmtDurata(a.durataOre) + ', richiede ' + a.competenzaRichiesta + '. Ci sarebbe posto al ' + a.banchina + ' ' + getNomeGiorno(a.giorno) + ' alle ' + fmtOra(a.orario) + '. Seleziona per vedere le proposte.'"
+                            v-on:mouseenter="anteprimaTaskInEvidenza = a.taskId"
+                            v-on:mouseleave="anteprimaTaskInEvidenza = null"
+                            v-on:click.stop="selectTaskDaId(a.taskId)">
+                        <span class="gantt-block-title text-truncate">
+                            <i class="fa-regular fa-square-plus me-1" aria-hidden="true"></i>{{ a.nome }}
                         </span>
-                    </span>
-                </button>
+                        <span class="gantt-block-sub text-truncate">da assegnare</span>
+                    </button>
+
+                    @* Il posto che manca alla squadra, nella sua corsia: cliccandolo si
+                       riapre la lavorazione con le proposte per completarla. *@
+                    <button v-for="p in postiVacantiPerBanchina(b)" :key="p.chiave"
+                            type="button"
+                            class="gantt-block gantt-posto-vacante d-flex flex-column justify-content-center"
+                            v-bind:style="p.stile"
+                            v-bind:aria-label="'Manca un operatore per ' + p.nome + ' al ' + b + '. Apri le proposte per completare la squadra.'"
+                            v-on:click.stop="selectTaskDaId(p.taskOrigineId)">
+                        <span class="gantt-block-title fw-bold text-truncate" aria-hidden="true">
+                            <i class="fa-solid fa-user-plus me-1"></i>Manca
+                        </span>
+                        <span class="gantt-block-sub text-truncate" aria-hidden="true">{{ p.ruolo }}</span>
+                    </button>
+
+                    @* Turni assegnati: descrizioneTurno() include anche lo stato, così il
+                       conflitto non resta affidato al solo colore. *@
+                    <button v-for="t in getTurniPerBanchina(b)" :key="t.id"
+                            type="button"
+                            class="gantt-block d-flex flex-column justify-content-center"
+                            v-bind:class="[getBlockClass(t), {
+                                'gantt-block-evidenziato': operatoreInAnteprima && t.operatore === operatoreInAnteprima,
+                                'gantt-block-bloccante': mostraBloccanti && turniCheBloccano.indexOf(t.id) !== -1
+                            }]"
+                            v-bind:style="stileBlocco(t)"
+                            v-bind:title="descrizioneTurno(t)"
+                            v-bind:aria-label="descrizioneTurno(t)"
+                            v-on:click.stop="handleBlockClick(t)">
+                        <span class="gantt-block-title fw-bold text-truncate">
+                            {{ t.nome }}
+                        </span>
+                        <span class="gantt-block-sub text-truncate">
+                            <i class="fa-solid fa-user me-1" aria-hidden="true"></i>{{ t.operatore }}
+                            @* Il denominatore e' il fabbisogno, non quanti sono gia' sul
+                               posto: "1/2" dice che la nave e' scoperta, "1/1" non si
+                               mostra affatto. Che manchi qualcuno si vede comunque dalla
+                               corsia vuota qui sotto, senza dover leggere la frazione in
+                               un blocco largo pochi centimetri. *@
+                            <span v-if="corsiaTurno(t).richiesti > 1" class="ms-1">
+                                ({{ corsiaTurno(t).indice + 1 }}/{{ corsiaTurno(t).richiesti }})
+                            </span>
+                            <span v-if="statoTurno(t) !== 'regolare'" class="gantt-block-stato ms-1">
+                                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                                {{ statoTurno(t) === 'ritardo' ? '+' + fmtDurata(t.ritardoOre) : etichettaStatoTurno(t) }}
+                            </span>
+                        </span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 </section>
 
-@* Stesso contenuto del tabellone in forma di elenco, percorribile in sequenza. *@
+@* Stesso contenuto del tabellone in forma di elenco, percorribile in sequenza. Resta
+   sul giorno scelto: un elenco di sette giorni sarebbe piu' lungo del tabellone che
+   dovrebbe rendere percorribile. *@
 <details class="mt-3">
     <summary class="text-secondary" style="cursor: pointer; font-size: var(--fs-sm);">
         Elenco testuale dei turni di {{ getNomeGiorno(giornoSelezionato) }}

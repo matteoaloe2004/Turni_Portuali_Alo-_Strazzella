@@ -13,7 +13,10 @@
     <p class="mb-2 text-secondary">
         La finestra di attracco va dalle
         <strong>{{ fmtOra(selectedTask.etaOra) }}</strong> di {{ getNomeGiorno(selectedTask.etaGiorno) }}
-        alle <strong>{{ fmtOra(selectedTask.etdOra) }}</strong> di {{ getNomeGiorno(selectedTask.etdGiorno) }},
+        @* La mezzanotte si chiama per nome: "alle +1g 00:00 di Martedì" e' formalmente
+           esatto e praticamente illeggibile. *@
+        <span v-if="selectedTask.etdOra >= 24">fino a <strong>mezzanotte</strong></span>
+        <span v-else>fino alle <strong>{{ fmtOra(selectedTask.etdOra) }}</strong> di {{ getNomeGiorno(selectedTask.etdGiorno) }}</span>,
         e la lavorazione dura <strong>{{ fmtDurata(selectedTask.durataOre) }}</strong>.
         Dentro quello spazio nessuno con la qualifica di
         <strong>{{ selectedTask.competenzaRichiesta }}</strong> è utilizzabile:

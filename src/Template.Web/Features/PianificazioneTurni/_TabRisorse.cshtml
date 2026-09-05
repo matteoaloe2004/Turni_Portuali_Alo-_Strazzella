@@ -111,7 +111,12 @@
 
                 <p class="text-secondary mb-0" style="font-size: var(--fs-xs);">
                     <i class="fa-solid fa-anchor me-1" aria-hidden="true"></i>
-                    {{ op.abilitazioni ? 'Abilitato a: ' + op.abilitazioni : 'Abilitato a tutte le banchine' }}
+                    @* normalizzaOperatore() consegna sempre un array, e un array vuoto e'
+                       comunque "vero": senza il controllo sulla lunghezza chi non ha
+                       restrizioni si vedeva scritto "Abilitato a:" e basta. *@
+                    {{ op.abilitazioni && op.abilitazioni.length > 0
+                        ? 'Abilitato a: ' + op.abilitazioni.join(', ')
+                        : 'Abilitato a tutte le banchine' }}
                 </p>
 
                 <div class="mt-auto">

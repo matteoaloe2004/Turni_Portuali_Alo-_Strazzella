@@ -73,10 +73,19 @@ namespace Template.Services.Shared
                 EtaGiorno = task.EtaGiorno,
                 EtaOra = task.EtaOra,
                 EtdGiorno = task.EtdGiorno,
-                EtdOra = task.EtdOra
+                EtdOra = task.EtdOra,
+                TaskOrigineId = task.Id
             };
 
             var turniEsistenti = await _dbContext.Turni.AsNoTracking().ToListAsync();
+
+            // Squadra già iniziata: molo e fascia li ha fissati il capofila, quindi non
+            // c'è nessuno slot da cercare. Serve solo la persona migliore per quello slot.
+            var squadra = turniEsistenti.Where(t => t.TaskOrigineId == task.Id).ToList();
+            if (squadra.Count > 0)
+            {
+                return await AffiancaAllaSquadraAsync(task, squadra, turniEsistenti);
+            }
 
             // Niente deroga di ruolo qui: assegnare una lavorazione nuova a chi non ha la
             // competenza è proprio quello che il comando rifiuta, e proporlo sarebbe un invito
@@ -204,6 +213,52 @@ namespace Template.Services.Shared
         }
 
         /// <summary>
+        /// Proposta per il prossimo posto libero in una squadra già avviata: la
+        /// collocazione è quella del capofila, quindi qui si scegli solo chi affiancargli.
+        /// Null se non resta nessuno utilizzabile su quello slot.
+        /// </summary>
+        private async Task<MigliorAlternativaDTO> AffiancaAllaSquadraAsync(
+            TaskDaAssegnare task, List<Turno> squadra, List<Turno> turniEsistenti)
+        {
+            var capofila = squadra[0];
+            var inizio = capofila.Giorno * 24.0 + capofila.StartOra;
+            var fine = inizio + task.DurataOre;
+
+            var giaInSquadra = squadra.Select(t => t.Operatore).ToList();
+            var operatori = await CaricaOperatoriConOreAsync(turniEsistenti,
+                o => o.Ruolo == task.CompetenzaRichiesta && !giaInSquadra.Contains(o.Nome));
+
+            // Stessi filtri del solver: quello che il comando rifiuterebbe non si propone.
+            var scelto = operatori
+                .Where(op => !RegolePianificazione.PatenteScaduta(op))
+                .Where(op => !op.InRiposoObbligatorio)
+                .Where(op => !RegolePianificazione.OperatoreOccupato(op.Nome, inizio, fine, turniEsistenti))
+                .Where(op => op.OreMassime <= 0 || op.OreSettimanali + task.DurataOre <= op.OreMassime)
+                // Prima chi è abilitato a quel molo, poi gli operatori di linea sui
+                // reperibili, poi chi ha più ore libere: la stessa scala dei criteri 1-3.
+                .OrderByDescending(op => RegolePianificazione.AbilitatoAllaBanchina(op, capofila.Banchina))
+                .ThenBy(op => op.Reperibile)
+                .ThenBy(op => op.OreSettimanali)
+                .FirstOrDefault();
+
+            if (scelto == null) return null;
+
+            var richiesti = task.OperatoriRichiesti > 0 ? task.OperatoriRichiesti : 1;
+
+            return new MigliorAlternativaDTO
+            {
+                MoloSuggerito = capofila.Banchina,
+                OrarioSuggerito = capofila.StartOra,
+                OperatoreSuggerito = scelto.Nome,
+                OreSettimanaliOperatore = scelto.OreSettimanali + task.DurataOre,
+                OreMassimeOperatore = scelto.OreMassime,
+                GiornoSuggerito = capofila.Giorno,
+                MotivoScelta = $"Affiancamento alla squadra già sul posto (operatore {squadra.Count + 1} di {richiesti})",
+                DerogaOreApplicata = DerogaNecessaria(scelto, task.DurataOre)
+            };
+        }
+
+        /// <summary>
         /// Di quante ore questa collocazione sfora il tetto contrattuale: è la deroga che
         /// la proposta deve dichiarare al comando per essere accettata. Zero se ci sta.
         /// </summary>
@@ -285,7 +340,7 @@ namespace Template.Services.Shared
 
                 foreach (var banchina in banchine)
                 {
-                    if (RegolePianificazione.BanchinaOccupata(banchina, inizioCand, fineCand, altriTurni)) continue;
+                    if (RegolePianificazione.BanchinaOccupata(banchina, inizioCand, fineCand, altriTurni, turno.TaskOrigineId)) continue;
 
                     foreach (var op in operatori)
                     {
@@ -356,7 +411,7 @@ namespace Template.Services.Shared
 
                     foreach (var banchina in RegolePianificazione.Banchine)
                     {
-                        if (RegolePianificazione.BanchinaOccupata(banchina, inizioCand, fineCand, altriTurni)) continue;
+                        if (RegolePianificazione.BanchinaOccupata(banchina, inizioCand, fineCand, altriTurni, turno.TaskOrigineId)) continue;
 
                         foreach (var op in operatori)
                         {

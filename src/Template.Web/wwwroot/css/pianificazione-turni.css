@@ -89,9 +89,56 @@ h1, h2, h3, h4, h5, h6,
 
 [v-cloak] { display: none; }
 
+/* Il contenitore delle schede era un blocco, quindi il pannello dentro restava alto
+   quanto il suo contenuto e sotto avanzava una fascia vuota fino al fondo della
+   finestra. Reso flex, il pannello si prende tutta l'altezza rimasta e puo'
+   distribuirla fra le sue righe. */
+.tab-content-vue {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* La scheda visibile si prende tutta l'altezza del contenitore: senza `flex-grow` un
+   flex item resta alto quanto il contenuto, ed era proprio quello il vuoto in fondo.
+   Le schede nascoste hanno display:none (v-show) e non concorrono. */
+.tab-content-vue > * {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
 .tab-panel-flex {
     display: flex;
     flex-direction: column;
+}
+
+/* Chi si allunga e chi no. Il tabellone e' l'unico elemento della schermata che
+   guadagna davvero da altezza in piu' — una banchina in piu' visibile senza scorrere —
+   mentre le card delle lavorazioni hanno un'altezza loro e crescerebbero solo di
+   spazio bianco. */
+.riga-tabellone {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.riga-tabellone > .col-12 {
+    min-height: 0;
+}
+
+.riga-backlog {
+    flex: 0 0 auto;
+}
+
+/* Un flex item ha min-width: auto e non si restringe sotto la larghezza intrinseca del
+   proprio contenuto. Nella scheda Pianificazione ci sono due livelli di flex annidati —
+   il pannello e le .row di Bootstrap — e ogni livello che resta a min-width: auto
+   propaga la larghezza del contenuto fino al documento: la striscia del backlog e la
+   tela del tabellone (oltre 5000px) allargavano la pagina, e il loro overflow-x non
+   entrava mai in funzione perche' non erano mai piu' strette del proprio contenuto.
+   Vanno resi restringibili tutti gli anelli della catena, non solo il primo. */
+.tab-panel-flex > *,
+.tab-panel-flex .row > * {
+    min-width: 0;
 }
 
 /* --- Focus visibile --- */
@@ -267,12 +314,18 @@ h1, h2, h3, h4, h5, h6,
 
 /* --- Backlog --- */
 
+/* Le lavorazioni da assegnare hanno un'ombra loro, piu' marcata dei token generali:
+   sono le uniche schede che stanno appoggiate su un'altra scheda — la striscia dentro
+   la card del backlog — e con l'ombra di serie, quasi trasparente, il bordo di ciascuna
+   si confondeva con quello del contenitore. Il colore e' lo slate del testo e non nero:
+   su un fondo grigio chiaro il nero puro sporca invece di staccare. */
 .backlog-card {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-    transition: border-color 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 2px 6px -1px rgba(15, 23, 42, 0.13),
+                0 1px 3px -1px rgba(15, 23, 42, 0.09);
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
     width: 100%;
     text-align: left;
 }
@@ -280,13 +333,17 @@ h1, h2, h3, h4, h5, h6,
 .backlog-card:hover {
     border-color: var(--color-primary);
     transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 8px 16px -4px rgba(15, 23, 42, 0.20),
+                0 3px 6px -3px rgba(15, 23, 42, 0.14);
 }
 
+/* L'alone blu della selezione si somma all'ombra invece di sostituirla: la card scelta
+   non deve appiattirsi proprio mentre e' quella che si sta guardando. */
 .backlog-card[aria-pressed="true"] {
     border-color: var(--color-primary);
     background: var(--color-primary-light);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18),
+                0 4px 10px -2px rgba(15, 23, 42, 0.16);
 }
 
 /* --- Card operatore --- */
@@ -369,28 +426,16 @@ h1, h2, h3, h4, h5, h6,
     white-space: nowrap;
 }
 
-.role-Gruista {
-    background-color: var(--color-primary-light);
-    color: var(--color-primary);
-    border: 1px solid rgba(37, 99, 235, 0.2);
-}
-
-.role-Mulettista {
-    background-color: var(--color-info-light);
-    color: var(--color-info);
-    border: 1px solid rgba(14, 116, 144, 0.2);
-}
-
-.role-Stivatore {
-    background-color: var(--color-success-light);
-    color: var(--color-success);
-    border: 1px solid rgba(4, 120, 87, 0.2);
-}
-
+/* Un colore per ruolo faceva concorrenza a quelli che portano un significato:
+   verde e rosso qui devono voler dire "si puo'" e "non si puo'", non "stivatore" e
+   "gruista". La qualifica e' scritta nel badge, non serve codificarla anche a colori. */
+.role-Gruista,
+.role-Mulettista,
+.role-Stivatore,
 .role-Coordinatore {
-    background-color: var(--color-warning-light);
-    color: var(--color-warning);
-    border: 1px solid rgba(180, 83, 9, 0.2);
+    background-color: var(--color-bg);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
 }
 
 /* --- Barre di carico --- */
@@ -422,6 +467,8 @@ h1, h2, h3, h4, h5, h6,
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
     overflow: hidden;
+    /* Ultimo anello della catena: e' un flex item della colonna che lo contiene. */
+    min-width: 0;
 }
 
 .gantt-hour-row {
@@ -519,29 +566,6 @@ h1, h2, h3, h4, h5, h6,
     z-index: 0;
 }
 
-/* Slot suggerito per l'operatore sotto il mouse o col focus. */
-.gantt-block-fantasma {
-    background: rgba(37, 99, 235, 0.12);
-    border: 2px dashed var(--color-primary);
-    color: var(--color-primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 8;
-}
-
-.gantt-block-fantasma:hover { background: rgba(37, 99, 235, 0.22); }
-
-@media (prefers-reduced-motion: no-preference) {
-    .gantt-block-fantasma { animation: fantasma-pulse 1.4s ease-in-out infinite; }
-}
-
-@keyframes fantasma-pulse {
-    0%, 100% { opacity: 0.75; }
-    50%      { opacity: 1; }
-}
-
 /* --- Soluzioni del DSS --- */
 
 .dss-option {
@@ -587,3 +611,343 @@ h1, h2, h3, h4, h5, h6,
 ::-webkit-scrollbar-track { background: #f1f5f9; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+
+/* --- Pannello laterale delle proposte (offcanvas) ----------------------- */
+
+/* Stretto quanto basta a leggere le alternative: piu' largo coprirebbe il
+   tabellone, ed e' proprio quello che non deve fare. Senza backdrop la pagina
+   accanto resta viva, quindi il pannello ha bisogno di un'ombra sua per
+   staccarsi dal tabellone invece che del velo scuro. */
+/* La larghezza passa dalla variabile di Bootstrap e non da `width`: la sua regola e'
+   `.offcanvas.offcanvas-end`, che ha specificita' piu' alta di una classe sola e
+   vincerebbe comunque. */
+.pannello-dss-offcanvas {
+    --bs-offcanvas-width: 380px;
+    max-width: 92vw;
+    box-shadow: -6px 0 24px rgba(15, 23, 42, .12);
+}
+
+.pannello-dss-offcanvas .offcanvas-body {
+    font-size: var(--fs-sm);
+}
+
+@media (max-width: 991.98px) {
+    /* Su schermo stretto il tabellone e' comunque fuori vista mentre si sceglie:
+       tanto vale dare al pannello tutta la larghezza utile. */
+    .pannello-dss-offcanvas {
+        --bs-offcanvas-width: 100%;
+        max-width: 100%;
+    }
+}
+
+/* --- Backlog compatto --------------------------------------------------- */
+
+.backlog-card-compatta {
+    font-size: var(--fs-sm);
+    line-height: 1.35;
+}
+
+.backlog-card-compatta .role-badge {
+    padding: 0.1rem 0.35rem;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* "arrivo" e "partenza": stanno un gradino sotto l'orario che accompagnano, cosi'
+   dicono di cosa si tratta senza contendergli la lettura. Lo stacco dall'orario e'
+   lo spazio scritto nel markup — un margine qui si sommerebbe a quello e basterebbe
+   a mandare a capo una card larga duecento pixel. */
+.etichetta-finestra {
+    color: var(--color-text-muted);
+    font-size: 0.9em;
+}
+
+/* --- Anteprima delle lavorazioni da assegnare --------------------------- */
+
+/* Tratteggio e sfondo neutro: e' una possibilita', non un turno. Il pieno resta
+   riservato a quello che e' stato deciso davvero. */
+.gantt-block-anteprima {
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(100, 116, 139, 0.07),
+        rgba(100, 116, 139, 0.07) 6px,
+        rgba(100, 116, 139, 0.13) 6px,
+        rgba(100, 116, 139, 0.13) 12px);
+    border: 1px dashed var(--color-text-muted);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    z-index: 4;
+}
+
+.gantt-block-anteprima:hover,
+.gantt-block-anteprima-attiva {
+    border-color: var(--color-primary);
+    border-style: dashed;
+    color: var(--color-primary);
+    background: rgba(37, 99, 235, 0.10);
+    z-index: 6;
+}
+
+.gantt-block-anteprima:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+}
+
+/* Il posto che manca a una squadra. Stesso tratteggio delle anteprime perche' dice
+   la stessa cosa — qui ci andrebbe del lavoro non ancora assegnato — ma il bordo e'
+   continuo sul lato della squadra: il posto e' gia' deciso, e' la persona che manca. */
+.gantt-posto-vacante {
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(100, 116, 139, 0.07),
+        rgba(100, 116, 139, 0.07) 6px,
+        rgba(100, 116, 139, 0.13) 6px,
+        rgba(100, 116, 139, 0.13) 12px);
+    border: 1px dashed var(--color-text-muted);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    z-index: 4;
+}
+
+.gantt-posto-vacante:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: rgba(37, 99, 235, 0.10);
+    z-index: 6;
+}
+
+.gantt-posto-vacante:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+}
+
+
+/* --- Pittogrammi dei ruoli ---------------------------------------------- */
+
+/* Line art su fondo bianco: il riquadro chiaro e' voluto, tiene l'icona leggibile
+   anche sulle card selezionate, che hanno il fondo azzurrino. */
+.icona-ruolo,
+.icona-ruolo-piccola {
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    object-fit: contain;
+    display: inline-block;
+}
+
+.icona-ruolo {
+    width: 26px;
+    height: 26px;
+    padding: 2px;
+}
+
+.icona-ruolo-piccola {
+    width: 15px;
+    height: 15px;
+    padding: 1px;
+    border: 0;
+    background: transparent;
+}
+
+/* --- Proposte DSS compatte --------------------------------------------- */
+
+.dss-option-compatta {
+    font-size: var(--fs-sm);
+    line-height: 1.3;
+}
+
+.dss-option-compatta strong {
+    font-size: var(--fs-sm);
+}
+
+
+/* --- Backlog a striscia orizzontale ------------------------------------- */
+
+/* Una riga sola che scorre in orizzontale: il backlog resta alto quanto una card e
+   il tabellone non viene spinto in basso. Scorre la striscia, non la pagina. */
+/* Ultimo anello della catena che impedisce alla pagina di allargarsi.
+   `min-width: 0` sulle .row e sulle colonne (vedi .tab-panel-flex piu' sopra) non
+   bastava: la larghezza intrinseca della striscia — quattordici card in fila, oltre
+   3000px — risaliva comunque fino al contenitore di scorrimento della pagina
+   (#pageId.onit-page, che ha overflow-x: auto), e il risultato era una barra
+   orizzontale in fondo alla finestra che faceva scorrere tutta la console su un
+   fondo bianco vuoto. Qui la card si impegna a non sporgere mai dalla propria
+   colonna; a scorrere resta la striscia, che ha il suo overflow-x.
+   `hidden` prima di `clip` fa da ripiego sui browser che clip non lo conoscono:
+   nessun discendente ha bisogno di sporgere, quindi i due si equivalgono. */
+.pannello-backlog {
+    overflow-x: hidden;
+    overflow-x: clip;
+}
+
+.backlog-striscia {
+    display: flex;
+    align-items: flex-start;
+    /* Non superare mai il contenitore: e' la condizione perche' overflow-x scorra
+       qui dentro invece di allargare la pagina. */
+    max-width: 100%;
+    min-width: 0;
+    gap: 1rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.35rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* I giorni sono blocchi affiancati: scorrendo verso destra si percorre la settimana
+   nell'ordine in cui arriva. */
+.backlog-gruppo-giorno {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--color-border);
+}
+
+.backlog-gruppo-giorno:first-child {
+    padding-left: 0.25rem;
+    border-left: 0;
+}
+
+/* Il giorno aperto sul tabellone si riconosce dal bordo, non da un fondo colorato:
+   la striscia ha gia' le card, un'altra campitura sarebbe rumore. */
+.backlog-gruppo-attivo {
+    border-left-color: var(--color-primary);
+}
+
+.backlog-gruppo-attivo:first-child {
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--color-primary);
+}
+
+.backlog-etichetta-giorno {
+    font-size: var(--fs-xs);
+    white-space: nowrap;
+}
+
+/* Larghezza fissa: card di larghezza diversa in una riga che scorre rendono
+   difficile capire quante ce ne sono ancora. */
+.backlog-card-striscia {
+    flex: 0 0 205px;
+    width: 205px;
+    text-align: left;
+}
+
+
+/* --- Tabellone settimanale: un solo contenitore che scorre ---------------- */
+
+/* Scorre lui, non la pagina. La tela e' larga 168 ore piu' la colonna delle
+   banchine, quindi va contenuta qui dentro o trascina tutto il documento. */
+.gantt-scorrevole {
+    overflow: auto;
+    /* Si allunga fino a riempire lo spazio che la riga gli concede, invece di fermarsi
+       all'altezza delle banchine che ospita. L'altezza fissa di prima (62vh) faceva
+       l'opposto: tagliava il tabellone su schermi alti e lasciava il vuoto sotto.
+       La soglia minima e' la rinuncia consapevole: su una finestra bassa il tabellone
+       resta leggibile e a scorrere torna a essere la pagina. */
+    flex: 1 1 auto;
+    min-height: 220px;
+    /* La tela dentro e' larghissima: senza questo vincolo il contenitore la seguirebbe
+       invece di ritagliarla, e a scorrere sarebbe la pagina. */
+    max-width: 100%;
+    min-width: 0;
+    position: relative;
+    -webkit-overflow-scrolling: touch;
+}
+
+.gantt-tela {
+    position: relative;
+    /* Le righe delle banchine hanno gia' flex-grow: 1, ma la tela non era un contenitore
+       flex e quindi non cresceva nessuna: ognuna restava alta quanto il suo minimo e
+       sotto l'ultima banchina avanzava una fascia bianca. Qui la tela riempie il riquadro
+       e le banchine si spartiscono l'altezza disponibile.
+       `min-height` e non `height`: con molte banchine la somma dei minimi supera il
+       riquadro, e in quel caso deve vincere il contenuto e scorrere. */
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+}
+
+
+/* Le ore restano in vista scorrendo in verticale... */
+.gantt-intestazione {
+    display: flex;
+    align-items: stretch;
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    /* Resta alta quanto le serve: e' l'unica riga della tela che non deve spartirsi
+       l'altezza con le banchine. */
+    flex: 0 0 auto;
+}
+
+/* ...e i nomi delle banchine scorrendo in orizzontale: senza, dopo due giorni di
+   scorrimento non si sa piu' quale riga si sta guardando. */
+.gantt-etichetta {
+    width: 140px;
+    min-width: 140px;
+    flex: 0 0 140px;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background: var(--color-surface);
+    border-right: 1px solid var(--color-border);
+}
+
+/* L'angolo in alto a sinistra sta sopra entrambi. */
+.gantt-etichetta-intestazione {
+    z-index: 7;
+    font-size: var(--fs-xs);
+    background: #f1f5f9;
+}
+
+.gantt-traccia {
+    flex: 0 0 auto;
+}
+
+.gantt-fascia-giorni {
+    position: relative;
+    height: 26px;
+    background: #f1f5f9;
+}
+
+.gantt-fascia-ore {
+    position: relative;
+    height: 22px;
+    background: #f1f5f9;
+}
+
+/* Il giorno e' anche un pulsante: cliccarlo riporta la tela al suo inizio. */
+.gantt-giorno-blocco {
+    position: absolute;
+    top: 0;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0 0.45rem;
+    border: 0;
+    border-left: 2px solid var(--color-border);
+    background: transparent;
+    font-size: var(--fs-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.gantt-giorno-blocco:hover {
+    background: var(--color-bg);
+}
+
+/* Il giorno a cui si riferiscono backlog e anteprime: marcato, non isolato. */
+.gantt-giorno-attivo {
+    background: var(--color-primary-light);
+    border-left-color: var(--color-primary);
+}
+
+.gantt-giorno-attivo span {
+    color: var(--color-primary);
+}

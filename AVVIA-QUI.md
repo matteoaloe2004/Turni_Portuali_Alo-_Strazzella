@@ -57,26 +57,41 @@ conta, nell'ordine giusto.
 **1. Entra come Marco.** Guarda le schede in alto: ne ha due. La console gli
 mostra solo quello che gli serve per comporre i turni.
 
-**2. Seleziona "Scarico Zeus" nel backlog.** Il sistema propone tre alternative,
-la prima marcata *Consigliata*, ognuna con vantaggi e compromessi. Sotto, la frase
-che dice cosa succederà: *"La lavorazione sarà assegnata a Elena al Molo Est, oggi
-alle 10:30."* — l'effetto si vede prima di confermare, non dopo.
+**2. Guarda il tabellone prima di toccare niente.** I riquadri tratteggiati sono le
+lavorazioni ancora da assegnare, messe dove ci sarebbe posto: molo e ora liberi
+dentro la finestra di attracco di ogni nave. L'asse è la settimana intera, quindi si
+vede dove c'è spazio senza entrare in un giorno alla volta.
 
-**3. Passa il mouse su un operatore compatibile.** Sul tabellone compare uno slot
-tratteggiato: è dove finirebbe il turno se lo assegnassi a lui. Funziona anche
-spostandosi con il tabulatore, senza mouse.
+**3. Seleziona "Scarico Zeus" nel backlog.** Le proposte entrano da destra, in un
+pannello che **non copre e non restringe il tabellone**. Tre alternative, la prima
+marcata *Consigliata*, ognuna con vantaggi e compromessi. Sotto, la frase che dice
+cosa succederà: *"La lavorazione sarà assegnata a Ivan alla Banchina Ovest, oggi alle
+07:00."* — l'effetto si vede prima di confermare, non dopo.
 
-**4. Prova un operatore non idoneo.** Il pulsante *Assegna* è disabilitato e
-accanto c'è scritto perché: "In riposo obbligatorio", "Patente scaduta".
+**4. Guarda le tre proposte.** Ognuna dice molo, ora e persona, con il criterio che
+l'ha generata e i compromessi che comporta. Una proposta segnata *Non applicabile* non
+si può selezionare, e accanto c'è scritto perché.
 
-**5. Applica la soluzione, poi ricarica la pagina.** Il turno è ancora lì: sta sul
-server, non nel browser.
+**5. Applica la proposta.** "Scarico Zeus" chiede **due gruisti**: la lavorazione
+**resta** in elenco, ora con `1/2`, e sul tabellone accanto al turno appena creato
+compare una corsia tratteggiata *"Manca · Gruista"*. Cliccala: si riaprono le
+proposte, stavolta per affiancare qualcuno alla squadra già sul posto. Assegna anche
+il secondo e la lavorazione esce dall'elenco.
 
-**5b. Ora disfa.** Clicca il turno appena creato sul tabellone: si apre la sua scheda,
-con l'eventuale collocazione alternativa e il pulsante *Annulla questo turno*. La
-conferma dice cosa succederà, con i nomi veri. Confermando, la lavorazione ricompare
-in *Lavorazioni da assegnare* e la si può ricollocare: nessuna assegnazione è
-definitiva, e niente sparisce.
+**5b. Ricarica la pagina.** I turni sono ancora lì: stanno sul server, non nel
+browser.
+
+**5c. Ora disfa.** Clicca uno dei due turni sul tabellone: si apre la sua scheda,
+con l'eventuale collocazione alternativa e il pulsante *Annulla questo turno* — in
+grigio, perché non è lui a eseguire. La conferma dice cosa succederà, con i nomi veri,
+e solo quel pulsante è rosso. Confermando, la nave torna in *Lavorazioni da assegnare*
+con la copertura giusta e il posto vacante ricompare sul tabellone: nessuna
+assegnazione è definitiva, e niente sparisce.
+
+**5d. Vai su "Risorse e idoneità".** Chi non è utilizzabile resta in elenco col motivo
+accanto — "In riposo obbligatorio", "Patente scaduta" — invece di sparire dalla lista.
+Le qualifiche sono badge grigi con un pittogramma: il colore, sulla console, è
+riservato a quello che va guardato.
 
 **6. Apri una seconda finestra ed entra come Elena.** Assegna qualcosa da una delle
 due: compare in tempo reale anche nell'altra, con l'avviso di chi l'ha fatto.

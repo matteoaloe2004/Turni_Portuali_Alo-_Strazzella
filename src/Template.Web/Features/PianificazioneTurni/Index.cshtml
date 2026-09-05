@@ -33,6 +33,17 @@
                 <i class="fa-solid fa-desktop me-1" aria-hidden="true"></i>Pianificazione
             </button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button type="button" id="tab-risorse" role="tab"
+                    class="nav-link border-0 border-bottom border-3 fw-bold px-3 py-2"
+                    v-bind:class="{ active: activeTab === 'risorse' }"
+                    v-bind:aria-selected="activeTab === 'risorse' ? 'true' : 'false'"
+                    v-bind:tabindex="activeTab === 'risorse' ? 0 : -1"
+                    aria-controls="pannello-risorse"
+                    v-on:click="setActiveTab('risorse')">
+                <i class="fa-solid fa-users me-1" aria-hidden="true"></i>Risorse e idoneità
+            </button>
+        </li>
         @* asp-roles non emette il markup lato server: senza il ruolo, la scheda non esiste. *@
         <li class="nav-item" role="presentation" asp-roles="Admin">
             <button type="button" id="tab-simulazioni" role="tab"
@@ -68,6 +79,11 @@
             <partial name="~/Features/PianificazioneTurni/_TabPianificazione.cshtml" />
         </div>
 
+        <div id="pannello-risorse" role="tabpanel" aria-labelledby="tab-risorse"
+             v-show="activeTab === 'risorse'" class="w-100">
+            <partial name="~/Features/PianificazioneTurni/_TabRisorse.cshtml" />
+        </div>
+
         <div id="pannello-simulazioni" role="tabpanel" aria-labelledby="tab-simulazioni"
              v-show="activeTab === 'simulazioni'" class="w-100" asp-roles="Admin">
             <partial name="~/Features/PianificazioneTurni/_TabSimulazioni.cshtml" />
@@ -78,6 +94,10 @@
             <partial name="~/Features/PianificazioneTurni/_TabRegistro.cshtml" />
         </div>
     </div>
+
+    @* Fuori dalle schede: il pannello e' sovrapposto alla pagina, non un pezzo della
+       griglia della scheda Pianificazione. *@
+    <partial name="~/Features/PianificazioneTurni/_PannelloDSS.cshtml" />
 
     <partial name="~/Features/PianificazioneTurni/_ModaleConflitto.cshtml" />
     <partial name="~/Features/PianificazioneTurni/_ModaleOperatore.cshtml" />
@@ -150,6 +170,23 @@
                 mounted: function () {
                     modello.inizializzaStato();
                 },
+                watch: {
+                    // Il pannello laterale delle proposte segue la lavorazione scelta, da
+                    // qualunque parte arrivi il cambio: card del backlog, tratteggio sul
+                    // tabellone, assegnazione conclusa, o un altro coordinatore che si
+                    // prende la lavorazione. Aprirlo e chiuderlo nei singoli punti
+                    // significherebbe prima o poi dimenticarne uno.
+                    selectedTask: function (nuovo) {
+                        modello.sincronizzaPannelloDSS(!!nuovo);
+                    },
+                    // Le proposte riguardano il tabellone: lasciandole aperte sopra
+                    // un'altra scheda parlerebbero di qualcosa che non si vede più.
+                    activeTab: function (nuova) {
+                        if (nuova !== 'pianificazione') {
+                            modello.selectedTask = null;
+                        }
+                    }
+                },
                 methods: metodi,
                 computed: Object.assign(derivate, {
                     // La lista di soluzioni può accorciarsi dopo la scelta: questi due
@@ -162,14 +199,6 @@
                     soluzioneDSSCorrente: function () {
                         var lista = this.soluzioniDSSTask;
                         return lista && lista.length > 0 ? (lista[this.indiceDSSCorrente] || null) : null;
-                    },
-                    // Una lavorazione compare nel giorno suo e, se la finestra della nave
-                    // ci arriva con spazio a sufficienza, anche in quello successivo.
-                    tasksDaAssegnareGiorno: function () {
-                        var giorno = Number(this.giornoSelezionato);
-                        return (this.tasksDaAssegnare || []).filter(function (t) {
-                            return PianificazioneTurni.taskVisibileNelGiorno(t, giorno);
-                        });
                     }
                 })
             });

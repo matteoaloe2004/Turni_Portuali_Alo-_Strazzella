@@ -75,10 +75,29 @@ namespace Template.Services.PianificazioneTurni
             return false;
         }
 
-        public static bool BanchinaOccupata(string banchina, double inizioCand, double fineCand, IEnumerable<Turno> altriTurni)
+        /// <summary>
+        /// Una banchina regge una nave alla volta. L'eccezione è la squadra: più operatori
+        /// sulla stessa lavorazione occupano lo stesso molo nella stessa fascia, e non si
+        /// intralciano fra loro. <paramref name="taskOrigineId"/> identifica la lavorazione
+        /// in corso di assegnazione, così i turni che ne fanno già parte sono esentati;
+        /// il divieto resta pieno fra navi diverse.
+        /// </summary>
+        public static bool BanchinaOccupata(string banchina, double inizioCand, double fineCand,
+            IEnumerable<Turno> altriTurni, int? taskOrigineId = null)
         {
             return altriTurni.Any(o => o.Banchina == banchina &&
+                !FaParteDellaStessaLavorazione(o, taskOrigineId) &&
                 SiSovrappongono(inizioCand, fineCand, InizioAssoluto(o), FineAssoluta(o)));
+        }
+
+        /// <summary>
+        /// Vero se il turno nasce dalla stessa lavorazione che si sta assegnando. Senza un
+        /// id di riferimento nessun turno è "fratello": il confronto fra due null direbbe
+        /// che tutti i turni del seed appartengono alla stessa nave.
+        /// </summary>
+        public static bool FaParteDellaStessaLavorazione(Turno t, int? taskOrigineId)
+        {
+            return taskOrigineId.HasValue && t.TaskOrigineId == taskOrigineId.Value;
         }
 
         /// <summary>

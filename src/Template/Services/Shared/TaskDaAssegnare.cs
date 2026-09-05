@@ -10,8 +10,17 @@ namespace Template.Services.Shared
         [Key]
         public int Id { get; set; }
 
-        /// <summary>True quando esiste già un Turno nato da questo task: esce dal backlog.</summary>
+        /// <summary>
+        /// True quando la lavorazione ha tutti gli operatori che le servono: solo allora
+        /// esce dal backlog. Con una copertura parziale resta in elenco, col conteggio.
+        /// </summary>
         public bool Assegnato { get; set; }
+
+        /// <summary>
+        /// Quante persone servono per lavorare questa nave. Tutte sullo stesso molo e
+        /// nella stessa fascia oraria: la lavorazione è una, la squadra la copre insieme.
+        /// </summary>
+        public int OperatoriRichiesti { get; set; } = 1;
 
         public string Nome { get; set; }
         public string CompetenzaRichiesta { get; set; }

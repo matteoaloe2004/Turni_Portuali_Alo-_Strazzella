@@ -113,11 +113,6 @@ namespace Template.Services.Shared
             {
                 return EsitoOperazioneDTO.Rifiutata("Questa lavorazione non è più nel backlog: aggiorna la pagina per vedere la pianificazione corrente.");
             }
-            if (task.Assegnato)
-            {
-                return EsitoOperazioneDTO.Rifiutata($"La lavorazione \"{task.Nome}\" è già stata assegnata, forse da un altro coordinatore. Aggiorna la pagina per vedere chi la sta seguendo.");
-            }
-
             var operatore = await _dbContext.Operatori.FirstOrDefaultAsync(o => o.Nome == cmd.Operatore);
             if (operatore == null)
             {
@@ -125,11 +120,36 @@ namespace Template.Services.Shared
             }
 
             var turniEsistenti = await _dbContext.Turni.ToListAsync();
+
+            // La squadra già al lavoro su questa nave. Il conteggio si legge dai turni e
+            // non da un contatore sul task: così non può divergere da quello che c'è.
+            var squadra = turniEsistenti.Where(t => t.TaskOrigineId == task.Id).ToList();
+            var richiesti = OperatoriRichiestiDa(task);
+
+            if (squadra.Count >= richiesti)
+            {
+                return EsitoOperazioneDTO.Rifiutata(
+                    $"\"{task.Nome}\" ha già i {richiesti} operatori che le servono ({string.Join(", ", squadra.Select(t => t.Operatore))}). Aggiorna la pagina per vedere la squadra corrente.");
+            }
+            if (squadra.Any(t => t.Operatore == operatore.Nome))
+            {
+                return EsitoOperazioneDTO.Rifiutata(
+                    $"{operatore.Nome} è già nella squadra di \"{task.Nome}\": serve un'altra persona.");
+            }
+
+            // Il primo assegnato fissa molo e fascia oraria; chi arriva dopo gli si
+            // affianca invece di scegliere una collocazione propria, altrimenti la nave
+            // risulterebbe lavorata in due punti diversi del porto.
+            var capofila = squadra.FirstOrDefault();
+            var banchina = capofila != null ? capofila.Banchina : cmd.Banchina;
+            var startOra = capofila != null ? capofila.StartOra : cmd.StartOra;
+            var giorno = capofila != null ? capofila.Giorno : cmd.Giorno;
+
             var motivo = ValidaCollocazione(
                 task.Nome, task.CompetenzaRichiesta, task.DurataOre,
                 task.EtaGiorno, task.EtaOra, task.EtdGiorno, task.EtdOra,
-                operatore, cmd.Banchina, cmd.StartOra, cmd.Giorno,
-                turniEsistenti, cmd.DerogaOreAmmessa);
+                operatore, banchina, startOra, giorno,
+                turniEsistenti, cmd.DerogaOreAmmessa, task.Id);
 
             if (motivo != null)
             {
@@ -140,12 +160,12 @@ namespace Template.Services.Shared
             {
                 Id = ProssimoIdTurno(turniEsistenti),
                 Nome = task.Nome,
-                Banchina = cmd.Banchina,
-                StartOra = cmd.StartOra,
+                Banchina = banchina,
+                StartOra = startOra,
                 DurataOre = task.DurataOre,
                 Operatore = operatore.Nome,
                 RuoloRichiesto = task.CompetenzaRichiesta,
-                Giorno = cmd.Giorno,
+                Giorno = giorno,
                 IsDelayed = false,
                 RequiresResolution = false,
                 RitardoOre = 0,
@@ -157,14 +177,21 @@ namespace Template.Services.Shared
             };
 
             _dbContext.Turni.Add(nuovoTurno);
-            task.Assegnato = true;
+
+            // Esce dal backlog solo quando la squadra è al completo: una copertura
+            // parziale deve restare in elenco, o il buco non lo vede più nessuno.
+            var assegnati = squadra.Count + 1;
+            task.Assegnato = assegnati >= richiesti;
 
             await _dbContext.SaveChangesAsync();
             await RiallineaOreSettimanali();
 
-            return EsitoOperazioneDTO.Ok(
-                $"{task.Nome} assegnata a {operatore.Nome} al {cmd.Banchina}.",
-                nuovoTurno.Id);
+            var mancanti = richiesti - assegnati;
+            var messaggio = mancanti > 0
+                ? $"{task.Nome} assegnata a {operatore.Nome} al {banchina}: {assegnati} di {richiesti} operatori, ne {(mancanti == 1 ? "manca ancora uno" : $"mancano ancora {mancanti}")}."
+                : $"{task.Nome} assegnata a {operatore.Nome} al {banchina}." + (richiesti > 1 ? $" Squadra al completo: {string.Join(", ", squadra.Select(t => t.Operatore).Concat(new[] { operatore.Nome }))}." : "");
+
+            return EsitoOperazioneDTO.Ok(messaggio, nuovoTurno.Id);
         }
 
         // ---------------------------------------------------------------
@@ -193,7 +220,7 @@ namespace Template.Services.Shared
                 turno.Nome, turno.RuoloRichiesto, turno.DurataOre,
                 turno.EtaGiorno, turno.EtaOra, turno.EtdGiorno, turno.EtdOra,
                 operatore, cmd.NuovaBanchina, cmd.NuovaFasciaOraria, giorno,
-                altriTurni, cmd.DerogaOreAmmessa);
+                altriTurni, cmd.DerogaOreAmmessa, turno.TaskOrigineId);
 
             if (motivo != null)
             {
@@ -371,7 +398,7 @@ namespace Template.Services.Shared
             string nomeNave, string ruoloRichiesto, double durataOre,
             int etaGiorno, double etaOra, int etdGiorno, double etdOra,
             Operatore operatore, string banchina, double startOra, int giorno,
-            List<Turno> altriTurni, double derogaOreAmmessa)
+            List<Turno> altriTurni, double derogaOreAmmessa, int? taskOrigineId)
         {
             if (string.IsNullOrWhiteSpace(banchina))
             {
@@ -410,7 +437,7 @@ namespace Template.Services.Shared
             {
                 return $"{nomeNave} richiede un {ruoloRichiesto} e {operatore.Nome} è {operatore.Ruolo}.";
             }
-            if (RegolePianificazione.BanchinaOccupata(banchina, inizioCand, fineCand, altriTurni))
+            if (RegolePianificazione.BanchinaOccupata(banchina, inizioCand, fineCand, altriTurni, taskOrigineId))
             {
                 return $"{banchina} è già impegnata in quella fascia oraria: scegli un altro molo o un altro orario.";
             }
@@ -448,6 +475,15 @@ namespace Template.Services.Shared
             }
 
             await _dbContext.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Fabbisogno della lavorazione, con la guardia sui dati vecchi: un task salvato
+        /// prima che il campo esistesse vale zero, e zero operatori non ha senso.
+        /// </summary>
+        private static int OperatoriRichiestiDa(TaskDaAssegnare task)
+        {
+            return task.OperatoriRichiesti > 0 ? task.OperatoriRichiesti : 1;
         }
 
         /// <summary>

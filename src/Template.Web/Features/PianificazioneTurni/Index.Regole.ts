@@ -57,8 +57,19 @@ namespace PianificazioneTurni {
         return false;
     }
 
-    export function banchinaOccupata(banchina: string, inizioCand: number, fineCand: number, turni: any[]): boolean {
+    /** Una banchina regge una nave alla volta, con un'eccezione: la squadra. Piu'
+     *  operatori sulla stessa lavorazione stanno sullo stesso molo nella stessa fascia e
+     *  non si intralciano. `taskOrigineId` e' la lavorazione di riferimento: i turni che
+     *  ne fanno parte non contano come occupazione. Stesse regole di
+     *  RegolePianificazione.BanchinaOccupata lato server. */
+    export function banchinaOccupata(
+        banchina: string, inizioCand: number, fineCand: number,
+        turni: any[], taskOrigineId?: number | null): boolean {
+
+        const haRiferimento = taskOrigineId !== null && taskOrigineId !== undefined;
+
         return turni.some(altro => altro.banchina === banchina &&
+            !(haRiferimento && altro.taskOrigineId === taskOrigineId) &&
             siSovrappongono(inizioCand, fineCand, inizioAssoluto(altro), fineAssoluta(altro)));
     }
 

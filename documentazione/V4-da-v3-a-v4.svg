@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1640 1060" width="1640" height="1060" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+  <rect width="1640" height="1060" fill="#ffffff"/>
+
+  <!-- ===== Titolo ===== -->
+  <text x="80" y="72" font-size="34" font-weight="700" fill="#0f172a">Da V3 a V4: cosa è cambiato e perché</text>
+  <text x="80" y="106" font-size="18" fill="#475569">Le cinque decisioni nate dalla revisione del prototipo funzionante.</text>
+  <text x="80" y="136" font-size="13" font-weight="600" fill="#94a3b8" letter-spacing="1.2">V4 · PROTOTIPO IMPLEMENTATO — GESTIONE TURNI PORTUALI</text>
+
+  <!-- ===== Intestazioni di colonna ===== -->
+  <text x="80"   y="196" font-size="13" font-weight="700" fill="#94a3b8" letter-spacing="1.1">NELLA V3</text>
+  <text x="620"  y="196" font-size="13" font-weight="700" fill="#94a3b8" letter-spacing="1.1">NEL PROTOTIPO V4</text>
+  <text x="1140" y="196" font-size="13" font-weight="700" fill="#94a3b8" letter-spacing="1.1">MOTIVO DEL CAMBIAMENTO</text>
+  <line x1="80" y1="214" x2="1560" y2="214" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- ===== Riga 1 · assegnazione multipla ===== -->
+  <text x="80" y="262" font-size="18" fill="#94a3b8">Un turno = una persona</text>
+  <text x="620" y="262" font-size="18" fill="#0f172a">La lavorazione dichiara <tspan font-weight="700">quante</tspan></text>
+  <text x="620" y="288" font-size="18" font-weight="700" fill="#0f172a">persone le servono</text>
+  <text x="1140" y="262" font-size="18" fill="#475569">Uno scarico non lo fa una persona</text>
+  <text x="1140" y="288" font-size="18" fill="#475569">sola: il turno singolo è il caso n = 1</text>
+  <text x="1140" y="314" font-size="18" fill="#475569">della squadra</text>
+  <line x1="80" y1="352" x2="1560" y2="352" stroke="#f1f5f9" stroke-width="1"/>
+
+  <!-- ===== Riga 2 · copertura parziale ===== -->
+  <text x="80" y="400" font-size="18" fill="#94a3b8">Assegnata o non assegnata</text>
+  <text x="620" y="400" font-size="18" fill="#0f172a">Copertura parziale: resta in elenco</text>
+  <text x="620" y="426" font-size="18" fill="#0f172a">con <tspan font-weight="700">1/2</tspan>, e sul tabellone il posto</text>
+  <text x="620" y="452" font-size="18" fill="#0f172a">scoperto è una corsia tratteggiata</text>
+  <text x="1140" y="400" font-size="18" fill="#475569">Una nave a metà equipaggio non</text>
+  <text x="1140" y="426" font-size="18" fill="#475569">deve sparire dalla vista solo perché</text>
+  <text x="1140" y="452" font-size="18" fill="#475569">qualcuno ci è già stato messo</text>
+  <line x1="80" y1="490" x2="1560" y2="490" stroke="#f1f5f9" stroke-width="1"/>
+
+  <!-- ===== Riga 3 · il pannello delle proposte ===== -->
+  <text x="80" y="538" font-size="18" fill="#94a3b8">Le proposte prendevano una</text>
+  <text x="80" y="564" font-size="18" fill="#94a3b8">colonna della griglia</text>
+  <text x="620" y="538" font-size="18" fill="#0f172a">Pannello laterale sovrapposto,</text>
+  <text x="620" y="564" font-size="18" fill="#0f172a">senza velo scuro</text>
+  <text x="1140" y="538" font-size="18" fill="#475569">Il tabellone non si restringe più a</text>
+  <text x="1140" y="564" font-size="18" fill="#475569">ogni selezione: resta visibile e</text>
+  <text x="1140" y="590" font-size="18" fill="#475569">utilizzabile accanto alle proposte</text>
+  <line x1="80" y1="628" x2="1560" y2="628" stroke="#f1f5f9" stroke-width="1"/>
+
+  <!-- ===== Riga 4 · il punteggio ===== -->
+  <text x="80" y="676" font-size="18" fill="#94a3b8">Il punteggio dava 100% o 0%</text>
+  <text x="620" y="676" font-size="18" fill="#0f172a">Si parte da cento e si sottrae per</text>
+  <text x="620" y="702" font-size="18" fill="#0f172a">ogni rinuncia, coi pesi ordinati</text>
+  <text x="620" y="728" font-size="18" fill="#0f172a">come i criteri del motore</text>
+  <text x="1140" y="676" font-size="18" fill="#475569">Un numero che non varia non</text>
+  <text x="1140" y="702" font-size="18" fill="#475569">aggiunge niente, e smentiva i</text>
+  <text x="1140" y="728" font-size="18" fill="#475569">compromessi scritti accanto</text>
+  <line x1="80" y1="766" x2="1560" y2="766" stroke="#f1f5f9" stroke-width="1"/>
+
+  <!-- ===== Riga 5 · il colore dei ruoli ===== -->
+  <text x="80" y="814" font-size="18" fill="#94a3b8">Ruoli distinti per colore</text>
+  <text x="620" y="814" font-size="18" fill="#0f172a">Pittogramma del mestiere su</text>
+  <text x="620" y="840" font-size="18" fill="#0f172a">badge grigio</text>
+  <text x="1140" y="814" font-size="18" fill="#475569">Sul tabellone il colore deve poter</text>
+  <text x="1140" y="840" font-size="18" fill="#475569">dire «si può» e «non si può»: se dice</text>
+  <text x="1140" y="866" font-size="18" fill="#475569">anche «stivatore» smette di dire</text>
+  <text x="1140" y="892" font-size="18" fill="#475569">l'una cosa e l'altra</text>
+
+  <!-- ===== Chiusa ===== -->
+  <rect x="80" y="940" width="1480" height="64" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="110" y="968" font-size="16" font-weight="700" fill="#0f172a">La riga che tiene insieme le altre quattro</text>
+  <text x="110" y="992" font-size="16" fill="#475569">Ogni cambiamento nasce da una cosa che l'interfaccia diceva e il sistema non faceva, o viceversa.</text>
+</svg>

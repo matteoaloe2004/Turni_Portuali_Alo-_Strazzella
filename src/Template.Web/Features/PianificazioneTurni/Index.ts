@@ -12,7 +12,7 @@ namespace PianificazioneTurni {
     const CHIAVE_PREFERENZE = 'pianificazione_turni_preferenze';
 
     /** Le schede nell'ordine in cui compaiono: serve alla navigazione con le frecce. */
-    const ORDINE_TAB = ['pianificazione', 'simulazioni', 'eventi'];
+    const ORDINE_TAB = ['pianificazione', 'risorse', 'simulazioni', 'eventi'];
 
     /** Le schede riservate a chi ha il ruolo di amministrazione. */
     const TAB_RISERVATI = ['simulazioni'];
@@ -53,8 +53,13 @@ namespace PianificazioneTurni {
         public tasksDaAssegnare: any[];
         public emergenzaAttiva: boolean;
 
-        // ---- Asse della timeline ----
-        public oreTimeline: number[];
+        // ---- Estremi orari della giornata ----
+        //
+        // Non sono piu' la finestra visibile del tabellone: quello copre tutta la
+        // settimana e scorre (vedi ORA_PX e oreSettimana in Index.Gantt.ts). Restano
+        // i limiti entro cui si ritaglia la finestra di attracco di una nave dentro un
+        // singolo giorno — 28 e non 24 perche' un turno in ritardo puo' sfondare la
+        // mezzanotte.
         public orarioInizio: number;
         public orarioFine: number;
 
@@ -98,9 +103,14 @@ namespace PianificazioneTurni {
         // senza questo l'anteprima dello slot non comparirebbe mai da tablet.
         public operatoreAncorato: string | null;
 
+
         // Acceso da "Vedi chi occupa la finestra": marca sul tabellone i turni che stanno
         // bloccando la lavorazione selezionata, così il vicolo cieco ha una via d'uscita.
         public mostraBloccanti: boolean;
+
+        /** Id della lavorazione sotto il mouse nel backlog: la sua anteprima sul
+         *  tabellone si accende, cosi' si capisce quale card corrisponde a quale slot. */
+        public anteprimaTaskInEvidenza: number | null;
 
         public activeTab: string;
 
@@ -124,8 +134,6 @@ namespace PianificazioneTurni {
         constructor() {
             this.orarioInizio = 0;
             this.orarioFine = 28;
-            this.oreTimeline = [];
-            for (let h = this.orarioInizio; h <= this.orarioFine; h++) this.oreTimeline.push(h);
 
             this.banchine = [];
             this.operatori = [];
@@ -156,6 +164,7 @@ namespace PianificazioneTurni {
             this.hoveredOperatoreNome = null;
             this.operatoreAncorato = null;
             this.mostraBloccanti = false;
+            this.anteprimaTaskInEvidenza = null;
             this.activeTab = 'pianificazione';
             this.operazioneInCorso = false;
             this.serverNonRaggiungibile = false;
@@ -208,10 +217,17 @@ namespace PianificazioneTurni {
 
             // Il task selezionato può essere stato assegnato da un altro coordinatore:
             // si azzera la selezione e il pannello di soluzioni che la accompagna.
-            if (this.selectedTask && !this.tasksDaAssegnare.some(t => t.id === this.selectedTask.id)) {
-                this.selectedTask = null;
-                this.soluzioneTaskSuggerita = null;
-                this.soluzioneDSSSelezionataIndex = null;
+            // Se invece è ancora in elenco va riagganciato all'oggetto nuovo: l'array
+            // appena sostituito ne contiene una copia, e tenere quella vecchia
+            // romperebbe il confronto per identità con cui selectTask() deseleziona.
+            // Succede con le lavorazioni a più operatori, che dopo la prima
+            // assegnazione restano in elenco.
+            if (this.selectedTask) {
+                this.selectedTask = this.tasksDaAssegnare.find(t => t.id === this.selectedTask.id) || null;
+                if (!this.selectedTask) {
+                    this.soluzioneTaskSuggerita = null;
+                    this.soluzioneDSSSelezionataIndex = null;
+                }
             }
 
             // Stesso discorso per il turno aperto nel modale di conflitto.
@@ -355,6 +371,16 @@ namespace PianificazioneTurni {
 
             this.notificheSimulate = caricaRegistro();
             this.collegaAllaPianificazioneCondivisa();
+
+            // Il tabellone copre tutta la settimana e scorre: il giorno "corrente" deve
+            // seguire quello che si sta guardando, altrimenti backlog e anteprime
+            // parlerebbero di un giorno diverso da quello a schermo. Il legame vale nei
+            // due versi — cliccare un giorno sposta la tela, scorrere la tela cambia il
+            // giorno. Serve un tick perche' la tela nasce con la vista renderizzata.
+            window.setTimeout(() => {
+                this.osservaScorrimentoTabellone();
+                this.scorriAlGiorno(this.giornoSelezionato);
+            }, 0);
         }
 
         // ---- Navigazione ----------------------------------------------------
@@ -407,10 +433,26 @@ namespace PianificazioneTurni {
         }
 
         public selezionaGiorno(index: number): void {
+            // Lo scorrimento va fatto anche quando il giorno e' gia' quello: chi ci
+            // clicca sopra sta chiedendo di tornare a vederlo, non di cambiarlo.
+            this.scorriAlGiorno(index);
+
             if (this.giornoSelezionato === index) return;
             this.giornoSelezionato = index;
             this.salvaPreferenze();
             this.aggiornaUrl(true);
+        }
+
+        /** Aggiorna il giorno corrente senza toccare la posizione della tela: la chiama
+         *  chi osserva lo scorrimento, e passare da selezionaGiorno innescherebbe un
+         *  altro scorrimento sopra quello che l'utente sta facendo con la mano. */
+        public giornoDaScorrimento(index: number): void {
+            if (this.giornoSelezionato === index) return;
+            this.giornoSelezionato = index;
+            this.salvaPreferenze();
+            // replaceState e non pushState: scorrere non e' una navigazione, e il tasto
+            // Indietro si riempirebbe di una voce per ogni giorno attraversato.
+            this.aggiornaUrl(false);
         }
 
         public getNomeGiorno(idx: number): string {

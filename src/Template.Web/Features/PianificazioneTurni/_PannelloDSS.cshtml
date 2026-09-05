@@ -1,17 +1,25 @@
-@* Proposte del DSS per la lavorazione selezionata. Sta nella colonna di destra e
-   non sotto il backlog: aprendosi in mezzo alla pagina spostava il tabellone verso il
-   basso proprio mentre serviva guardarlo. *@
+@* Proposte del DSS per la lavorazione selezionata. Entra da destra come pannello
+   laterale: sotto il backlog spingeva il tabellone in basso, e come colonna della griglia
+   lo restringeva a ogni selezione: in entrambi i casi si muoveva proprio la cosa che
+   serviva guardare ferma. Non e' un modale e non ha backdrop — il tabellone resta
+   visibile e utilizzabile accanto, che e' la ragione per cui il Prototipo 1 fu scartato.
 
-<section v-if="selectedTask" class="card border-0 shadow-sm mb-3" aria-labelledby="titolo-dss">
-    <div class="card-header border-bottom py-2 px-3 d-flex align-items-center justify-content-between gap-2">
-        <h2 id="titolo-dss" class="h6 mb-0 fw-bold text-dark text-truncate">
+   Il guscio .offcanvas resta sempre nel DOM, altrimenti Bootstrap perderebbe l'istanza
+   fra un'apertura e l'altra; e' il corpo a comparire con la lavorazione. Apertura e
+   chiusura seguono `selectedTask` (vedi sincronizzaPannelloDSS in Index.Modali.ts). *@
+
+<div class="offcanvas offcanvas-end pannello-dss-offcanvas" tabindex="-1"
+     id="pannelloDSS" aria-labelledby="titolo-dss"
+     data-bs-backdrop="false" data-bs-scroll="true">
+    <div class="offcanvas-header border-bottom py-2 px-3">
+        <h2 id="titolo-dss" class="offcanvas-title h6 mb-0 fw-bold text-dark text-truncate">
             <i class="fa-regular fa-lightbulb text-secondary me-2" aria-hidden="true"></i>Come assegnare
         </h2>
         <button type="button" class="btn-close" aria-label="Chiudi le proposte"
-                v-on:click="selectTask(selectedTask)"></button>
+                data-bs-dismiss="offcanvas"></button>
     </div>
 
-    <div class="card-body p-2">
+    <div class="offcanvas-body p-2" v-if="selectedTask">
         <p class="fw-bold text-dark mb-1 text-truncate">{{ selectedTask.nome }}</p>
         <p class="text-secondary mb-3" style="font-size: var(--fs-xs);">
             Richiede {{ selectedTask.competenzaRichiesta }} &middot; {{ fmtDurata(selectedTask.durataOre) }}
@@ -104,4 +112,4 @@
             </div>
         </fieldset>
     </div>
-</section>
+</div>

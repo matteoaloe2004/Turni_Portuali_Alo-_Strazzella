@@ -47,6 +47,11 @@ var PianificazioneTurni;
             return 'Patente scaduta';
         if (op.inRiposoObbligatorio)
             return 'In riposo obbligatorio';
+        // Su una lavorazione che vuole piu' persone, chi c'e' gia' non e' un candidato:
+        // il comando lo rifiuta e riproporlo sarebbe un invito a un errore.
+        if (this.squadraDelTask(self.selectedTask).indexOf(op.nome) !== -1) {
+            return 'Gia\' in squadra su questa lavorazione';
+        }
         // Il tetto contrattuale e' un vincolo della persona, non della collocazione:
         // sta qui accanto a patente e riposo, e il comando lo rifiuta allo stesso modo.
         if (oltreIlTettoContrattuale(op, self.selectedTask.durataOre, derogaOre)) {
@@ -118,9 +123,23 @@ var PianificazioneTurni;
         self.soluzioneDSSSelezionataIndex = null;
         self.problemaDSS = false;
         self.mostraBloccanti = false;
+        // Dalla vista settimanale si puo' scegliere una lavorazione di un altro giorno:
+        // il tabellone la segue, altrimenti si finirebbe a ragionare sulle proposte
+        // guardando un giorno che non le riguarda.
+        if (task && !PianificazioneTurni.taskVisibileNelGiorno(task, self.giornoSelezionato)) {
+            self.selezionaGiorno(task.giorno);
+        }
         if (task) {
             await this.caricaSoluzioneTaskSuggerita(task.id);
         }
+    };
+    /** Selezione a partire dall'id: le anteprime sul tabellone conoscono la lavorazione
+     *  ma non l'oggetto, e passare per l'elenco evita di selezionarne una copia stantia. */
+    PianificazioneTurni.IndexVueModel.prototype.selectTaskDaId = async function (taskId) {
+        const self = this;
+        const task = (self.tasksDaAssegnare || []).find((t) => t.id === taskId);
+        if (task)
+            await this.selectTask(task);
     };
     PianificazioneTurni.IndexVueModel.prototype.caricaSoluzioneTaskSuggerita = async function (taskId) {
         const self = this;
@@ -233,8 +252,16 @@ var PianificazioneTurni;
         });
         if (!esito || !esito.riuscita)
             return;
-        // applicaStato() ha già tolto il task dal backlog e azzerato la selezione.
         self.selezionaGiorno(giorno);
+        // Squadra completa: applicaStato() ha già tolto il task dal backlog e azzerato
+        // la selezione, non c'è più niente da proporre. Se invece la lavorazione ne
+        // vuole ancora, resta selezionata e le proposte vanno rifatte: quelle vecchie
+        // contengono la persona appena assegnata, che ora il server rifiuterebbe.
+        if (self.selectedTask && self.selectedTask.id === task.id) {
+            // Azzerata come fa selectTask(): l'indice puntava all'elenco vecchio.
+            self.soluzioneDSSSelezionataIndex = null;
+            await self.caricaSoluzioneTaskSuggerita(task.id);
+        }
         const durata = task.durataOre;
         vm.inviaNotificaSimulata('EMAIL', operatoreNome, `Pianificazione turno per la nave ${task.nome} al ${banchina}, ${self.getNomeGiorno(giorno)} dalle ${self.fmtOra(startOra)} alle ${self.fmtOra(startOra + durata)}.`);
     }
@@ -243,6 +270,12 @@ var PianificazioneTurni;
         const motivo = this.motivoIncompatibilita(op);
         if (!self.selectedTask || motivo !== null)
             return;
+        // Squadra gia' avviata: si va dove sta lei, non si cerca un altro slot.
+        const squadra = this.collocazioneDellaSquadra(self.selectedTask);
+        if (squadra) {
+            await assegnaSulServer(this, op.nome, squadra.banchina, squadra.ora, squadra.giorno);
+            return;
+        }
         const giorno = self.giornoSelezionato;
         const slot = trovaSlotLibero(this, self.selectedTask, op, giorno);
         if (!slot) {
@@ -357,13 +390,33 @@ var PianificazioneTurni;
         }
         return parti.join(' ');
     };
+    // ---- Quanto costa una collocazione ---------------------------------------
+    //
+    // Il punteggio dava quasi sempre 100 o 0, e un numero che non varia non aggiunge
+    // niente ai vantaggi già scritti accanto — anzi li smentiva: una proposta con
+    // «Costo maggiore (reperibile)» fra i compromessi si presentava lo stesso al 100%.
+    //
+    // Le penalità qui sotto sono le stesse distinzioni che il motore usa per ordinare i
+    // suoi sette criteri (CalcolaMigliorAlternativaQuery.RisolviAsync): operatore di
+    // linea prima del reperibile, stesso giorno prima dello slittamento, e le deroghe —
+    // straordinari, qualifica di banchina, ruolo — nell'ordine in cui il motore accetta
+    // di concederle. Il numero diventa così una lettura del *criterio* che ha prodotto
+    // la proposta, non un'etichetta decorativa.
+    const PENALITA_REPERIBILE = 12; // criterio 2: costa di più della linea
+    const PENALITA_GIORNO_SLITTATO = 15; // criterio 3: la nave aspetta
+    const PENALITA_DEROGA_ORE = 20; // criterio 4: straordinario dichiarato
+    const PENALITA_NON_ABILITATO = 25; // criterio 5: deroga di qualifica
+    const PENALITA_RUOLO_DIVERSO = 35; // criterio 6: emergenza, fuori mansione
+    const PENALITA_CARICO_PIENO = 15; // saturazione del contratto
+    const PENALITA_PATENTE_IN_SCADENZA = 8; // va rinnovata, non blocca
     PianificazioneTurni.IndexVueModel.prototype.getOperatoreCompatibilityScore = function (op, task, collocazione) {
-        const riferimento = task || this.selectedTask;
-        if (!riferimento)
+        const self = this;
+        const riferimento = task || self.selectedTask;
+        if (!riferimento || !op)
             return 100;
         // La deroga della proposta va passata anche qui: senza, una collocazione che il
         // DSS ha dichiarato in straordinario risulterebbe non applicabile.
-        const derogaOre = collocazione && collocazione.derogaOre;
+        const derogaOre = (collocazione && collocazione.derogaOre) || 0;
         if (this.motivoIncompatibilita(op, derogaOre) !== null)
             return 0;
         const conflitto = this.getDettaglioConflittoOperatore(op, collocazione);
@@ -379,12 +432,36 @@ var PianificazioneTurni;
         if (conflitto.warnings.indexOf('LIMITE_ORE_SUPERATO') !== -1)
             return 0;
         let punteggio = 100;
+        if (op.reperibile)
+            punteggio -= PENALITA_REPERIBILE;
+        // Ogni giorno di attesa pesa: la nave resta in banchina a far niente.
+        const giorniAttesi = collocazione
+            ? Math.max(0, (Number(collocazione.giorno) || 0) - (Number(riferimento.giorno) || 0))
+            : 0;
+        punteggio -= Math.min(2, giorniAttesi) * PENALITA_GIORNO_SLITTATO;
+        if (derogaOre > 0)
+            punteggio -= PENALITA_DEROGA_ORE;
         if (conflitto.warnings.indexOf('NON_ABILITATO') !== -1)
-            punteggio -= 20;
-        // Quasi al limite contrattuale: utilizzabile, ma non è la scelta migliore.
-        if (op.oreSettimanali + riferimento.durataOre > op.oreMassime - 2)
-            punteggio -= 15;
-        return Math.max(0, punteggio);
+            punteggio -= PENALITA_NON_ABILITATO;
+        if (riferimento.competenzaRichiesta && op.ruolo !== riferimento.competenzaRichiesta) {
+            punteggio -= PENALITA_RUOLO_DIVERSO;
+        }
+        // Il carico entra in proporzione, su tutta la scala e senza soglie. E' il criterio
+        // con cui il motore stesso rompe la parita' (`ThenBy(op => op.OreSettimanali)`):
+        // quando due persone sono equivalenti su tutto il resto, la scelta cade su quella
+        // meno carica, e allora anche il numero deve dirlo — altrimenti l'elenco risulta
+        // ordinato per una ragione che il punteggio non mostra. Pesa poco a settimana
+        // vuota (uno o due punti) e diventa sensibile via via che il contratto si riempie.
+        if (op.oreMassime > 0) {
+            const utilizzo = Math.min(1, (op.oreSettimanali + riferimento.durataOre) / op.oreMassime);
+            punteggio -= Math.round(utilizzo * PENALITA_CARICO_PIENO);
+        }
+        if (self.getPatenteStatus(op) === 'warning')
+            punteggio -= PENALITA_PATENTE_IN_SCADENZA;
+        // Il minimo non e' zero: zero e' riservato alle collocazioni che il server
+        // rifiuterebbe, e confonderle con una scelta soltanto scomoda toglierebbe a chi
+        // pianifica la differenza fra «si puo' fare, ma costa» e «non si puo' fare».
+        return Math.max(5, Math.min(100, punteggio));
     };
     PianificazioneTurni.IndexVueModel.prototype.getResourceStats = function (ruolo) {
         const self = this;
@@ -429,14 +506,22 @@ var PianificazioneTurni;
             // turno finirebbe, non sull'ETA della nave, altrimenti una proposta valida si
             // porta dietro l'allarme di un'altra fascia oraria (e l'ordinamento segue un
             // punteggio che non c'entra con la collocazione mostrata).
+            // Con una squadra gia' sul posto la collocazione e' fissata: le alternative
+            // cambiano la persona, non il molo o l'orario.
+            const squadra = this.collocazioneDellaSquadra(task);
             const alternativi = self.operatori
                 .filter((op) => !self.isOperatoreIncompatibile(op))
                 .filter((op) => !self.soluzioneTaskSuggerita || op.nome !== self.soluzioneTaskSuggerita.operatoreSuggerito)
-                .map((op) => ({ op, slot: trovaSlotLibero(this, task, op, self.giornoSelezionato) }))
+                .map((op) => ({
+                op,
+                slot: squadra
+                    ? { banchina: squadra.banchina, orario: squadra.ora }
+                    : trovaSlotLibero(this, task, op, self.giornoSelezionato)
+            }))
                 .filter((c) => c.slot !== null)
                 .map((c) => {
                 const collocazione = {
-                    giorno: self.giornoSelezionato,
+                    giorno: squadra ? squadra.giorno : self.giornoSelezionato,
                     ora: c.slot.orario,
                     banchina: c.slot.banchina
                 };
@@ -453,7 +538,9 @@ var PianificazioneTurni;
             for (const candidato of alternativi) {
                 if (soluzioni.length >= MAX_SOLUZIONI)
                     break;
-                soluzioni.push(costruisciSoluzioneAlternativa(task, candidato.op, candidato.score, candidato.slot, soluzioni.length, self.giornoSelezionato, candidato.conflitto.warnings));
+                // Il giorno viene dalla collocazione valutata, non da quello a schermo:
+                // per una squadra gia' avviata e' il giorno del capofila.
+                soluzioni.push(costruisciSoluzioneAlternativa(self, task, candidato.op, candidato.score, candidato.slot, soluzioni.length, candidato.collocazione.giorno, candidato.conflitto.warnings));
             }
             return soluzioni;
         }
@@ -476,9 +563,14 @@ var PianificazioneTurni;
             vantaggi.push(`Criterio: ${sol.motivoScelta}`);
         if (PianificazioneTurni.abilitatoAllaBanchina(op, sol.moloSuggerito))
             vantaggi.push('Abilitato al molo');
+        if (collocazione.derogaOre > 0) {
+            compromessi.push(`Straordinario dichiarato (+${collocazione.derogaOre} ore sul tetto)`);
+        }
         const conflitto = op
             ? self.getDettaglioConflittoOperatore(op, collocazione)
             : { warnings: [], successes: [] };
+        if (op)
+            descriviScelta(self, task, op, sol.moloSuggerito, sol.giornoSuggerito, vantaggi, compromessi);
         aggiungiVincoliNonRispettati(compromessi, conflitto.warnings);
         return {
             titolo: 'Soluzione A (consigliata dal sistema)',
@@ -516,7 +608,38 @@ var PianificazioneTurni;
     function motiviBloccanti(warnings) {
         return warnings.filter(w => VINCOLI_BLOCCANTI.indexOf(w) !== -1).map(etichettaVincolo);
     }
-    function costruisciSoluzioneAlternativa(task, op, score, slot, indice, giorno, warnings) {
+    /** Le voci che spiegano il punteggio: ogni penalita' che il calcolo applica deve
+     *  comparire qui a parole, o il numero resta un verdetto senza motivazione. */
+    function descriviScelta(self, task, op, banchina, giorno, vantaggi, compromessi) {
+        const giorniAttesi = Math.max(0, (Number(giorno) || 0) - (Number(task.giorno) || 0));
+        if (giorniAttesi === 1)
+            compromessi.push('La nave aspetta al giorno dopo');
+        else if (giorniAttesi > 1)
+            compromessi.push(`La nave aspetta ${giorniAttesi} giorni`);
+        if (op.ruolo && task.competenzaRichiesta && op.ruolo !== task.competenzaRichiesta) {
+            compromessi.push(`Fuori mansione: è ${op.ruolo}`);
+        }
+        if (self.getPatenteStatus(op) === 'warning')
+            compromessi.push('Patente in scadenza');
+        // Le ore residue dette per numero: "sufficienti" non distingueva fra chi ne ha
+        // trenta davanti e chi ne ha una, e quella differenza e' spesso l'unica che
+        // separa due candidati per il resto identici.
+        if (op.oreMassime > 0) {
+            const residue = op.oreMassime - (op.oreSettimanali + task.durataOre);
+            if (residue < 0)
+                return;
+            if (residue <= op.oreMassime * 0.15)
+                compromessi.push(`Quasi al limite: gli resterebbero ${arrotondaOre(residue)}`);
+            else
+                vantaggi.push(`${arrotondaOre(residue)} ancora disponibili`);
+        }
+    }
+    /** Mezz'ora e' la granularita' dei turni: piu' cifre sarebbero rumore. */
+    function arrotondaOre(ore) {
+        const mezzore = Math.round(ore * 2) / 2;
+        return mezzore === 1 ? '1 ora' : `${mezzore.toString().replace('.', ',')} ore`;
+    }
+    function costruisciSoluzioneAlternativa(self, task, op, score, slot, indice, giorno, warnings) {
         const vantaggi = [];
         const compromessi = [];
         if (op.reperibile)
@@ -525,8 +648,7 @@ var PianificazioneTurni;
             vantaggi.push('Minor costo (operatore di linea)');
         if (PianificazioneTurni.abilitatoAllaBanchina(op, slot.banchina))
             vantaggi.push('Abilitato al molo');
-        if (op.oreSettimanali + task.durataOre <= op.oreMassime)
-            vantaggi.push('Ore residue sufficienti');
+        descriviScelta(self, task, op, slot.banchina, giorno, vantaggi, compromessi);
         aggiungiVincoliNonRispettati(compromessi, warnings);
         return {
             titolo: `Soluzione ${String.fromCharCode(65 + indice)} (alternativa)`,
@@ -542,6 +664,101 @@ var PianificazioneTurni;
         };
     }
     // ---- Supporto visivo sul Gantt --------------------------------------------
+    // ---- Squadra su una lavorazione -------------------------------------------
+    //
+    // Il conteggio si legge sempre dai turni, mai da un contatore a parte: e' la stessa
+    // scelta fatta sul server, e per la stessa ragione — due sorgenti dello stesso
+    // numero prima o poi divergono.
+    /** Fabbisogno della lavorazione, con la guardia sui dati senza il campo. */
+    PianificazioneTurni.IndexVueModel.prototype.operatoriRichiesti = function (task) {
+        if (!task)
+            return 1;
+        return task.operatoriRichiesti > 0 ? task.operatoriRichiesti : 1;
+    };
+    PianificazioneTurni.IndexVueModel.prototype.operatoriAssegnati = function (task) {
+        return this.squadraDelTask(task).length;
+    };
+    PianificazioneTurni.IndexVueModel.prototype.operatoriMancanti = function (task) {
+        return Math.max(0, this.operatoriRichiesti(task) - this.operatoriAssegnati(task));
+    };
+    /** I nomi di chi e' gia' sulla lavorazione, nell'ordine in cui sono stati assegnati. */
+    PianificazioneTurni.IndexVueModel.prototype.squadraDelTask = function (task) {
+        const self = this;
+        if (!task)
+            return [];
+        return (self.turni || [])
+            .filter((t) => t.taskOrigineId === task.id)
+            .sort((a, b) => a.id - b.id)
+            .map((t) => t.operatore);
+    };
+    /** Dove la squadra sta gia' lavorando, se qualcuno c'e' gia'. Da quel momento molo,
+     *  ora e giorno non sono piu' in discussione: il comando affianca i nuovi operatori
+     *  al capofila, quindi proporre una collocazione diversa sarebbe una bugia. */
+    PianificazioneTurni.IndexVueModel.prototype.collocazioneDellaSquadra = function (task) {
+        const self = this;
+        if (!task)
+            return null;
+        const capofila = (self.turni || [])
+            .filter((t) => t.taskOrigineId === task.id)
+            .sort((a, b) => a.id - b.id)[0];
+        if (!capofila)
+            return null;
+        return { giorno: capofila.giorno, ora: capofila.startOra, banchina: capofila.banchina };
+    };
+    // ---- Icone dei ruoli --------------------------------------------------------
+    const ICONE_RUOLO = {
+        'Gruista': '/img/ruoli/Gruista.jpeg',
+        'Mulettista': '/img/ruoli/Mulettista.jpeg',
+        'Stivatore': '/img/ruoli/Stivatore.jpeg'
+    };
+    /** Percorso del pittogramma del ruolo, stringa vuota se non ne ha uno: la view usa
+     *  quella per decidere se mostrare l'immagine, senza doppioni di elenchi. */
+    PianificazioneTurni.IndexVueModel.prototype.iconaRuolo = function (ruolo) {
+        return ICONE_RUOLO[ruolo] || '';
+    };
+    /** Perche' questa persona non e' impiegabile in nessun turno, indipendentemente
+     *  dalla lavorazione: null se invece lo e'. Diverso da motivoIncompatibilita, che
+     *  guarda una lavorazione precisa; qui si descrive lo stato della persona. */
+    PianificazioneTurni.IndexVueModel.prototype.motivoNonUtilizzabile = function (op) {
+        if (!op)
+            return null;
+        if (PianificazioneTurni.patenteScaduta(op))
+            return 'Patente scaduta: non assegnabile';
+        if (op.inRiposoObbligatorio)
+            return 'In riposo obbligatorio: non assegnabile';
+        return null;
+    };
+    // ---- Backlog: giorno singolo o settimana intera -----------------------------
+    /** Le lavorazioni della settimana raggruppate per giorno, ognuna una volta sola nel
+     *  giorno suo. Non c'e' una vista per singolo giorno: quella e' il tabellone, dove
+     *  le anteprime tratteggiate mostrano gia' cosa si puo' collocare nel giorno aperto.
+     *  Un elenco filtrato sul giorno ripeteva quell'informazione e, con lavori su tre
+     *  giorni su sette, restava vuoto piu' spesso di quanto fosse utile. */
+    Object.defineProperty(PianificazioneTurni.IndexVueModel.prototype, 'backlogRaggruppato', {
+        enumerable: true,
+        configurable: true,
+        get: function () {
+            const self = this;
+            const perGiorno = {};
+            for (const t of (self.tasksDaAssegnare || [])) {
+                const g = Number(t.giorno);
+                if (!perGiorno[g])
+                    perGiorno[g] = [];
+                perGiorno[g].push(t);
+            }
+            return Object.keys(perGiorno)
+                .map((k) => Number(k))
+                .sort((a, b) => a - b)
+                .map((g) => ({ giorno: g, tasks: perGiorno[g] }));
+        }
+    });
+    Object.defineProperty(PianificazioneTurni.IndexVueModel.prototype, 'totaleBacklogSettimana', {
+        enumerable: true,
+        configurable: true,
+        get: function () {
+            return (this.tasksDaAssegnare || []).length;
+        }
+    });
     PianificazioneTurni.IndexVueModel.prototype.getTaskDock = function (task) {
         if (!task)
             return 'Da assegnare';
@@ -577,35 +794,6 @@ var PianificazioneTurni;
         if (!f)
             return '0%';
         return this.blockWidth({ durataOre: f.fine - f.inizio });
-    };
-    /** Anteprima di dove finirebbe il turno per l'operatore sotto il mouse o col focus:
-     *  stessa ricerca di assegnaTask, senza scrivere nulla. */
-    Object.defineProperty(PianificazioneTurni.IndexVueModel.prototype, 'slotFantasma', {
-        enumerable: true,
-        configurable: true,
-        get: function () {
-            const self = this;
-            const nome = self.operatoreInAnteprima;
-            if (!self.selectedTask || !nome)
-                return null;
-            const op = self.operatori.find((o) => o.nome === nome);
-            if (!op || this.isOperatoreIncompatibile(op))
-                return null;
-            const slot = trovaSlotLibero(this, self.selectedTask, op, self.giornoSelezionato);
-            if (!slot)
-                return null;
-            return { banchina: slot.banchina, orario: slot.orario, operatoreNome: op.nome };
-        }
-    });
-    PianificazioneTurni.IndexVueModel.prototype.assegnaSlotFantasma = async function () {
-        const self = this;
-        const slot = this.slotFantasma;
-        if (!slot)
-            return;
-        const op = self.operatori.find((o) => o.nome === slot.operatoreNome);
-        if (!op)
-            return;
-        await this.assegnaTask(op);
     };
 })(PianificazioneTurni || (PianificazioneTurni = {}));
 //# sourceMappingURL=Index.Assegnazione.js.map

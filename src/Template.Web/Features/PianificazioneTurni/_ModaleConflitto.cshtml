@@ -188,7 +188,9 @@
             <div class="modal-footer border-0 bg-light py-3 d-flex flex-wrap gap-2">
                 @* Resta visibile ma disabilitato mentre la conferma è aperta: il posto dei
                    pulsanti non si sposta e non ci sono due vie per la stessa azione. *@
-                <button type="button" class="btn btn-outline-danger fw-semibold me-auto"
+                @* Neutro: qui si apre solo la conferma, non si distrugge niente. Il rosso
+                   sta sul pulsante che esegue davvero, dentro la conferma. *@
+                <button type="button" class="btn btn-outline-secondary fw-semibold me-auto"
                         v-bind:disabled="operazioneInCorso || confermaAnnullamentoAperta"
                         v-on:click="chiediAnnullamentoTurno()">
                     <i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Annulla questo turno

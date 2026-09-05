@@ -51,6 +51,46 @@ var PianificazioneTurni;
     const ID_MODALE_CONFLITTO = 'conflittoModal';
     const ID_MODALE_OPERATORE = 'dettagliOperatoreModal';
     const ID_MODALE_NAVE = 'dettagliNaveModal';
+    // ---- Pannello laterale delle proposte (offcanvas) -------------------------
+    //
+    // Il pannello segue `selectedTask` invece di essere aperto e chiuso a mano dai punti
+    // che cambiano la selezione: le vie sono parecchie (una card del backlog, un
+    // tratteggio sul tabellone, l'assegnazione completata, un altro coordinatore che
+    // porta via la lavorazione) e una di esse dimenticata lascerebbe il pannello aperto
+    // sul vuoto. Index.cshtml lo lega con un watch.
+    const ID_PANNELLO_DSS = 'pannelloDSS';
+    /** L'utente puo' chiudere il pannello per conto suo, con Esc o con la X: la
+     *  lavorazione va deselezionata di conseguenza, o il backlog resterebbe con una card
+     *  accesa e nessun pannello. Registrato una volta sola, alla prima sincronizzazione. */
+    let chiusuraPannelloAgganciata = false;
+    function agganciaChiusuraPannello(el, self) {
+        if (chiusuraPannelloAgganciata)
+            return;
+        chiusuraPannelloAgganciata = true;
+        // Un solo posto dove si spegne tutto quello che dipende dalla lavorazione
+        // scelta, qualunque sia la via di chiusura: la X, Esc, il secondo clic sulla
+        // card, il cambio di scheda, o un altro coordinatore che se la prende.
+        el.addEventListener('hidden.bs.offcanvas', function () {
+            self.selectedTask = null;
+            self.soluzioneTaskSuggerita = null;
+            self.soluzioneDSSSelezionataIndex = null;
+            self.hoveredOperatoreNome = null;
+            self.mostraBloccanti = false;
+        });
+    }
+    PianificazioneTurni.IndexVueModel.prototype.sincronizzaPannelloDSS = function (deveEsserAperto) {
+        const el = document.getElementById(ID_PANNELLO_DSS);
+        if (!el || typeof bootstrap === 'undefined' || !bootstrap.Offcanvas)
+            return;
+        agganciaChiusuraPannello(el, this);
+        const istanza = bootstrap.Offcanvas.getOrCreateInstance(el);
+        if (deveEsserAperto) {
+            istanza.show();
+        }
+        else {
+            istanza.hide();
+        }
+    };
     // ---- Modale di risoluzione conflitto --------------------------------------
     /** Si apre su qualunque turno: in crisi per risolverlo, regolare per rivederlo.
      *  In `modalitaTurnoAperto` c'è quale delle due situazioni la view deve raccontare. */
