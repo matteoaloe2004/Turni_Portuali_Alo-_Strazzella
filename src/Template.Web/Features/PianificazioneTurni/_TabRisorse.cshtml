@@ -1,0 +1,148 @@
+@* Panoramica del personale: chi c'e', chi si puo' usare e chi no, con il motivo.
+   Non e' una maschera di assegnazione — quella sta nella scheda Pianificazione, dove
+   accanto al tabellone si vede l'effetto della scelta. Qui non c'e' nessun "Assegna"
+   perche' non c'e' nessuna lavorazione selezionata a cui assegnare. *@
+
+<section class="card border-0 shadow-sm p-4 mb-4" aria-labelledby="titolo-organico">
+    <h2 id="titolo-organico" class="h5 fw-bold text-dark mb-2">
+        <i class="fa-solid fa-users text-secondary me-2" aria-hidden="true"></i>Risorse e idoneità
+    </h2>
+    <p class="text-secondary mb-4">
+        Tutto il personale in organico con lo stato di ciascuno. Chi non è utilizzabile
+        resta in elenco col motivo accanto: sapere <em>perché</em> una persona non si può
+        impiegare conta quanto sapere chi è libero.
+    </p>
+
+    @* Il conto per ruolo prima delle schede: e' la risposta alla domanda che uno si fa
+       entrando, "con chi posso contare oggi". *@
+    <div class="row g-3 mb-4">
+        <div v-for="ruolo in ['Gruista', 'Mulettista', 'Stivatore']" :key="'riepilogo' + ruolo"
+             class="col-lg-4 col-md-6 col-12">
+            <div class="p-3 rounded border border-light-subtle bg-light h-100 d-flex align-items-center gap-3">
+                <img v-if="iconaRuolo(ruolo)" v-bind:src="iconaRuolo(ruolo)"
+                     class="icona-ruolo flex-shrink-0" alt="" aria-hidden="true" />
+                <div>
+                    <p class="fw-bold text-dark mb-1">{{ ruolo }}</p>
+                    <p class="text-secondary mb-0" style="font-size: var(--fs-xs);">
+                        {{ getResourceStats(ruolo).disponibili }} liberi
+                        &middot; {{ getResourceStats(ruolo).occupati }} in turno
+                        &middot; {{ getResourceStats(ruolo).reperibili }} a chiamata
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6 col-12">
+            <label for="ricerca-organico" class="form-label fw-semibold text-secondary">
+                Cerca fra il personale
+            </label>
+            <div class="input-group">
+                <span class="input-group-text" aria-hidden="true">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="search" id="ricerca-organico" class="form-control"
+                       placeholder="es. Gruista, oppure un nome"
+                       v-model="filtroRicerca">
+                <button v-if="filtroRicerca" type="button" class="btn btn-outline-secondary"
+                        v-on:click="filtroRicerca = ''">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    <span class="visually-hidden">Cancella la ricerca</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="col-lg-6 col-12 d-flex align-items-end">
+            <div class="d-flex flex-wrap gap-2" role="group" aria-label="Filtra per ruolo">
+                <button type="button" class="btn btn-sm fw-semibold"
+                        v-bind:class="!filtroRicerca ? 'btn-secondary' : 'btn-outline-secondary'"
+                        v-bind:aria-pressed="!filtroRicerca ? 'true' : 'false'"
+                        v-on:click="filtroRicerca = ''">
+                    Tutti i ruoli
+                </button>
+                <button v-for="ruolo in ['Gruista', 'Mulettista', 'Stivatore']" :key="'filtro' + ruolo"
+                        type="button" class="btn btn-sm fw-semibold"
+                        v-bind:class="filtroRicerca === ruolo ? 'btn-secondary' : 'btn-outline-secondary'"
+                        v-bind:aria-pressed="filtroRicerca === ruolo ? 'true' : 'false'"
+                        v-on:click="filtroRicerca = ruolo">
+                    {{ ruolo }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div v-for="op in getOperatoriFiltrati()" :key="op.nome" class="col-xl-4 col-md-6 col-12">
+            <article class="operator-card p-3 h-100 d-flex flex-column gap-2"
+                     v-bind:class="{ 'op-incompatible': motivoNonUtilizzabile(op) !== null }">
+
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="operator-avatar" aria-hidden="true">{{ op.nome.charAt(0) }}</span>
+                        <div>
+                            <div class="fw-bold text-dark">{{ op.nome }}</div>
+                            <span v-if="op.reperibile" class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+                                A chiamata
+                            </span>
+                        </div>
+                    </div>
+                    <span class="role-badge d-inline-flex align-items-center gap-1">
+                        <img v-if="iconaRuolo(op.ruolo)" v-bind:src="iconaRuolo(op.ruolo)"
+                             class="icona-ruolo-piccola" alt="" aria-hidden="true" />{{ op.ruolo }}
+                    </span>
+                </div>
+
+                @* Lo stato in una riga, col motivo quando e' un impedimento: e' la
+                   ragione per cui questa scheda esiste. *@
+                <p class="mb-0" v-bind:class="motivoNonUtilizzabile(op) ? 'text-danger' : 'text-secondary'">
+                    <i class="fa-solid me-1" aria-hidden="true"
+                       v-bind:class="motivoNonUtilizzabile(op) ? 'fa-circle-exclamation' : 'fa-circle-check'"></i>
+                    {{ motivoNonUtilizzabile(op) || 'Utilizzabile' }}
+                </p>
+
+                <p class="text-secondary mb-0" style="font-size: var(--fs-xs);">
+                    <i class="fa-solid fa-id-card me-1" aria-hidden="true"></i>
+                    <span v-if="getPatenteStatus(op) === 'warning'">
+                        Patente in scadenza il {{ getPatenteFormatted(op) }}
+                    </span>
+                    <span v-else>Patente valida fino al {{ getPatenteFormatted(op) }}</span>
+                </p>
+
+                <p class="text-secondary mb-0" style="font-size: var(--fs-xs);">
+                    <i class="fa-solid fa-anchor me-1" aria-hidden="true"></i>
+                    {{ op.abilitazioni ? 'Abilitato a: ' + op.abilitazioni : 'Abilitato a tutte le banchine' }}
+                </p>
+
+                <div class="mt-auto">
+                    <div class="d-flex justify-content-between align-items-center mb-1 text-secondary">
+                        <span :id="'organico-carico-' + op.nome">Carico settimanale</span>
+                        <strong class="text-dark">{{ op.oreSettimanali }} di {{ op.oreMassime }} ore</strong>
+                    </div>
+                    <div class="bar-track"
+                         role="progressbar"
+                         v-bind:aria-labelledby="'organico-carico-' + op.nome"
+                         v-bind:aria-valuenow="op.oreSettimanali"
+                         aria-valuemin="0"
+                         v-bind:aria-valuemax="op.oreMassime">
+                        <span class="bar-fill" v-bind:class="'bar-' + getOpStatus(op)"
+                              v-bind:style="{ width: getOpPercent(op) + '%' }"></span>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end pt-2 border-top border-light">
+                    <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold"
+                            v-on:click="apriDettagliOperatore(op)">
+                        <i class="fa-solid fa-circle-info me-1" aria-hidden="true"></i>Scheda
+                        <span class="visually-hidden">di {{ op.nome }}</span>
+                    </button>
+                </div>
+            </article>
+        </div>
+
+        <p v-if="getOperatoriFiltrati().length === 0" class="text-muted text-center py-4 mb-0">
+            <i class="fa-solid fa-users-slash d-block mb-2 text-secondary fs-4" aria-hidden="true"></i>
+            Nessun operatore corrisponde alla ricerca.
+        </p>
+    </div>
+</section>

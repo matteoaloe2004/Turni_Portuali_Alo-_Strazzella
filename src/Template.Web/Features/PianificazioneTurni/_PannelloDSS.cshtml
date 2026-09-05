@@ -1,0 +1,107 @@
+@* Proposte del DSS per la lavorazione selezionata. Sta nella colonna di destra e
+   non sotto il backlog: aprendosi in mezzo alla pagina spostava il tabellone verso il
+   basso proprio mentre serviva guardarlo. *@
+
+<section v-if="selectedTask" class="card border-0 shadow-sm mb-3" aria-labelledby="titolo-dss">
+    <div class="card-header border-bottom py-2 px-3 d-flex align-items-center justify-content-between gap-2">
+        <h2 id="titolo-dss" class="h6 mb-0 fw-bold text-dark text-truncate">
+            <i class="fa-regular fa-lightbulb text-secondary me-2" aria-hidden="true"></i>Come assegnare
+        </h2>
+        <button type="button" class="btn-close" aria-label="Chiudi le proposte"
+                v-on:click="selectTask(selectedTask)"></button>
+    </div>
+
+    <div class="card-body p-2">
+        <p class="fw-bold text-dark mb-1 text-truncate">{{ selectedTask.nome }}</p>
+        <p class="text-secondary mb-3" style="font-size: var(--fs-xs);">
+            Richiede {{ selectedTask.competenzaRichiesta }} &middot; {{ fmtDurata(selectedTask.durataOre) }}
+            <span v-if="operatoriRichiesti(selectedTask) > 1">
+                &middot; {{ operatoriAssegnati(selectedTask) }} di {{ operatoriRichiesti(selectedTask) }} operatori
+            </span>
+        </p>
+
+        @* Quattro stati distinti: caricamento, problema di rete, nessuna
+           alternativa, elenco delle alternative. *@
+        <p v-if="caricamentoDSSTask" class="text-center text-secondary py-3 mb-0" role="status">
+            <i class="fa-solid fa-spinner fa-spin text-primary me-2" aria-hidden="true"></i>
+            Sto cercando le alternative possibili…
+        </p>
+
+        <div v-else-if="problemaDSS" class="avviso-connessione p-3 d-flex align-items-start gap-2" role="alert">
+            <i class="fa-solid fa-plug-circle-exclamation mt-1" aria-hidden="true"></i>
+            <div>
+                <strong>Non ho potuto calcolare le alternative.</strong>
+                Il server non ha risposto, quindi non posso dirti se ce ne sono.
+                <button type="button" class="btn btn-link btn-sm p-0 align-baseline"
+                        v-on:click="caricaSoluzioneTaskSuggerita(selectedTask.id)">Riprova</button>
+            </div>
+        </div>
+
+        <div v-else-if="soluzioniDSSTask.length === 0">
+            <partial name="~/Features/PianificazioneTurni/_NessunaAlternativa.cshtml" />
+        </div>
+
+        <fieldset v-else class="border-0 p-0 m-0">
+            <legend class="visually-hidden">Alternative proposte per {{ selectedTask.nome }}</legend>
+
+            <div class="d-flex flex-column gap-2">
+                @* Punteggio 0 = il server rifiuterebbe questa collocazione: la si
+                   mostra col motivo, ma non la si puo' scegliere. *@
+                <label v-for="(sol, index) in soluzioniDSSTask" :key="index"
+                       class="dss-option dss-option-compatta p-2 d-flex align-items-start gap-2"
+                       v-bind:class="{ 'dss-option-selected': indiceDSSCorrente === index, 'opacity-75': sol.score === 0 }">
+                    <input type="radio" name="soluzioneDSS" class="form-check-input mt-1 flex-shrink-0"
+                           v-bind:checked="indiceDSSCorrente === index"
+                           v-bind:disabled="sol.score === 0"
+                           v-on:change="soluzioneDSSSelezionataIndex = index">
+                    <span class="flex-grow-1">
+                        <span class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                            <strong class="text-dark">{{ sol.molo }} · {{ fmtOra(sol.orario) }} · {{ sol.operatore }}</strong>
+                            <span v-if="sol.consigliata" class="badge bg-primary-subtle text-primary border border-primary-subtle">Consigliata</span>
+                            <span v-if="sol.score === 0" class="badge bg-danger">
+                                Non applicabile
+                            </span>
+                            @* Il solo numero, senza pastiglia: era un badge in piu' su ogni
+                               riga di un pannello stretto. *@
+                            <span v-else class="text-secondary" style="font-size: var(--fs-xs);">
+                                {{ sol.score }}%
+                            </span>
+                        </span>
+                        <span class="d-block text-secondary">
+                            {{ sol.vantaggi.join(' · ') }}<span v-if="sol.compromessi.length > 0"> — {{ sol.compromessi.join(', ') }}</span>
+                        </span>
+                    </span>
+                </label>
+
+                @* Riepilogo dell'effetto della scelta prima di applicarla. *@
+                <p v-if="soluzioneDSSCorrente && soluzioneDSSCorrente.score === 0"
+                   class="dss-riepilogo p-2 mb-0 mt-1 text-danger" role="alert">
+                    <i class="fa-solid fa-ban me-1" aria-hidden="true"></i>
+                    Questa collocazione sarebbe rifiutata<span
+                        v-if="soluzioneDSSCorrente.motiviBloccanti.length > 0">:
+                        {{ soluzioneDSSCorrente.motiviBloccanti.join(', ').toLowerCase() }}</span>.
+                    Scegline un'altra, oppure libera la fascia spostando il turno che la occupa.
+                </p>
+                <p v-else-if="soluzioneDSSCorrente" class="dss-riepilogo p-2 mb-0 mt-1 text-secondary">
+                    <i class="fa-regular fa-comment-dots me-1" aria-hidden="true"></i>
+                    La lavorazione sarà assegnata a
+                    <strong>{{ soluzioneDSSCorrente.operatore }}</strong>
+                    al <strong>{{ soluzioneDSSCorrente.molo }}</strong>,
+                    <strong>{{ getNomeGiorno(soluzioneDSSCorrente.giorno) }}</strong>
+                    alle <strong>{{ fmtOra(soluzioneDSSCorrente.orario) }}</strong>.
+                </p>
+
+                <div class="d-flex gap-2 mt-2">
+                    @* La chiusura sta gia' nell'intestazione del pannello: due strade per
+                       la stessa cosa, in una barra stretta, sono solo ingombro. *@
+                    <button type="button" class="btn btn-primary btn-sm flex-grow-1 fw-bold"
+                            v-bind:disabled="!soluzioneDSSCorrente || operazioneInCorso || soluzioneDSSCorrente.score === 0"
+                            v-on:click="applicaSoluzioneDSSSelezionata(soluzioneDSSCorrente)">
+                        <i class="fa-solid" v-bind:class="operazioneInCorso ? 'fa-spinner fa-spin' : 'fa-check'" aria-hidden="true"></i>
+                        {{ operazioneInCorso ? 'Sto assegnando…' : 'Applica questa soluzione' }}
+                    </button>
+                </div>
+            </div>
+        </fieldset>
+    </div>
+</section>
